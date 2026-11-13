@@ -1,0 +1,34 @@
+// Драйвер упражнения a0803. Этот файл НЕ нужно править — правьте count.s.
+import std::io;
+
+extern fn ulong asm_popcount(ulong x);
+extern fn ulong asm_ctz(ulong x);
+extern fn ulong asm_log2_floor(ulong x);
+extern fn ulong asm_next_pow2(ulong x);
+
+fn void main()
+{
+    assert(asm_popcount(0) == 0);
+    assert(asm_popcount(0xFF) == 8);
+    assert(asm_popcount(ulong::max) == 64);
+    assert(asm_ctz(0) == 64);
+    assert(asm_ctz(1) == 0);
+    assert(asm_ctz(0x8000_0000_0000_0000UL) == 63);
+    assert(asm_ctz(0b101000) == 3);
+    assert(asm_log2_floor(1) == 0);
+    assert(asm_log2_floor(2) == 1);
+    assert(asm_log2_floor(1000) == 9);
+    assert(asm_log2_floor(ulong::max) == 63);
+    assert(asm_next_pow2(1) == 1);
+    assert(asm_next_pow2(2) == 2);
+    assert(asm_next_pow2(3) == 4);
+    assert(asm_next_pow2(1000) == 1024);
+    assert(asm_next_pow2(1UL << 40) == 1UL << 40);
+    assert(asm_next_pow2((1UL << 40) + 1) == 1UL << 41);
+    ulong[] xs = { 1, 7, 64, 1000, 0xDEAD_BEEF };
+    foreach (x : xs)
+    {
+        io::printfn("x=%-10d popcnt=%-2d ctz=%-2d log2=%-2d next_pow2=%d",
+                    x, asm_popcount(x), asm_ctz(x), asm_log2_floor(x), asm_next_pow2(x));
+    }
+}

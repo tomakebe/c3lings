@@ -1,0 +1,9 @@
+deadzones ok
+frame 0: move_x=0 stick=(0,0) trigger=0 mouse=(0,0) south=false left=false device=NONE unmapped=0
+frame 1: move_x=1000 stick=(0,0) trigger=0 mouse=(0,0) south=false left=false device=KEYBOARD unmapped=1
+frame 2: move_x=1000 stick=(0,0) trigger=0 mouse=(7,-2) south=false left=true device=MOUSE unmapped=1
+frame 3: move_x=-888 stick=(-888,0) trigger=0 mouse=(0,0) south=false left=false device=GAMEPAD unmapped=1
+frame 4: move_x=-1000 stick=(-161,0) trigger=0 mouse=(0,0) south=false left=false device=GAMEPAD unmapped=1
+frame 5: move_x=-161 stick=(-161,0) trigger=500 mouse=(0,0) south=true left=false device=GAMEPAD unmapped=2
+frame 6: move_x=0 stick=(0,0) trigger=0 mouse=(0,0) south=false left=false device=GAMEPAD unmapped=2
+device abstraction ok

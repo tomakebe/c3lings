@@ -1,0 +1,6 @@
+sin(30 deg) = 0.500
+hypot(3, 4) = 5.0
+average = 2.50
+0.1 + 0.2 ~= 0.3: true
+clamp(150) = 100, clamp(-5) = 0
+gcd = 6, lcm = 36, next pow2 = 128

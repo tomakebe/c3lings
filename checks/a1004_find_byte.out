@@ -1,0 +1,5 @@
+find 'x'  -> 18
+find '!'  -> 84
+find '#'  -> -1
+count 'o' -> 7
+count ' ' -> 16

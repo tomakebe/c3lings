@@ -1,0 +1,4 @@
+log: 1:ABCVRXOO 2:ACRXOO 3:ACRXOO 4:ACRX(ACRXOON)N 5:ACRXN 
+calls: A=6 B=1 C=6 V=1 R=6 X=6 O=8 N=3
+live=3 next_id=10
+listener lifetime: all checks passed

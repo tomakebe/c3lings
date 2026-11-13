@@ -1,0 +1,11 @@
+steps per frame: 1 2 1 (alpha 0.50) then 4 after a hitch
+body 6 fell asleep while body 5 is still rolling
+body 6 was woken up by body 5; simulated 1238 steps
+body 0: asleep, y=0.5
+body 1: asleep, y=0.5
+body 2: asleep, y=0.5
+body 3: asleep, y=1.5
+body 4: asleep, y=2.5
+body 5: asleep, y=0.5
+body 6: asleep, y=0.5
+stack holds; world is at rest

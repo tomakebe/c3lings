@@ -1,0 +1,7 @@
+frame 0: [fire][jump][hit] damage=1 sounds=0
+frame 1: [menu+][eaten][eaten] damage=0 sounds=0
+frame 2: [menu-][fire][hit] damage=1 sounds=0
+frame 3: [fire][hit][dead] damage=1 sounds=1
+frame 4:  damage=0 sounds=0
+sounds: fmmffd
+event bus: all checks passed

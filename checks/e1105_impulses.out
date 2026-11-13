@@ -1,0 +1,7 @@
+elastic:      j=3.000  va=-1.000  vb=2.000
+separating:   no impulse
+inelastic:    j=4.500  va=-0.500  vb=1.500  p=0.000
+slide mu=0.5: v=(3.500, 0.000)  w=-2.000
+roll mu=2:    v=(2.667, 0.000)  w=-5.333  contact v=0.000
+correction:   a.x=-0.054  b.x=0.918
+impulse solver ok

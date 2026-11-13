@@ -1,0 +1,7 @@
+init: config loaded
+init: table built
+main: start
+table = [0, 10, 20, 30, 40, 50]
+ids: 1 2 3
+main: end
+shutdown: 3 ids issued

@@ -1,0 +1,39 @@
+import std::io, std::thread;
+// Драйвер упражнения a1303. Этот файл НЕ нужно править — правьте atomic.s.
+
+extern fn CInt atomic_fetch_add(CInt* p, CInt v);
+extern fn long atomic_inc64(long* p);
+
+const int THREADS = 4;
+const int ITERS = 200_000;
+
+CInt counter;
+long counter64;
+
+fn int worker(void* arg)
+{
+    for (int i = 0; i < ITERS; i++)
+    {
+        atomic_fetch_add(&counter, 1);
+        atomic_inc64(&counter64);
+    }
+    return 0;
+}
+
+fn void main()
+{
+    CInt x = 10;
+    assert(atomic_fetch_add(&x, 5) == 10, "must return the OLD value");
+    assert(x == 15);
+    assert(atomic_fetch_add(&x, -20) == 15 && x == -5);
+    long y = 41;
+    assert(atomic_inc64(&y) == 42, "must return the NEW value");
+    io::printn("single-thread ok");
+
+    Thread[THREADS] ts;
+    foreach (&t : ts) t.create(&worker, null)!!;
+    foreach (t : ts) (void)t.join();
+    io::printfn("counter   = %d (expected %d)", counter, THREADS * ITERS);
+    io::printfn("counter64 = %d", counter64);
+    assert(counter == THREADS * ITERS && counter64 == THREADS * ITERS, "lost updates: not atomic?");
+}

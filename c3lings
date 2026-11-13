@@ -1,0 +1,284 @@
+#!/usr/bin/env bash
+# c3lings — runner for the C3 + game engine architecture course.
+#
+#   ./c3lings              проверить упражнения по порядку, остановиться на первом нерешённом
+#   ./c3lings watch        то же самое, но перепроверять автоматически при каждом сохранении
+#   ./c3lings run <N>      собрать и запустить одно упражнение (N = номер/префикс, напр. 042 или e105)
+#   ./c3lings hint <N>     показать подсказку к упражнению
+#   ./c3lings list         список всех упражнений и их статус
+#   ./c3lings reset        сбросить кэш прогресса (всё будет перепроверено)
+#   ./c3lings verify [N..] (для авторов) все решения проходят, все упражнения падают
+#
+# Переменные окружения:  C3C=/path/to/c3c   (по умолчанию ./.c3c/c3/c3c, затем c3c из PATH)
+
+set -u
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -z "${C3C:-}" ]]; then
+    if [[ -x "$ROOT/.c3c/c3/c3c" ]]; then C3C="$ROOT/.c3c/c3/c3c"; else C3C="c3c"; fi
+fi
+BUILD="$ROOT/.build"
+PROGRESS="$ROOT/.progress"
+TIMEOUT_SECS="${C3LINGS_TIMEOUT:-10}"
+
+if [[ -t 1 ]]; then
+    RED=$'\e[31m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; BLUE=$'\e[34m'; BOLD=$'\e[1m'; DIM=$'\e[2m'; RESET=$'\e[0m'
+else
+    RED=; GREEN=; YELLOW=; BLUE=; BOLD=; DIM=; RESET=
+fi
+
+die() { echo "${RED}error:${RESET} $*" >&2; exit 2; }
+
+command -v "$C3C" >/dev/null 2>&1 || die "компилятор C3 '$C3C' не найден. Установите c3c (см. README.md) или задайте C3C=/path/to/c3c"
+
+mkdir -p "$BUILD"
+touch "$PROGRESS"
+
+# ---------------------------------------------------------------- discovery
+# An exercise is either a single file `NNN_name.c3` or a directory `NNN_name/`
+# containing several .c3 files (and optionally .s/.S assembly files). Tracks:
+# exercises/ (language), asm/exercises/ (assembly), engine/exercises/ (engine),
+# checked in that order.
+list_exercises() {
+    local dir
+    for dir in "$ROOT/exercises" "$ROOT/asm/exercises" "$ROOT/engine/exercises"; do
+        [[ -d "$dir" ]] || continue
+        find "$dir" -mindepth 1 -maxdepth 1 \( -name '*.c3' -o -type d \) | sort
+    done
+}
+
+ex_name() { local b; b="$(basename "$1")"; echo "${b%.c3}"; }
+
+# Path of the reference solution for an exercise path.
+solution_of() {
+    local name; name="$(ex_name "$1")"
+    if [[ -d "$ROOT/solutions/$name" ]]; then echo "$ROOT/solutions/$name"; else echo "$ROOT/solutions/$name.c3"; fi
+}
+
+find_exercise() {
+    local key="$1" e
+    while read -r e; do
+        local n; n="$(ex_name "$e")"
+        if [[ "$n" == "$key" || "$n" == "$key"_* ]]; then echo "$e"; return 0; fi
+    done < <(list_exercises)
+    # allow "42" for "042"
+    if [[ "$key" =~ ^[0-9]+$ ]]; then
+        local padded; padded="$(printf '%03d' "$((10#$key))")"
+        [[ "$padded" != "$key" ]] && { find_exercise "$padded"; return $?; }
+    fi
+    return 1
+}
+
+sources_of() {
+    if [[ -d "$1" ]]; then find "$1" -name '*.c3' | sort; else echo "$1"; fi
+}
+
+asm_sources_of() {
+    if [[ -d "$1" ]]; then find "$1" \( -name '*.s' -o -name '*.S' \) | sort; fi
+}
+
+hash_of() {
+    local name; name="$(ex_name "$1")"
+    { sources_of "$1" | xargs cat; asm_sources_of "$1" | xargs -r cat; cat "$ROOT/checks/$name".* 2>/dev/null; } | sha1sum | cut -d' ' -f1
+}
+
+is_cached_pass() { grep -qx "$(ex_name "$1") $(hash_of "$1")" "$PROGRESS"; }
+mark_pass() {
+    local name; name="$(ex_name "$1")"
+    grep -v "^$name " "$PROGRESS" > "$PROGRESS.tmp" 2>/dev/null; mv "$PROGRESS.tmp" "$PROGRESS"
+    echo "$name $(hash_of "$1")" >> "$PROGRESS"
+}
+
+# ---------------------------------------------------------------- checking
+# check <path-to-exercise-or-solution> <name> [quiet]
+# Returns 0 when the program compiles, runs successfully and prints the
+# expected output. Sets LAST_REASON on failure.
+LAST_REASON=""
+LAST_LOG=""
+check() {
+    local src="$1" name="$2" quiet="${3:-}"
+    local out="$BUILD/$name"
+    local flags=() mode="run"
+    [[ -f "$ROOT/checks/$name.flags" ]] && read -r -a flags < "$ROOT/checks/$name.flags"
+    [[ -f "$ROOT/checks/$name.mode" ]] && mode="$(tr -d '[:space:]' < "$ROOT/checks/$name.mode")"
+    local srcs; mapfile -t srcs < <(sources_of "$src")
+    LAST_LOG="$BUILD/$name.log"
+    rm -f "$out"
+
+    if [[ "$mode" == "test" ]]; then
+        # Unit-test exercise: success == all @test functions pass.
+        if ! (cd "$BUILD" && timeout "$TIMEOUT_SECS" "$C3C" compile-test "${flags[@]}" "${srcs[@]}") > "$LAST_LOG" 2>&1; then
+            LAST_REASON="тесты не прошли (или не скомпилировались)"; return 1
+        fi
+        return 0
+    fi
+
+    # Assembly files are assembled by the system C compiler and linked in.
+    local asm_srcs a objs=()
+    mapfile -t asm_srcs < <(asm_sources_of "$src")
+    : > "$LAST_LOG"
+    for a in "${asm_srcs[@]}"; do
+        local obj; obj="$BUILD/${name}__$(basename "${a%.*}").o"
+        if ! ${CC:-cc} -c -g "$a" -o "$obj" >> "$LAST_LOG" 2>&1; then
+            LAST_REASON="ошибка ассемблирования $(basename "$a")"; return 1
+        fi
+        objs+=("$obj")
+    done
+    if ! (cd "$BUILD" && "$C3C" compile -q "${flags[@]}" -o "$out" "${srcs[@]}" "${objs[@]}") >> "$LAST_LOG" 2>&1; then
+        LAST_REASON="ошибка компиляции"; return 1
+    fi
+    local stdout="$BUILD/$name.stdout" stdin="/dev/null"
+    [[ -f "$ROOT/checks/$name.in" ]] && stdin="$ROOT/checks/$name.in"
+    (cd "$BUILD" && timeout "$TIMEOUT_SECS" "$out" < "$stdin") > "$stdout" 2>> "$LAST_LOG"
+    local code=$?
+    if [[ $code -eq 124 ]]; then LAST_REASON="превышено время ${TIMEOUT_SECS}с (бесконечный цикл?)"; return 1; fi
+    if [[ $code -ne 0 ]]; then LAST_REASON="программа завершилась с кодом $code"; cat "$stdout" >> "$LAST_LOG"; return 1; fi
+    if [[ -f "$ROOT/checks/$name.out" ]]; then
+        if ! diff -q <(sed -e 's/[[:space:]]*$//' "$stdout") <(sed -e 's/[[:space:]]*$//' "$ROOT/checks/$name.out") > /dev/null; then
+            LAST_REASON="вывод не совпадает с ожидаемым"
+            {
+                echo "---- ожидалось ----"; cat "$ROOT/checks/$name.out"
+                echo "---- получено -----"; cat "$stdout"
+                echo "---- diff (- получено / + ожидалось) ----"
+                diff <(sed -e 's/[[:space:]]*$//' "$stdout") <(sed -e 's/[[:space:]]*$//' "$ROOT/checks/$name.out")
+            } >> "$LAST_LOG"
+            return 1
+        fi
+    fi
+    return 0
+}
+
+relpath() { echo "${1#"$ROOT"/}"; }
+
+show_failure() {
+    local e="$1" name; name="$(ex_name "$e")"
+    echo
+    echo "${RED}${BOLD}✗ $(relpath "$e")${RESET} — $LAST_REASON"
+    echo
+    sed -e 's/^/  /' "$LAST_LOG" | head -n 80
+    echo
+    echo "${YELLOW}Исправьте ${BOLD}$(relpath "$e")${RESET}${YELLOW} и снова запустите ./c3lings${RESET}  Застряли? ${BOLD}./c3lings hint ${name%%_*}${RESET}"
+}
+
+progress_bar() {
+    local done="$1" total="$2" width=40
+    local filled=$(( total > 0 ? done * width / total : 0 ))
+    printf '%s[' "$BLUE"
+    printf '%*s' "$filled" '' | tr ' ' '#'
+    printf '%*s' "$((width - filled))" '' | tr ' ' '-'
+    printf ']%s %d/%d\n' "$RESET" "$done" "$total"
+}
+
+cmd_check_all() {
+    local all; mapfile -t all < <(list_exercises)
+    local total=${#all[@]} n=0 e
+    for e in "${all[@]}"; do
+        local name; name="$(ex_name "$e")"
+        if is_cached_pass "$e"; then n=$((n + 1)); continue; fi
+        printf '%s… проверяю %s%s\r' "$DIM" "$(relpath "$e")" "$RESET"
+        if check "$e" "$name"; then
+            mark_pass "$e"
+            n=$((n + 1))
+            printf '\e[2K%s✓%s %s\n' "$GREEN" "$RESET" "$(relpath "$e")"
+        else
+            printf '\e[2K'
+            progress_bar "$n" "$total"
+            show_failure "$e"
+            return 1
+        fi
+    done
+    progress_bar "$n" "$total"
+    echo
+    echo "${GREEN}${BOLD}Все упражнения решены. Поздравляю!${RESET}"
+    echo "Теперь пишите свой движок. См. engine/docs/99_whats_next.md"
+    return 0
+}
+
+cmd_watch() {
+    local last=""
+    while true; do
+        clear
+        cmd_check_all
+        echo; echo "${DIM}слежу за изменениями… (Ctrl+C для выхода)${RESET}"
+        if command -v inotifywait >/dev/null 2>&1; then
+            inotifywait -qq -r -e close_write,moved_to "$ROOT/exercises" "$ROOT/asm/exercises" "$ROOT/engine/exercises" 2>/dev/null
+        else
+            local now
+            while true; do
+                now="$(find "$ROOT/exercises" "$ROOT/asm/exercises" "$ROOT/engine/exercises" \( -name '*.c3' -o -name '*.s' -o -name '*.S' \) -newer "$PROGRESS" 2>/dev/null | head -1)"
+                [[ -n "$now" && "$now" != "$last" ]] && { last="$now"; touch "$PROGRESS"; break; }
+                sleep 1
+            done
+        fi
+    done
+}
+
+cmd_run() {
+    local e; e="$(find_exercise "$1")" || die "нет упражнения '$1'"
+    local name; name="$(ex_name "$e")"
+    if check "$e" "$name"; then
+        mark_pass "$e"
+        cat "$BUILD/$name.stdout" 2>/dev/null
+        echo "${GREEN}✓ $(relpath "$e") решено${RESET}"
+    else
+        [[ -f "$BUILD/$name.stdout" ]] && cat "$BUILD/$name.stdout"
+        show_failure "$e"
+        return 1
+    fi
+}
+
+cmd_hint() {
+    local e; e="$(find_exercise "$1")" || die "нет упражнения '$1'"
+    local name; name="$(ex_name "$e")"
+    if [[ -f "$ROOT/hints/$name.md" ]]; then cat "$ROOT/hints/$name.md"; else echo "Для $name подсказки нет. Перечитайте комментарии в упражнении :)"; fi
+}
+
+cmd_list() {
+    local e
+    while read -r e; do
+        if is_cached_pass "$e"; then printf '%s✓%s %s\n' "$GREEN" "$RESET" "$(relpath "$e")"
+        else printf '%s·%s %s\n' "$DIM" "$RESET" "$(relpath "$e")"; fi
+    done < <(list_exercises)
+}
+
+# For course authors: every solution must pass, every exercise must fail.
+cmd_verify() {
+    local filter=("$@") e bad=0 count=0
+    while read -r e; do
+        local name; name="$(ex_name "$e")"
+        if [[ ${#filter[@]} -gt 0 ]]; then
+            local match=0 f
+            for f in "${filter[@]}"; do [[ "$name" == "$f" || "$name" == "$f"_* || "$name" == "$f"* ]] && match=1; done
+            [[ $match -eq 1 ]] || continue
+        fi
+        count=$((count + 1))
+        local sol; sol="$(solution_of "$e")"
+        if [[ ! -e "$sol" ]]; then echo "${RED}MISSING SOLUTION${RESET} $name"; bad=1; continue; fi
+        if [[ ! -f "$ROOT/checks/$name.out" && "$(cat "$ROOT/checks/$name.mode" 2>/dev/null)" != "test" ]]; then
+            echo "${YELLOW}NO .out FILE${RESET} $name (output will not be checked)"
+        fi
+        [[ -f "$ROOT/hints/$name.md" ]] || echo "${YELLOW}NO HINT${RESET} $name"
+        if check "$sol" "$name"; then
+            if check "$e" "$name"; then
+                echo "${RED}EXERCISE ALREADY PASSES${RESET} $name"; bad=1
+            else
+                echo "${GREEN}ok${RESET} $name ${DIM}($LAST_REASON)${RESET}"
+            fi
+        else
+            echo "${RED}SOLUTION FAILS${RESET} $name — $LAST_REASON"; sed -e 's/^/    /' "$LAST_LOG" | head -40; bad=1
+        fi
+    done < <(list_exercises)
+    echo "verified $count exercise(s)"
+    return $bad
+}
+
+case "${1:-}" in
+    ""|check) cmd_check_all ;;
+    watch) cmd_watch ;;
+    run) [[ $# -ge 2 ]] || die "использование: ./c3lings run <N>"; cmd_run "$2" ;;
+    hint) [[ $# -ge 2 ]] || die "использование: ./c3lings hint <N>"; cmd_hint "$2" ;;
+    list) cmd_list ;;
+    reset) : > "$PROGRESS"; echo "кэш прогресса очищен" ;;
+    verify) shift; cmd_verify "$@" ;;
+    -h|--help|help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
+    *) die "неизвестная команда '$1' (см. ./c3lings help)" ;;
+esac

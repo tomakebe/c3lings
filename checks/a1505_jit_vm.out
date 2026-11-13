@@ -1,0 +1,37 @@
+factorial (20 bytecodes -> 120 bytes):
+  f(0) = 1
+  f(1) = 1
+  f(5) = 120
+  f(10) = 3628800
+  f(20) = 2432902008176640000
+sum of squares (20 bytecodes -> 138 bytes):
+  f(0) = 0
+  f(1) = 1
+  f(3) = 14
+  f(100) = 338350
+  f(1000) = 333833500
+trace calls (11 bytecodes -> 145 bytes):
+ interpreter:
+  trace: 4
+  trace: 12
+  trace: 0
+ jit:
+  trace: 4
+  trace: 12
+  trace: 0
+  f(4) = 12
+ interpreter:
+  trace: -2
+  trace: -6
+  trace: 0
+ jit:
+  trace: -2
+  trace: -6
+  trace: 0
+  f(-2) = -6
+max(x, 10) via branches (8 bytecodes -> 65 bytes):
+  f(-5) = 10
+  f(9) = 10
+  f(10) = 10
+  f(11) = 11
+  f(1000) = 1000

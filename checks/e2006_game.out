@@ -1,0 +1,38 @@
+frames=1779 ticks=1800 input events recorded=234
+score=520 lives=0 wave=2 shots=52 rocks destroyed=22 entities=5
+frame arena peak=3172 bytes
++----------------------------------------------------------------+
+|                                                           O    |
+|                                                           O    |
+|                                                            O   |
+|                                                             OOO|
+|                                                                |
+|                                                                |
+|                                                             OOO|
+|                                                            O   |
+|                                                           O    |
+|                                                           O  oo|
+|     OOO                                                   O o  |
+|    O   O          ooo                                      Oo  |
+|   O     O        o   o                                      oOO|
+|   O     O        o   o                                       oo|
+|   O     O        o   o                                         |
+|    O   O          ooo                                          |
+|     OOO                                                        |
+|                                                                |
+|                                                                |
+|                                                                |
+|                                                                |
+|                                                                |
+|                                                                |
+|                                                                |
++----------------------------------------------------------------+
+world checksum=0aaad0ce frame checksum=c5fe2750 (replay: identical)
+zone                    calls      work
+tick                     1800         0
+  ship                   1800         0
+  lifetime               1800       982
+  physics                1800     10287
+    narrowphase          1800       634
+  rules                  1800        26
+render                   1779     10106

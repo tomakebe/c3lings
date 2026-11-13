@@ -1,0 +1,10 @@
+config 0: port=8080 workers=8 timeout=30
+config 1: port=80 workers=4 timeout=5
+  (load failed: optcfg::MISSING_KEY)
+config 2: error: required key is missing
+  (load failed: optcfg::BAD_NUMBER)
+config 3: error: not a number
+  (load failed: optcfg::INVALID_TIMEOUT)
+config 4: error: timeout must be 1..300
+total capacity: 244
+  (load failed: optcfg::MISSING_KEY)

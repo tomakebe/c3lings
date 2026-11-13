@@ -1,0 +1,87 @@
+# =====================================================================
+#  a1502 · Исполняемая память: mmap + копирование + mprotect
+# =====================================================================
+#
+#  Чтобы выполнить сгенерированный код, его нужно положить в память с
+#  правом ИСПОЛНЕНИЯ. Обычная память (стек, куча, данные) его не имеет —
+#  прыжок туда даст SIGSEGV (бит NX в таблице страниц). Схема W^X:
+#
+#    1. mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
+#    2. скопировать байты кода (rep movsb: rdi = куда, rsi = откуда, rcx = сколько)
+#    3. mprotect(p, len, PROT_READ|PROT_EXEC)     (5 = 1|4)
+#    4. вызвать как функцию через указатель
+#
+#  Вспомните главу 12: mmap = 9 (4-й аргумент в r10!), mprotect = 10,
+#  munmap = 11; ошибка — rax в [-4095, -1].
+#
+#  На x86 после записи кода не нужно сбрасывать кеш инструкций (процессор
+#  сам следит за самомодифицирующимся кодом). На ARM — нужно
+#  (__builtin___clear_cache). Это ещё одна деталь, которую JIT-движки
+#  прячут в одну функцию.
+#
+#  Эта функция будет нужна в следующих упражнениях — там она уже готова.
+#
+#  ЗАДАЧА:
+#      jit_make(code, len) — вернуть указатель на исполняемую копию кода
+#                            или null (len == 0 или ошибка ядра)
+#      jit_free(p, len)    — munmap, вернуть результат ядра
+#
+    .intel_syntax noprefix
+    .text
+
+# void* jit_make(char* code /*rdi*/, long len /*rsi*/)
+    .globl jit_make
+jit_make:
+    test rsi, rsi
+    jz 8f
+    push rbx
+    push r12
+    push r13
+    mov r12, rdi            # code
+    mov r13, rsi            # len
+    # 1. mmap RW
+    xor edi, edi
+    mov rsi, r13
+    mov edx, 3
+    mov r10d, 0x22
+    mov r8, -1
+    xor r9d, r9d
+    mov eax, 9
+    syscall
+    cmp rax, -4096
+    ja 9f
+    mov rbx, rax            # страница
+    # 2. копирование
+    mov rdi, rbx
+    mov rsi, r12
+    mov rcx, r13
+    rep movsb
+    # 3. mprotect RX
+    mov rdi, rbx
+    mov rsi, r13
+    mov edx, 5
+    mov eax, 10
+    syscall
+    test rax, rax
+    jnz 9f
+    mov rax, rbx
+    pop r13
+    pop r12
+    pop rbx
+    ret
+9:
+    pop r13
+    pop r12
+    pop rbx
+8:
+    xor eax, eax
+    ret
+
+# long jit_free(void* p, long len)
+    .globl jit_free
+jit_free:
+    mov eax, 11
+    syscall
+    ret
+
+    .section .note.GNU-stack,"",@progbits

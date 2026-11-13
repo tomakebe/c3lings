@@ -1,0 +1,6 @@
+bitstream: ok
+packed 4 players: 115 bits = 15 bytes (naive struct copy: 80 bytes)
+player 0: alive=true hp=100 weapon=3 x=12.50 angle=90.2
+player 1: alive=false hp=0 weapon=0 x=0.00 angle=0.0
+player 2: alive=true hp=37 weapon=11 x=999.99 angle=359.3
+player 3: alive=true hp=1 weapon=0 x=500.00 angle=0.0

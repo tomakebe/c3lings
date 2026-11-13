@@ -1,0 +1,4 @@
+  cannot parse 'abc'
+total=200 empty=1 malformed=1 out_of_range=2
+best=100
+a+b=42

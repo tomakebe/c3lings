@@ -1,0 +1,4 @@
+popcount64(0xDEADBEEF) = 24
+trailing_zeros32(80)   = 4
+byte_swap32(0x11223344) = 0x44332211
+nibble_lows(0x10101111) = 0xAF

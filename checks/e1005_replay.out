@@ -1,0 +1,8 @@
+recorded: frames=600 runs=23 checkpoints=10 score=20 final_hash=57c52309
+file: 156 bytes (raw input would be 1200 bytes)
+verify loaded: -1
+tampered run at frame 336: desync at 360
+wrong seed: desync at 60
+truncated input: desync at 590
+corrupt files rejected
+replay ok

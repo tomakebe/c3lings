@@ -1,0 +1,16 @@
+after load + sort:
+   0 car      parent=-        world=(10, 0)
+   1 lamp     parent=-        world=(50, 5)
+   2 wheel    parent=car      world=(11, -1)
+   3 driver   parent=car      world=(10, 1)
+   4 bulb     parent=lamp     world=(50, 8)
+   5 hat      parent=driver   world=(10, 3)
+after reparenting:
+   0 car      parent=-        world=(10, 0)
+   1 lamp     parent=-        world=(50, 5)
+   2 wheel    parent=car      world=(11, -1)
+   3 bulb     parent=lamp     world=(50, 8)
+   4 hat      parent=bulb     world=(50, 9)
+   5 driver   parent=hat      world=(50, 10)
+driver after moving lamp: (0, 5)
+flat hierarchy ok

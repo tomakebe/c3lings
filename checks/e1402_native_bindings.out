@@ -1,0 +1,13 @@
+native 0: add/2
+native 1: mul/2
+native 2: clamp/3
+native 3: answer/0
+native 4: give_gold/1
+native 5: div/2
+prog = 25, gold = 25
+answer / 6 = 7
+typo: native_bindings::UNKNOWN_NATIVE
+arity: native_bindings::ARITY_MISMATCH
+div: native_bindings::DIV_BY_ZERO
+raw: native_bindings::STACK_UNDERFLOW
+bindings ok

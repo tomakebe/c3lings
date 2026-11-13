@@ -1,0 +1,5 @@
+shl_var(5, 4)        = 80
+shr_var(1000, 3)     = 125
+sar_var(-1000, 3)    = -125
+extract_bits(0xABCD, 4, 8) = 0xBC
+shifts ok

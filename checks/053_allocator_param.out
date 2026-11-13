@@ -1,0 +1,4 @@
+heap:    ababab
+tracked: xyzxyz (1 allocation, 6 bytes)
+temp:    -----
+arena:   ====

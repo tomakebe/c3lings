@@ -1,0 +1,13 @@
+t=0 door: opens
+t=0 guard: patrol, left 3
+t=0 hog: spinning
+t=0 blink: on
+t=1 hog: FAULT script_coroutines::BUDGET_EXCEEDED
+t=1 blink: off
+t=2 guard: patrol, left 2
+t=2 blink: on
+t=3 door: closes
+t=4 guard: patrol, left 1
+t=6 guard: done
+finished at t=7
+coroutines ok

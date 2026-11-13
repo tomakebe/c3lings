@@ -1,0 +1,12 @@
+after 3 ticks:
+  v1: score=3 ticks=3
+  reload: kept 2, added 1, removed 0
+after 2 more ticks:
+  v2: combo=5 score=13 ticks=5
+  reload v3 rejected: script_hot_reload::BAD_GLOBAL
+after 1 more tick:
+  v2: combo=5 score=18 ticks=6
+  reload: kept 1, added 0, removed 2
+after 1 more tick:
+  v4: ticks=7
+hot reload ok

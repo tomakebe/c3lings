@@ -1,0 +1,8 @@
+arith = 19 (steps 8)
+loop = 5 (steps 41)
+loop with budget 20: vm_budget::BUDGET_EXCEEDED after 20 steps
+forever: vm_budget::BUDGET_EXCEEDED
+bomb: vm_budget::STACK_OVERFLOW (sp = 8)
+under: vm_budget::STACK_UNDERFLOW
+wild: vm_budget::BAD_JUMP
+vm sandbox ok

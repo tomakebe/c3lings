@@ -1,0 +1,5 @@
+[trace] start
+real size: 8
+[trace] sum done
+sum = 5.50
+verbose build

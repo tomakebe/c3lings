@@ -1,0 +1,4 @@
+deque: pop_bottom=5 steal_top=1 steal_top=2 pop_bottom=4 pop_bottom=3
+try_steal: victims visited in order, self skipped
+stats: size 64, align 64
+run: 4096 jobs x 20 runs, checksum 2050557

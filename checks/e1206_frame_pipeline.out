@@ -1,0 +1,5 @@
+frame   0: visible  933, checksum 3863946
+frame   1: visible  933, checksum 3863946
+frame  60: visible 1388, checksum 4353505
+frame 119: visible 2048, checksum 4201156
+pipelined == sequential for all 120 frames (10 runs)

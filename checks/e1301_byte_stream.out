@@ -1,0 +1,9 @@
+written 26 bytes
+44 33 22 11 ef be 00 00 c0 3f cd cc cc bd ac 02
+05 05 80 01 ff ff ff ff 0f 21
+read back: 1.50 -0.10
+past end: e1301_byte_stream::END_OF_DATA
+truncated u32: e1301_byte_stream::END_OF_DATA
+6-byte varint: e1301_byte_stream::MALFORMED
+unfinished varint: e1301_byte_stream::END_OF_DATA
+byte stream ok

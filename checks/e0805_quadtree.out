@@ -1,0 +1,6 @@
+nodes=441 leaves=331 max_depth=8
+city    found= 31 visited= 61 tested= 31 (brute force: 500) checksum=1472198481
+field   found=  7 visited= 13 tested= 15 (brute force: 500) checksum=3815413305
+stack   found= 10 visited= 33 tested= 10 (brute force: 500) checksum=3742906949
+all     found=500 visited=441 tested=500 (brute force: 500) checksum=723408122
+quadtree ok

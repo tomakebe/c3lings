@@ -1,0 +1,9 @@
+fnv("textures/hero.png") = f798a942ed32fd87
+switch on compile-time id: ok
+textures/hero.png                -> textures/hero.png
+Textures\Hero.PNG                -> textures/hero.png
+./textures//hero.png             -> textures/hero.png
+/textures/old/../hero.png        -> textures/hero.png
+textures/./a/b/../../hero.png    -> textures/hero.png
+16-bit ids, 1000 paths: 7 collisions
+all path/hash tests passed

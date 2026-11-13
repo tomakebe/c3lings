@@ -1,0 +1,31 @@
+// Драйвер упражнения a0801. Этот файл НЕ нужно править — правьте shifts.s.
+import std::io;
+
+extern fn ulong shl_var(ulong x, ulong n);
+extern fn long sar_var(long x, ulong n);
+extern fn ulong shr_var(ulong x, ulong n);
+extern fn ulong extract_bits(ulong x, ulong pos, ulong len);
+
+fn void main()
+{
+    assert(shl_var(1, 0) == 1);
+    assert(shl_var(1, 10) == 1024);
+    assert(shl_var(3, 62) == 0xC000_0000_0000_0000UL);
+    io::printfn("shl_var(5, 4)        = %d", shl_var(5, 4));
+
+    assert(shr_var(0x8000_0000_0000_0000UL, 63) == 1);
+    assert(shr_var(1000, 3) == 125);
+    io::printfn("shr_var(1000, 3)     = %d", shr_var(1000, 3));
+
+    assert(sar_var(-1000, 3) == -125);
+    assert(sar_var(-1, 40) == -1);
+    assert(sar_var(64, 6) == 1);
+    io::printfn("sar_var(-1000, 3)    = %d", sar_var(-1000, 3));
+
+    // 0xABCD: биты 4..11 — это 0xBC
+    assert(extract_bits(0xABCD, 4, 8) == 0xBC);
+    assert(extract_bits(0xFFFF_0000_0000_0000UL, 48, 16) == 0xFFFF);
+    assert(extract_bits(0b1011_0110, 1, 3) == 0b011);
+    io::printfn("extract_bits(0xABCD, 4, 8) = 0x%X", extract_bits(0xABCD, 4, 8));
+    io::printn("shifts ok");
+}

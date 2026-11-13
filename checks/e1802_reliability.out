@@ -1,0 +1,3 @@
+acks: ok
+a: sent=300 acked=243 (next seq 264)
+b: acked=231, lost in network=111

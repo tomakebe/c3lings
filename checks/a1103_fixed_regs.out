@@ -1,0 +1,5 @@
+mulhi(2^63, 6)       = 3
+mulhi(max, max)      = 0xFFFFFFFFFFFFFFFE
+muldiv(1e12, 1e12, 1e9) = 1000000000000000
+muldiv(max, 3, 5)       = 11068046444225730969
+rdtsc grows: true (checksum 333328333350000)

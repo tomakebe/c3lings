@@ -1,0 +1,4 @@
+is_pow2(64)=1 is_pow2(96)=0 lowest_bit(96)=32
+sum_bit_indices(0xF0F0) = 76
+bits of 0x8000000000010105: 0 2 8 16 63
+bit iteration ok

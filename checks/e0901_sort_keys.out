@@ -1,0 +1,14 @@
+key(ui, opaque, mat 7, far, id 3) = 020007ffffff0003
+key(fx, translucent, far, id 4)   = 0180000000000004
+submission order after sort:
+  L0 O mat= 1 depth=00838860  tree_near
+  L0 O mat= 1 depth=10066329  tree_far
+  L0 O mat= 2 depth=03355443  rock_near
+  L0 O mat= 2 depth=15099493  rock_far
+  L0 T mat= 0 depth=05033165  glass_far
+  L0 T mat= 0 depth=10066329  water
+  L0 T mat= 0 depth=15099494  glass_near
+  L1 T mat= 0 depth=11744051  smoke
+  L2 O mat= 3 depth=00083886  ui_panel
+  L2 T mat= 0 depth=16693329  ui_text
+order ok

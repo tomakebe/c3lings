@@ -1,0 +1,29 @@
+// Драйвер упражнения a0804. Этот файл НЕ нужно править — правьте iter.s.
+import std::io;
+
+extern fn CInt is_pow2(ulong x);
+extern fn ulong lowest_bit(ulong x);
+extern fn ulong sum_bit_indices(ulong x);
+extern fn ulong collect_bits(ulong x, char* out);
+
+fn void main()
+{
+    assert(is_pow2(1) == 1 && is_pow2(64) == 1 && is_pow2(1UL << 63) == 1);
+    assert(is_pow2(0) == 0 && is_pow2(3) == 0 && is_pow2(96) == 0);
+    assert(lowest_bit(0b1011000) == 0b1000);
+    assert(lowest_bit(0) == 0);
+    assert(sum_bit_indices(0) == 0);
+    assert(sum_bit_indices(0b1011) == 0 + 1 + 3);
+    assert(sum_bit_indices(ulong::max) == 63 * 64 / 2);
+    io::printfn("is_pow2(64)=%d is_pow2(96)=%d lowest_bit(96)=%d", is_pow2(64), is_pow2(96), lowest_bit(96));
+    io::printfn("sum_bit_indices(0xF0F0) = %d", sum_bit_indices(0xF0F0));
+
+    char[64] idx;
+    ulong n = collect_bits(0x8000_0000_0001_0105UL, &idx);
+    assert(n == 5);
+    io::print("bits of 0x8000000000010105:");
+    for (ulong i = 0; i < n; i++) io::printf(" %d", idx[i]);
+    io::printn();
+    assert(collect_bits(0, &idx) == 0);
+    io::printn("bit iteration ok");
+}

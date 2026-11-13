@@ -1,0 +1,29 @@
+// Драйвер упражнения a0903. Этот файл НЕ нужно править — правьте compare.s.
+import std::io;
+
+extern fn CInt fcompare(double a, double b);
+extern fn double clamp(double x, double lo, double hi);
+extern fn long count_greater(double* a, long n, double t);
+
+fn void main()
+{
+    double nan = double::nan;
+    assert(fcompare(1.0, 2.0) == -1);
+    assert(fcompare(2.0, 1.0) == 1);
+    assert(fcompare(-0.0, 0.0) == 0);
+    assert(fcompare(nan, 1.0) == 2);
+    assert(fcompare(1.0, nan) == 2);
+    assert(fcompare(-5.0, -3.0) == -1);   // со знаковыми переходами тут была бы ошибка?
+    io::printfn("fcompare: %d %d %d %d", fcompare(1.0, 2.0), fcompare(3.0, 3.0), fcompare(4.0, 3.0), fcompare(nan, nan));
+
+    assert(clamp(5.0, 0.0, 1.0) == 1.0);
+    assert(clamp(-5.0, 0.0, 1.0) == 0.0);
+    assert(clamp(0.25, 0.0, 1.0) == 0.25);
+    io::printfn("clamp: %.2f %.2f %.2f", clamp(5.0, 0.0, 1.0), clamp(-5.0, 0.0, 1.0), clamp(0.25, 0.0, 1.0));
+
+    double[] xs = { 0.5, 3.0, nan, 2.0, 7.5, -1.0, 2.0001 };
+    assert(count_greater(xs.ptr, xs.len, 2.0) == 3);
+    assert(count_greater(xs.ptr, 0, 2.0) == 0);
+    io::printfn("count_greater(2.0) = %d", count_greater(xs.ptr, xs.len, 2.0));
+    io::printfn("count_greater(-9)  = %d", count_greater(xs.ptr, xs.len, -9.0));
+}

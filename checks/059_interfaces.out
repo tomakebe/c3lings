@@ -1,0 +1,4 @@
+circle: area 3.14
+rect: area 6.00, perimeter 10.00
+square: area 4.00, perimeter 8.00
+total area: 13.14

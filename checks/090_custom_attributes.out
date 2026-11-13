@@ -1,0 +1,6 @@
+INSERT INTO users: {"user_id": 7, "login": "neo", "age": 30}
+INSERT INTO items: {"title": "sword", "price_cents": 1500}
+User has table tag: true, Item has 'cmd' tag: false
+greet is command 'hello'
+password skipped: true
+sq(9) = 81

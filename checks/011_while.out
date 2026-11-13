@@ -1,0 +1,5 @@
+collatz(6) takes 8 steps
+menu shown 1 time(s)
+age -5: negative
+age 200: too old
+age 30: valid

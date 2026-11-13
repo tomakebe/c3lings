@@ -1,0 +1,7 @@
+204: success
+418: i am a teapot
+500: unknown
+404: not found
+mode = 6
+can write
+cannot execute

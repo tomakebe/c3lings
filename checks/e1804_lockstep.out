@@ -1,0 +1,3 @@
+delay=0: stalls 102/102, final checksum 13f4c515, unit0=(28,58)
+delay=2: stalls 31/38, final checksum 90868215, unit0=(30,58)
+delay=4: stalls 0/0, final checksum 1cdaf955, unit0=(27,58)

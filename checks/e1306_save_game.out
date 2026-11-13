@@ -1,0 +1,22 @@
+crc32("123456789") = cbf43926
+v2 save: 66 bytes
+53 41 56 21 02 00 00 00 32 00 00 00 ec df d9 54
+92 10 00 00 03 04 00 00 00 00 00 00 00 00 00 00
+00 01 00 01 11 00 00 00 00 00 04 42 00 00 80 42
+fa 00 01 1e 00 00 00 00 00 c9 42 00 00 e8 c0 84
+03 02
+loaded v2: tick=4242 entities=3
+  #4 pos=(0.00, 0.00) hp=1 team=1
+  #17 pos=(33.00, 64.00) hp=250 team=1
+  #30 pos=(100.50, -7.25) hp=900 team=2
+migrated v1: tick=1337 entities=2
+  #5 pos=(-8.00, 8.00) hp=70 team=0
+  #11 pos=(56.00, 72.00) hp=200 team=0
+v1 -> v2 resave: 51 bytes
+empty file: e1306_save_game::TRUNCATED
+wrong magic: e1306_save_game::BAD_MAGIC
+from the future: e1306_save_game::UNSUPPORTED_VERSION
+cut off: e1306_save_game::TRUNCATED
+bit flip: e1306_save_game::CHECKSUM_MISMATCH
+trailing garbage: e1306_save_game::CORRUPT
+save game ok

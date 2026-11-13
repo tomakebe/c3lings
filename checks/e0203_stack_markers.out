@@ -1,0 +1,8 @@
+start                  lo=   0 hi=2048 free=2048
+game data              lo= 100 hi=2048 free=1948
+level + unpack buffer  lo= 868 hi=1344 free= 476
+unpack freed           lo= 868 hi=2048 free=1180
+more level data        lo=1636 hi=2048 free= 412
+level unloaded         lo= 100 hi=2048 free=1948
+all freed              lo=   0 hi=2048 free=2048
+double-ended stack OK

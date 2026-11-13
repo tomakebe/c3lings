@@ -1,0 +1,8 @@
+goblin = 4096 (index 0, gen 1)
+orc    = 4097 (index 1, gen 1)
+goblin hp after two hits: 6, orc x: 45
+goblin alive: 0
+bat    = 8192 (index 0, gen 2)
+damage(old goblin): entity_api::STALE_HANDLE
+alive(old) = 0, alive(new) = 1
+entity api ok

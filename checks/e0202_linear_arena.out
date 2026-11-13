@@ -1,0 +1,4 @@
+char@0 int@4 double@8 line@64 transforms@128 offset=224
+full: offset=1024 peak=1024 allocs=6 failed=3
+after frames: offset=368 peak=1024 failed=3
+arena OK

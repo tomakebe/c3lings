@@ -1,0 +1,5 @@
+Item{"ab", 258}: 02 00 00 00 61 62 02 01
+Vec3i{-1,0,1} 1.5f ROGUE: ff ff ff ff 00 00 00 00 01 00 00 00 00 00 c0 3f 02
+SaveGame: 96 bytes
+loaded: Ada the MAGE, hp=87.25, bag=3 items, gold=-5000000000
+round trip OK

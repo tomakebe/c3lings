@@ -1,0 +1,18 @@
+radix_sort: 100 keys sorted, stable
+unsorted: shader=24 material=24 mesh=24 draws=24
+sorted:   shader=3 material=12 mesh=3 draws=24
+frame log:
+  bind shader   0
+  bind material 5
+  bind mesh     3
+  draw instance 101
+  bind mesh     4
+  draw instance 103
+  bind shader   1
+  bind material 1
+  bind mesh     9
+  draw instance 104
+  bind material 2
+  draw instance 100
+  draw instance 102
+backend ok

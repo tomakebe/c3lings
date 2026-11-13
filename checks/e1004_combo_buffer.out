@@ -1,0 +1,11 @@
+clean 236P            : FIREBALL@7
+mirrored 214P         : FIREBALL@4
+214P facing right     : PUNCH@4
+sloppy 2(5)36P        : FIREBALL@4
+6236P priority        : DRAGON@6
+too slow 2..36P       : PUNCH@14
+window 20 > 15        : PUNCH@20
+buffered in recovery  : FIREBALL@20
+pressed too early     :
+two fireballs         : FIREBALL@2 FIREBALL@8
+combo buffer ok

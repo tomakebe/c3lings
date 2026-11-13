@@ -1,0 +1,52 @@
+import std::io, std::thread;
+// Драйвер упражнения a1304. Этот файл НЕ нужно править — правьте cas.s.
+
+extern fn CInt atomic_cas(long* p, long expected, long desired);
+extern fn long atomic_max(long* p, long v);
+
+const int THREADS = 4;
+
+long global_max = -1000;
+long total;
+
+fn int worker(void* arg)
+{
+    long id = (long)(uptr)arg;
+    for (long i = 0; i < 50_000; i++)
+    {
+        long v = (i * 7919 + id * 104729) % 1_000_003;
+        atomic_max(&global_max, v);
+        // fetch_add через CAS-цикл
+        long old = total;
+        while (!atomic_cas(&total, old, old + 1)) old = total;
+    }
+    return 0;
+}
+
+fn void main()
+{
+    long x = 5;
+    assert(atomic_cas(&x, 5, 9) == 1 && x == 9);
+    assert(atomic_cas(&x, 5, 100) == 0 && x == 9, "CAS must fail if value differs");
+    long m = 3;
+    assert(atomic_max(&m, 10) == 3 && m == 10, "atomic_max returns the old value");
+    assert(atomic_max(&m, 4) == 10 && m == 10);
+    io::printn("single-thread ok");
+
+    long want = -1000;
+    for (long id = 0; id < THREADS; id++)
+    {
+        for (long i = 0; i < 50_000; i++)
+        {
+            long v = (i * 7919 + id * 104729) % 1_000_003;
+            if (v > want) want = v;
+        }
+    }
+
+    Thread[THREADS] ts;
+    foreach (i, &t : ts) t.create(&worker, (void*)(uptr)i)!!;
+    foreach (t : ts) (void)t.join();
+    io::printfn("max   = %d", global_max);
+    io::printfn("total = %d", total);
+    assert(global_max == want && total == THREADS * 50_000);
+}

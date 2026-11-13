@@ -1,0 +1,23 @@
+quad: 60 pixels, overdraw 0
+fan: 800 pixels, overdraw 0, holes 0
+  gggggggggghhhhhhhhhaaaaaaaaaaabbbbbbbbbb
+  ggggggggggghhhhhhhhaaaaaaaaaabbbbbbbbbbb
+  gggggggggggghhhhhhhhaaaaaaaabbbbbbbbbbbb
+  ggggggggggggghhhhhhhaaaaaaabbbbbbbbbbbbb
+  gggggggggggggghhhhhhaaaaaabbbbbbbbbbbbbb
+  ggggggggggggggghhhhhaaaaabbbbbbbbbbbbbbb
+  gggggggggggggggghhhhaaaabbbbbbbbbbbbbbbb
+  ggggggggggggggggghhhaaabbbbbbbbbbbbbbbbb
+  gggggggggggggggggghhaabbbbbbbbbbbbbbbbbb
+  ggggggggggggggggggghabbbbbbbbbcccccccccc
+  gggggggggggggggggfffcccccccccccccccccccc
+  ggfffffffffffffffffedccccccccccccccccccc
+  ffffffffffffffffffeeddcccccccccccccccccc
+  fffffffffffffffffeeedddccccccccccccccccc
+  ffffffffffffffffeeeeddddcccccccccccccccc
+  fffffffffffffffeeeeeeddddccccccccccccccc
+  ffffffffffffffeeeeeeedddddcccccccccccccc
+  fffffffffffffeeeeeeeeddddddccccccccccccc
+  ffffffffffffeeeeeeeeedddddddcccccccccccc
+  fffffffffffeeeeeeeeeeddddddddccccccccccc
+checksum ccc6870d

@@ -1,0 +1,9 @@
+stage 0: input ai regen
+stage 1: player
+stage 2: steer
+stage 3: move
+stage 4: damage camera
+stage 5: render
+player pos=5 hp=74 camera=3 enemies=(2,2,2) render_hash=-4640955935611918648
+cycle detected
+scheduler OK

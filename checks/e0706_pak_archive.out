@@ -1,0 +1,9 @@
+base.pak: 192 bytes, toc at 112
+patch.pak: 112 bytes
+-- base only --
+hero  -> 'hero texture v1' from base
+-- base + patch --
+hero  -> 'hero texture v2 (patched)' from patch
+tree  -> 'tree' from base
+bonus -> 'bonus level (DLC)' from patch
+pak lookups: 5, all resources released

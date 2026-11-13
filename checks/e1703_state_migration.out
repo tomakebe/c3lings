@@ -1,0 +1,5 @@
+v1 size=72, v2 size=104
+unit 0: pos=(1,2) hp=100 ammo=30 team=0
+unit 1: pos=(5,6) hp=100 ammo=12 team=1
+unit 2: pos=(-3,4) hp=100 ammo=0 team=0
+unit 3: pos=(9,9) hp=100 ammo=30 team=1

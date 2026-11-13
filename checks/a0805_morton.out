@@ -1,0 +1,9 @@
+encode(3, 5)       = 39
+encode(0xFFFF, 0)  = 0x55555555
+encode(0, 0xFFFF)  = 0xAAAAAAAA
+decode(39)         = (3, 5)
+  0  1  4  5
+  2  3  6  7
+  8  9 12 13
+ 10 11 14 15
+gather_nibbles = 0xABCDEF12

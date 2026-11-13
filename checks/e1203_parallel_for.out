@@ -1,0 +1,4 @@
+harmonic sum (chunk 1000): 12.09015, identical for 1/2/4/7 threads
+harmonic sum (chunk 37):   12.09017, stable
+tail: 1001 elements -> 11 chunks
+particles: x[0] = -24.375, x[9] = -6.375

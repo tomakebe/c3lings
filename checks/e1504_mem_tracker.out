@@ -1,0 +1,24 @@
+== mid-level ==
+live=4952 peak=5004 allocs=5
+  GENERAL  live=48 peak=48 blocks=1
+  PHYSICS  live=896 peak=896 blocks=1
+  RENDER   live=8 peak=108 blocks=1
+  AUDIO    live=4000 peak=4000 blocks=1
+  block #5 tag=GENERAL size=48
+  block #3 tag=AUDIO size=4000
+  block #2 tag=RENDER size=8
+  block #1 tag=PHYSICS size=896
+== level unloaded ==
+live=8 peak=5004 allocs=5
+  GENERAL  live=0 peak=48 blocks=0
+  PHYSICS  live=0 peak=896 blocks=0
+  RENDER   live=8 peak=108 blocks=1
+  AUDIO    live=0 peak=4000 blocks=0
+  block #2 tag=RENDER size=8
+== shutdown ==
+live=0 peak=5004 allocs=5
+  GENERAL  live=0 peak=48 blocks=0
+  PHYSICS  live=0 peak=896 blocks=0
+  RENDER   live=0 peak=108 blocks=0
+  AUDIO    live=0 peak=4000 blocks=0
+memory tracker ok

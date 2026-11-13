@@ -1,0 +1,5 @@
+explicit euler       x=-1.40885  err=0.56978  energy=1.35241  max_drift=0.85241
+semi-implicit euler  x=-0.80938  err=0.02969  energy=0.47781  max_drift=0.02631
+velocity verlet      x=-0.83679  err=0.00228  energy=0.49963  max_drift=0.00125
+rk4                  x=-0.83908  err=0.00000  energy=0.50000  max_drift=0.00000
+exact x(10) = -0.83907

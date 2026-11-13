@@ -1,0 +1,6 @@
+  unknown event <unknown> (0xc413b8be)
+unique pairs checked at compile time: 15
+door_open = 0x062a102a
+footstep  = 0xc0f7f803 -> footstep
+level: spawned=1 doors=1 coins=15 steps=2 boss=2 unknown=1
+event ids: all checks passed

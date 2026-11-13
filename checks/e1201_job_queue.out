@@ -1,0 +1,4 @@
+fifo: 40 jobs in order
+pool: 500 jobs executed
+collatz: total steps 26143, longest start 327 (143 steps)
+empty pool: stopped cleanly

@@ -1,0 +1,9 @@
+square(1 + 2) = 9
+square(1.5)   = 2.25
+square(next()) = 100, next() called 1 time(s)
+max3(3, 9, 4) = 9
+max3(-1.5, -0.5, -2.0) = -0.5
+clamp(0.75, 0.0, 0.5) = 0.50
+m = 100, big = 100
+twice(21) = 42
+type of square(2.0f): float

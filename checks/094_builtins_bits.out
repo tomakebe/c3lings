@@ -1,0 +1,9 @@
+[main] start
+x=1 pow2=true next=1 log2=0
+x=5 pow2=false next=8 log2=2
+x=64 pow2=true next=64 log2=6
+x=1000 pow2=false next=1024 log2=9
+be32(0x11223344) = 0x44332211
+hamming = 8
+lowest bit of 0x50 = 4
+[main] done

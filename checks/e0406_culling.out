@@ -1,0 +1,5 @@
+left plane   (0.707, 0.000, -0.707, 0.000)
+near plane   (0.000, 0.000, -1.000, -1.000)
+scene: 2646 objects, visible spheres 1404, boxes 1404
+float world delta 0.00781 m, camera-relative 0.01000 m
+culling OK

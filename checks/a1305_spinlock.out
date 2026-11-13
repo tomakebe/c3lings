@@ -1,0 +1,2 @@
+trylock ok
+counter = 400000, invariant held = 1

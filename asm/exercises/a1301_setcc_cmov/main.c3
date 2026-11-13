@@ -1,0 +1,20 @@
+// Драйвер упражнения a1301. Этот файл НЕ нужно править — правьте branchless.s.
+import std::io;
+
+extern fn long bl_max(long a, long b);
+extern fn long bl_abs(long x);
+extern fn CInt bl_sign(long x);
+extern fn long bl_clamp(long x, long lo, long hi);
+
+fn void main()
+{
+    assert(bl_max(3, 9) == 9 && bl_max(9, 3) == 9 && bl_max(-5, -7) == -5);
+    assert(bl_abs(-42) == 42 && bl_abs(42) == 42 && bl_abs(0) == 0);
+    assert(bl_sign(-100) == -1 && bl_sign(0) == 0 && bl_sign(5) == 1);
+    assert(bl_sign(long::min) == -1 && bl_sign(long::max) == 1);
+    assert(bl_clamp(5, 0, 10) == 5 && bl_clamp(-5, 0, 10) == 0 && bl_clamp(50, 0, 10) == 10);
+    io::printfn("max(-5, -7) = %d", bl_max(-5, -7));
+    io::printfn("abs(-42)    = %d", bl_abs(-42));
+    io::printfn("sign: %d %d %d", bl_sign(-100), bl_sign(0), bl_sign(7));
+    io::printfn("clamp: %d %d %d", bl_clamp(-5, 0, 10), bl_clamp(5, 0, 10), bl_clamp(50, 0, 10));
+}

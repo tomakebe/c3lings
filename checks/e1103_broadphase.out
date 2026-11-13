@@ -1,0 +1,3 @@
+frame 1: pairs=261  sap swaps=24407  sap/grid both match brute force
+frame 2: pairs=262  sap swaps=165  sap/grid both match brute force
+temporal coherence: frame 2 needs far fewer swaps

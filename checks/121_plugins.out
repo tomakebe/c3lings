@@ -1,0 +1,12 @@
+counter: init
+ticker: init
+failing: init refused
+ticker: tick 2
+ticker: tick 4
+counter: event 'level_loaded'
+counter: event 'player_died'
+ticker: shutdown
+stat frames=4
+stat events=2
+counter: shutdown
+pipeline(1) = 17, tools with reset: 2

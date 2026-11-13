@@ -1,0 +1,5 @@
+align_up/is_aligned/padding OK
+Particle  size=40 align=8 wasted=16 offsets: alive@0 x@8 kind@16 life@20 flags@24 y@32  -> optimal size 24
+Entity    size=24 align=8 wasted=10 offsets: id@0 tag@4 frame@8 layer@16  -> optimal size 16
+Manual    size=64 align=16 wasted=36 -> optimal size 32
+layout OK

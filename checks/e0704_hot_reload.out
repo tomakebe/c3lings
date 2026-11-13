@@ -1,0 +1,23 @@
+startup:
+  relink e0704_hero.mat -> color 20 40 60
+  relink e0704_rock.mat -> color 2 2 2
+poll 1 (nothing changed):
+poll 2 (shader edited):
+  reload e0704_base.shader v2
+  relink e0704_hero.mat -> color 30 60 90
+  relink e0704_rock.mat -> color 3 3 3
+poll 3 (hero.mat saved with a typo):
+  ERROR e0704_hero.mat: keeping v1
+poll 4 (nothing changed - broken file is not re-read):
+poll 5 (typo fixed, rock.mat edited too):
+  reload e0704_hero.mat v2
+  reload e0704_rock.mat v2
+  relink e0704_hero.mat -> color 150 150 150
+  relink e0704_rock.mat -> color 21 21 21
+poll 6,7 (shader deleted):
+  WARN e0704_base.shader: missing, keeping v2
+poll 8 (shader restored):
+  reload e0704_base.shader v3
+  relink e0704_hero.mat -> color 50 50 50
+  relink e0704_rock.mat -> color 7 7 7
+hot reload works

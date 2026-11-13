@@ -1,0 +1,48 @@
+// Драйвер упражнения a0905. Этот файл НЕ нужно править — правьте integrate.s.
+import std::io;
+
+alias RealFn = fn double(double);
+
+extern fn double integrate(RealFn f, double a, double b, long n);
+
+long calls;
+
+fn double square(double x)
+{
+    calls++;
+    // Портим xmm-регистры, как это вправе делать любая функция по ABI.
+    double junk = x * 3.0 + 1.0;
+    junk = junk * junk - x;
+    return x * x + junk * 0.0;
+}
+
+fn double cubic(double x)
+{
+    calls++;
+    return x * x * x - 2.0 * x;
+}
+
+fn double one(double x)
+{
+    calls++;
+    return 1.0;
+}
+
+fn bool close(double a, double b) => (a - b) < 1e-9 && (b - a) < 1e-9;
+
+fn void main()
+{
+    double r = integrate(&one, 2.0, 5.0, 10);
+    assert(close(r, 3.0), "integral of 1 over [2,5] = %f", r);
+    assert(calls == 10, "f must be called exactly n times");
+
+    calls = 0;
+    r = integrate(&square, 0.0, 1.0, 1000);
+    assert(calls == 1000);
+    assert(close(r, 0.33333325), "got %.10f", r);
+    io::printfn("int x^2      [0,1]  = %.6f", r);
+
+    r = integrate(&cubic, -1.0, 2.0, 600);
+    io::printfn("int x^3-2x  [-1,2]  = %.6f", r);
+    io::printfn("int 1        [2,5]  = %.6f", integrate(&one, 2.0, 5.0, 1));
+}

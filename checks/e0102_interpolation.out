@@ -1,0 +1,7 @@
+frame  40 ticks  28 alpha 0.4704 render_x 27.4704
+frame  80 ticks  56 alpha 0.2464 render_x 55.2464
+frame 120 ticks  84 alpha 0.0224 render_x 83.0224
+frame 160 ticks 111 alpha 0.7984 render_x 110.7984
+smooth: every frame moves 0.6944 units
+teleport: no smearing, x=1007.0000
+interpolation OK

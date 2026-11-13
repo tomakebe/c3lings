@@ -1,0 +1,2 @@
+add: hi=1 lo=0
+sub: hi=0 lo=ffffffffffffffff

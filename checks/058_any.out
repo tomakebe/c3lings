@@ -1,0 +1,7 @@
+int 42
+double 2.50
+String "hello"
+Point(1, 2)
+unknown BOOL
+unknown SIGNED_INT
+sum = 10

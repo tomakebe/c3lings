@@ -1,0 +1,9 @@
+arith      -> 32   printed: 
+sum        -> 5050   printed: 5050 
+fib        -> 6765   printed: 0 1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 
+fib program executed 270543 instructions
+div0       -> error 115_bytecode_vm::DIV_BY_ZERO
+underflow  -> error 115_bytecode_vm::STACK_UNDERFLOW
+overflow   -> error 115_bytecode_vm::STACK_OVERFLOW
+deep       -> error 115_bytecode_vm::STACK_OVERFLOW
+all VM checks passed

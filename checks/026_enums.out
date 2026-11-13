@@ -1,0 +1,6 @@
+NORTH (0) -> ^
+EAST (1) -> >
+SOUTH (2) -> v
+WEST (3) -> <
+turn right from WEST: NORTH
+4 directions: [NORTH, EAST, SOUTH, WEST]

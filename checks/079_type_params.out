@@ -1,0 +1,7 @@
+bits: char=8 short=16 int=32 long=64
+short: -32768..32767
+ichar: -128..127
+ushort: 0..65535
+[0.500000, 0.500000, 0.500000, 0.500000]
+[7, 7, 7] (int[3])
+4096 is power of two: true

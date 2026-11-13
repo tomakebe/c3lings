@@ -1,0 +1,5 @@
+average: 3.50
+speed: 2.25
+big: 1500.0
+0.1 + 0.2 == 0.3? false
+close enough? true

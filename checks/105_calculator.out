@@ -1,0 +1,16 @@
+1 + 2 = 3
+2 + 3 * 4 = 14
+(2 + 3) * 4 = 20
+8 - 3 - 2 = 3
+100 / 7 % 4 = 2
+2 ^ 3 ^ 2 = 512
+-2 ^ 2 = 4
+-(3 - 10) * --2 = 14
+2 * (3 + (4 - 1) * 2) ^ 2 = 162
+  42   = 42
+1 / (2 - 2) -> calc::DIVISION_BY_ZERO
+(1 + 2 -> calc::EXPECTED_RPAREN
+1 + * 2 -> calc::UNEXPECTED_TOKEN
+2 ^ -1 -> calc::NEGATIVE_EXPONENT
+3 $ 4 -> calc::UNKNOWN_CHAR
+1 2 -> calc::TRAILING_INPUT

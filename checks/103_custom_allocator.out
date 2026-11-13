@@ -1,0 +1,6 @@
+list: 40 items, last = 1521
+acquires: 3, releases: 2, used: 496
+greeting: hello, allocator #42
+new int: 0, aligned: true
+too big: mem::OUT_OF_MEMORY
+after reset: used = 0

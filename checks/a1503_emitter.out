@@ -1,0 +1,16 @@
+case  0 ok  : C3
+case  1 ok  : 53
+case  2 ok  : 41 54
+case  3 ok  : 58
+case  4 ok  : 41 5F
+case  5 ok  : 48 B8 88 77 66 55 44 33 22 11
+case  6 ok  : 49 BB FF FF FF FF FF FF FF FF
+case  7 ok  : 48 01 C8
+case  8 ok  : 49 01 D2
+case  9 ok  : 4C 01 F3
+case 10 ok  : 48 29 FE
+case 11 ok  : 4D 29 C1
+case 12 ok  : 48 0F AF C1
+case 13 ok  : 4C 0F AF E3
+case 14 ok  : 49 0F AF D7
+15/15 encodings match GNU as

@@ -1,0 +1,10 @@
+open save.dat
+read save.dat
+close save.dat
+open broken.dat
+error in broken.dat
+close broken.dat
+1. edit
+2. save
+3. unlock
+[0][1][2]

@@ -1,0 +1,31 @@
+// Драйвер упражнения a1502. Этот файл НЕ нужно править — правьте jit.s.
+import std::io;
+
+alias Fn0 = fn long();
+alias Fn1 = fn long(long);
+
+extern fn void* jit_make(char* code, long len);
+extern fn long jit_free(void* p, long len);
+
+fn void main()
+{
+    // mov eax, 42 ; ret
+    char[] code1 = { 0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3 };
+    void* p1 = jit_make(code1.ptr, code1.len);
+    assert(p1 != null, "jit_make failed");
+    assert((uptr)p1 % 4096 == 0);
+    Fn0 f1 = (Fn0)p1;
+    io::printfn("f1()   = %d", f1());
+
+    // lea rax, [rdi + rdi*2] ; add rax, 1 ; ret      => 3x + 1
+    char[] code2 = { 0x48, 0x8D, 0x04, 0x7F, 0x48, 0x83, 0xC0, 0x01, 0xC3 };
+    void* p2 = jit_make(code2.ptr, code2.len);
+    Fn1 f2 = (Fn1)p2;
+    assert(f2(5) == 16 && f2(-1) == -2);
+    io::printfn("f2(14) = %d", f2(14));
+
+    assert(jit_free(p1, code1.len) == 0);
+    assert(jit_free(p2, code2.len) == 0);
+    assert(jit_make(code1.ptr, 0) == null, "empty code -> null");
+    io::printn("jit pages ok");
+}

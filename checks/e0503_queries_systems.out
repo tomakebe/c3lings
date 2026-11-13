@@ -1,0 +1,8 @@
+movement visited 40 (pos=240 vel=40)
+tick  8: live=240 pos=240 vel=24 health=24 life=22
+tick 16: live=208 pos=208 vel= 8 health= 8 life= 2
+tick 24: live=208 pos=208 vel= 8 health= 8 life= 2
+tick 32: live=200 pos=200 vel= 0 health= 0 life= 0
+tick 40: live=200 pos=200 vel= 0 health= 0 life= 0
+after double destroy: live=200 free_ids=40
+queries & systems OK

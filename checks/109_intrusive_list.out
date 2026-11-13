@@ -1,0 +1,7 @@
+alive: 1 2 3 4 5
+dirty: 5 4 2
+alive: 1 2 3 4
+dirty: 4 2
+flushed dirty hp: 165
+lru pattern: mmmHmmmmmH evictions=5
+lru order (fresh first): 3 1 5

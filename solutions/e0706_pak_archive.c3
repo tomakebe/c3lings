@@ -1,0 +1,354 @@
+// =====================================================================
+//  e0706 · Pak-архив, монтирование и менеджер ресурсов поверх него
+// =====================================================================
+//
+//  Сначала прочитайте engine/docs/07_resources.md (раздел «Упакованные
+//  архивы»). Это итоговое упражнение главы: хеши путей (e0701),
+//  хендлы и счётчики ссылок (e0702) и «готовые» бинарные данные (e0705)
+//  собираются в одну систему.
+//
+//  Тысячи мелких файлов на диске — это медленно (каждый open() — поход в
+//  ОС, на консолях/телефонах ещё и проверки подписи) и неудобно (патчи,
+//  моды). Поэтому релизные игры кладут ассеты в большие архивы (.pak у
+//  id Tech и Unreal, .bundle у Unity, .wad у Doom):
+//
+//      +------------------+  offset 0
+//      | header (16 B)    |  magic "PAK1", version, count, toc_offset
+//      +------------------+  16
+//      | blob 0           |  каждый blob выровнен по 16 байт
+//      | ...pad...        |  (чтобы данные можно было использовать in-place,
+//      | blob 1           |   SIMD-загрузками или DMA)
+//      | ...              |
+//      +------------------+  toc_offset
+//      | TOC: count x 16B |  { ulong path_id; uint offset; uint size; }
+//      +------------------+  отсортировано по path_id -> бинарный поиск
+//
+//  Имён файлов в архиве нет вообще — только 64-битные id. Рантайм
+//  хеширует путь и ищет его бинарным поиском за O(log n).
+//
+//  Монтирование нескольких архивов: base.pak, потом patch.pak (или мод).
+//  Поиск идёт от ПОСЛЕДНЕГО смонтированного к первому — так патч
+//  «перекрывает» файлы базовой игры, не переписывая гигабайты.
+//
+//  ЗАДАЧА (TODO ниже):
+//    1. build_pak — инструментальная часть: записать header-заглушку,
+//       blob'ы с выравниванием 16, отсортированный TOC, затем дописать
+//       count и toc_offset в header. Одинаковый id у двух файлов ->
+//       DUPLICATE_PATH~.
+//    2. Pak.find — бинарный поиск по TOC; возвращает срез ВНУТРИ архива
+//       (без копирования) или NOT_FOUND~. Считайте шаги в self.probes.
+//    3. Manager.acquire — кэш по id (повторный acquire только
+//       увеличивает refcount и не трогает архивы), иначе поиск по
+//       смонтированным архивам с последнего к первому и занятие слота.
+//
+import std::io, std::sort;
+import std::collections::list, std::collections::map;
+
+excuse NOT_FOUND, DUPLICATE_PATH, BAD_PAK, STALE_HANDLE, OUT_OF_SLOTS;
+
+typedef ResourceId = inline ulong;   // inline: наследует .hash() для HashMap
+
+const uint PAK_MAGIC = 0x314B4150;   // 'P','A','K','1' в little-endian
+const uint PAK_VERSION = 1;
+const usz HEADER_SIZE = 16;
+const usz TOC_ENTRY_SIZE = 16;
+const usz ALIGN = 16;
+
+fn ResourceId path_id(String path)
+{
+    ulong h = 0xcbf29ce484222325;
+    foreach (c : path)
+    {
+        char ch = c == '\\' ? '/' : (c >= 'A' && c <= 'Z' ? c + 32 : c);
+        h = (h ^ ch) * 0x100000001b3;
+    }
+    return (ResourceId)h;
+}
+
+// --------------------------------------------------- байтовые помощники
+fn void put_u32(List{char}* out, uint v)
+{
+    for (int i = 0; i < 4; i++) out.push((char)(v >> (8 * i)));
+}
+fn void put_u64(List{char}* out, ulong v)
+{
+    for (int i = 0; i < 8; i++) out.push((char)(v >> (8 * i)));
+}
+fn void patch_u32(List{char}* out, usz at, uint v)
+{
+    for (usz i = 0; i < 4; i++) out.entries[at + i] = (char)(v >> (8 * i));
+}
+fn uint get_u32(char[] b, usz at)
+    => (uint)b[at] | (uint)b[at + 1] << 8 | (uint)b[at + 2] << 16 | (uint)b[at + 3] << 24;
+fn ulong get_u64(char[] b, usz at) => (ulong)get_u32(b, at) | (ulong)get_u32(b, at + 4) << 32;
+
+// ======================================================= инструменты
+struct SourceFile
+{
+    String path;
+    String data;
+}
+
+struct TocEntry
+{
+    ResourceId id;
+    uint offset;
+    uint size;
+}
+
+fn void? build_pak(SourceFile[] files, List{char}* out)
+{
+    List{TocEntry} toc;
+    toc.init(mem);
+    defer toc.free();
+
+    for (usz i = 0; i < HEADER_SIZE; i++) out.push(0);
+    foreach (f : files)
+    {
+        while ((usz)out.len() % ALIGN != 0) out.push(0);
+        toc.push({ path_id(f.path), (uint)out.len(), (uint)f.data.len });
+        out.push_all(f.data);
+    }
+    while ((usz)out.len() % ALIGN != 0) out.push(0);
+
+    TocEntry[] entries = toc.array_view();
+    sort::quicksort(entries, fn int(TocEntry a, TocEntry b) => a.id < b.id ? -1 : (a.id > b.id ? 1 : 0));
+    for (usz i = 1; i < entries.len; i++)
+    {
+        if (entries[i].id == entries[i - 1].id) return DUPLICATE_PATH~;
+    }
+
+    uint toc_offset = (uint)out.len();
+    foreach (e : entries)
+    {
+        put_u64(out, e.id);
+        put_u32(out, e.offset);
+        put_u32(out, e.size);
+    }
+    patch_u32(out, 0, PAK_MAGIC);
+    patch_u32(out, 4, PAK_VERSION);
+    patch_u32(out, 8, (uint)entries.len);
+    patch_u32(out, 12, toc_offset);
+}
+
+// ======================================================= рантайм
+struct Pak
+{
+    String name;
+    char[] blob;      // весь файл в памяти (в реальности — mmap)
+    uint count;
+    usz toc;
+    int probes;       // счётчик шагов бинарного поиска (для статистики)
+}
+
+fn void? Pak.mount(&self, String name, char[] blob)
+{
+    if (blob.len < HEADER_SIZE || get_u32(blob, 0) != PAK_MAGIC || get_u32(blob, 4) != PAK_VERSION) return BAD_PAK~;
+    self.name = name;
+    self.blob = blob;
+    self.count = get_u32(blob, 8);
+    self.toc = get_u32(blob, 12);
+    if (self.toc + (usz)self.count * TOC_ENTRY_SIZE > blob.len) return BAD_PAK~;
+}
+
+fn ResourceId Pak.toc_id(&self, usz i) => (ResourceId)get_u64(self.blob, self.toc + i * TOC_ENTRY_SIZE);
+
+fn char[]? Pak.find(&self, ResourceId id)
+{
+    usz lo = 0;
+    usz hi = self.count;          // ищем в [lo, hi)
+    while (lo < hi)
+    {
+        self.probes++;
+        usz mid = lo + (hi - lo) / 2;
+        ResourceId m = self.toc_id(mid);
+        if (m == id)
+        {
+            usz at = self.toc + mid * TOC_ENTRY_SIZE;
+            uint offset = get_u32(self.blob, at + 8);
+            uint size = get_u32(self.blob, at + 12);
+            return self.blob[offset:size];
+        }
+        if (m < id) { lo = mid + 1; } else { hi = mid; }
+    }
+    return NOT_FOUND~;
+}
+
+struct Handle
+{
+    uint index;
+    uint generation;
+}
+
+struct Slot
+{
+    ResourceId id;
+    uint generation;
+    uint refcount;
+    String data;          // смотрит прямо в blob архива
+    String source;        // имя архива, из которого пришёл ресурс
+}
+
+const usz MAX_SLOTS = 8;
+const usz MAX_PAKS = 4;
+
+struct Manager
+{
+    Pak[MAX_PAKS] paks;
+    usz pak_count;
+    Slot[MAX_SLOTS] slots;
+    HashMap{ResourceId, uint} cache;
+    int pak_lookups;      // сколько раз acquire пришлось искать в архивах
+}
+
+fn void Manager.init(&self)
+{
+    self.cache.init(mem);
+    foreach (&s : self.slots) s.generation = 1;
+}
+
+fn void Manager.free(&self) => self.cache.free();
+
+fn void? Manager.mount(&self, String name, char[] blob)
+{
+    assert(self.pak_count < MAX_PAKS);
+    self.paks[self.pak_count].mount(name, blob)!;
+    self.pak_count++;
+}
+
+fn Handle? Manager.acquire(&self, String path)
+{
+    ResourceId id = path_id(path);
+    if (try index = self.cache.get(id))
+    {
+        self.slots[index].refcount++;
+        return { index, self.slots[index].generation };
+    }
+    self.pak_lookups++;
+    for (usz p = self.pak_count; p > 0; p--)
+    {
+        Pak* pak = &self.paks[p - 1];
+        char[]? data = pak.find(id);
+        if (catch data) continue;
+        for (uint i = 0; i < MAX_SLOTS; i++)
+        {
+            Slot* s = &self.slots[i];
+            if (s.refcount != 0) continue;
+            s.id = id;
+            s.refcount = 1;
+            s.data = (String)data;
+            s.source = pak.name;
+            self.cache.set(id, i);
+            return { i, s.generation };
+        }
+        return OUT_OF_SLOTS~;
+    }
+    return NOT_FOUND~;
+}
+
+fn Slot*? Manager.slot_of(&self, Handle h)
+{
+    if (h.generation == 0 || h.index >= MAX_SLOTS) return STALE_HANDLE~;
+    Slot* s = &self.slots[h.index];
+    if (s.refcount == 0 || s.generation != h.generation) return STALE_HANDLE~;
+    return s;
+}
+
+fn String? Manager.get(&self, Handle h) => self.slot_of(h).data;
+
+fn void? Manager.release(&self, Handle h)
+{
+    Slot* s = self.slot_of(h)!;
+    if (--s.refcount == 0)
+    {
+        self.cache.remove(s.id);
+        s.generation++;
+        s.data = "";
+    }
+}
+
+// ======================================================= тест
+fn void main()
+{
+    // --- инструменты: собираем два архива и пишем их на диск ---
+    SourceFile[*] base_files = {
+        { "textures/hero.tex", "hero texture v1" },
+        { "textures/tree.tex", "tree" },
+        { "sounds/jump.wav",   "boing boing boing boing!" },
+        { "config/game.ini",   "gravity=9.81" },
+        { "levels/intro.lvl",  "intro level data" },
+    };
+    SourceFile[*] patch_files = {
+        { "Textures\\Hero.tex", "hero texture v2 (patched)" },
+        { "levels/bonus.lvl",   "bonus level (DLC)" },
+    };
+    List{char} out;
+    out.init(mem);
+    defer out.free();
+    build_pak(&base_files, &out)!!;
+    file::save("e0706_base.pak", out.array_view())!!;
+    io::printfn("base.pak: %d bytes, toc at %d", out.len(), get_u32(out.array_view(), 12));
+    out.clear();
+    build_pak(&patch_files, &out)!!;
+    file::save("e0706_patch.pak", out.array_view())!!;
+    io::printfn("patch.pak: %d bytes", out.len());
+
+    SourceFile[*] dup = { { "a/b.tex", "1" }, { "A\\B.TEX", "2" } };
+    out.clear();
+    assert(@catch(build_pak(&dup, &out)) == DUPLICATE_PATH, "two paths with the same id must be rejected");
+
+    // --- рантайм: читаем архивы с диска и монтируем ---
+    char[] base_blob = file::load(mem, "e0706_base.pak")!!;
+    defer free(base_blob);
+    char[] patch_blob = file::load(mem, "e0706_patch.pak")!!;
+    defer free(patch_blob);
+
+    Manager m;
+    m.init();
+    defer m.free();
+    m.mount("base", base_blob)!!;
+    Pak* base = &m.paks[0];
+    assert(base.count == 5);
+    for (usz i = 1; i < base.count; i++) assert(base.toc_id(i - 1) < base.toc_id(i), "TOC must be sorted by id");
+    foreach (f : base_files)
+    {
+        char[] d = base.find(path_id(f.path))!!;
+        assert((String)d == f.data, "wrong data for %s", f.path);
+        assert((usz)(d.ptr - base_blob.ptr) % ALIGN == 0, "%s is not 16-byte aligned", f.path);
+        assert(d.ptr >= base_blob.ptr && d.ptr < base_blob.ptr + base_blob.len, "find must not copy");
+    }
+    assert(base.probes <= 5 * 3, "binary search should need at most 3 probes for 5 entries");
+    assert(@catch(base.find(path_id("nope.tex"))) == NOT_FOUND);
+
+    io::printn("-- base only --");
+    Handle hero = m.acquire("textures/hero.tex")!!;
+    io::printfn("hero  -> '%s' from %s", m.get(hero)!!, m.slots[hero.index].source);
+    m.release(hero)!!;
+
+    m.mount("patch", patch_blob)!!;
+    io::printn("-- base + patch --");
+    Handle hero2 = m.acquire("TEXTURES/HERO.TEX")!!;
+    Handle tree = m.acquire("textures/tree.tex")!!;
+    Handle bonus = m.acquire("levels/bonus.lvl")!!;
+    io::printfn("hero  -> '%s' from %s", m.get(hero2)!!, m.slots[hero2.index].source);
+    io::printfn("tree  -> '%s' from %s", m.get(tree)!!, m.slots[tree.index].source);
+    io::printfn("bonus -> '%s' from %s", m.get(bonus)!!, m.slots[bonus.index].source);
+    assert(m.get(hero2)!! == "hero texture v2 (patched)", "patch must override base");
+    assert(m.slots[tree.index].source == "base", "files absent from the patch come from base");
+    assert(@catch(m.get(hero)) == STALE_HANDLE, "released handle must be stale");
+
+    int lookups = m.pak_lookups;
+    Handle tree2 = m.acquire("textures/tree.tex")!!;
+    assert(m.pak_lookups == lookups, "second acquire must hit the cache");
+    assert(tree2.index == tree.index && m.slots[tree.index].refcount == 2);
+    assert(@catch(m.acquire("textures/missing.tex")) == NOT_FOUND);
+
+    m.release(tree)!!;
+    m.release(tree2)!!;
+    m.release(hero2)!!;
+    m.release(bonus)!!;
+    assert(m.cache.len() == 0, "everything released");
+    io::printfn("pak lookups: %d, all resources released", m.pak_lookups);
+    file::delete("e0706_base.pak");
+    file::delete("e0706_patch.pak");
+}

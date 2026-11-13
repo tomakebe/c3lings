@@ -1,0 +1,11 @@
+frame 1: arena 1, rendered  0 packets (sum     0), built  3 packets, offset  36
+frame 2: arena 0, rendered  3 packets (sum   306), built  5 packets, offset  60
+frame 3: arena 1, rendered  5 packets (sum  1014), built 10 packets, offset 120
+frame 4: arena 0, rendered 10 packets (sum  3054), built  0 packets, offset   0
+frame 5: arena 1, rendered  0 packets (sum     0), built  8 packets, offset  96
+frame 6: arena 0, rendered  8 packets (sum  4035), built  1 packets, offset  12
+frame 7: arena 1, rendered  1 packets (sum   600), built  0 packets, offset   0
+frame 8: arena 0, rendered  0 packets (sum     0), built 20 packets, offset 240
+total=9009 peak=240 over_budget=1
+stale packet mesh = 0xcdcdcdcd
+frame allocator OK

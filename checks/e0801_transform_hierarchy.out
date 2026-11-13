@@ -1,0 +1,10 @@
+solar system:
+sun     world=(100.00, 100.00)
+planet  world=(100.00, 110.00)
+moon    world=(96.00, 110.00)
+tank:
+hull    world=(0.00, 0.00)
+turret  world=(-0.71, 0.71)
+barrel  world=(2.29, 0.71)
+barrel tip=(3.29, 0.71)
+hierarchy ok

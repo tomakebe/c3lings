@@ -1,0 +1,25 @@
+cooked mesh blob: 201 bytes, header:
+4d 45 53 48 04 00 00 00 06 00 00 00 02 00 00 00
+b8 00 00 00 00 00 00 00 04 00 00 00 00 00 00 00
+38 00 00 00 00 00 00 00 78 00 00 00 00 00 00 00
+88 00 00 00 00 00 00 00
+mesh 'quad': 4 vertices, 6 indices
+  submesh stone : (-1,-1) (1,-1) (1,1)
+  submesh moss1 : (1,1) (-1,1) (-1,-1)
+unfixup restores disk image: yes
+wrong magic: e1305_blob_fixup::BAD_MAGIC
+too many vertices: e1305_blob_fixup::BAD_OFFSET
+misaligned indices: e1305_blob_fixup::BAD_OFFSET
+huge offset: e1305_blob_fixup::BAD_OFFSET
+material past the end: e1305_blob_fixup::BAD_OFFSET
+submesh index range: e1305_blob_fixup::BAD_OFFSET
+truncated: e1305_blob_fixup::BAD_OFFSET
+dialog (original):
+  [0] Halt!
+  [1] Who goes there?
+  [0] A friend.
+dialog (moved, no fixup):
+  [0] Halt!
+  [1] Who goes there?
+  [0] A friend.
+blob fixup ok

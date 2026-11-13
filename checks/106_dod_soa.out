@@ -1,0 +1,5 @@
+alive after 16 steps: 615 of 1000
+sum x = -386.875, sum y = -50566.625
+AoS: integrate loads 64 bytes per particle, uses 16
+SoA: integrate loads 16 bytes per particle, uses 16
+SoA matches AoS bit-for-bit

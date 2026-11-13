@@ -1,0 +1,8 @@
+add #0: ok
+add #1: bad number (string::MALFORMED_INTEGER)
+add #2: ok
+add #3: bad number (string::EMPTY_STRING)
+add #4: ok
+add #5: inventory is full (builtin::CAPACITY_EXCEEDED)
+arrow: 20
+potion: no such item

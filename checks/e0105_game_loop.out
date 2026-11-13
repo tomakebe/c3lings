@@ -1,0 +1,6 @@
+normal     frames=144 ticks=  99 acc= 9936 dropped=      0 render_x=98.994
+paused     frames=174 ticks=  99 acc= 9936 dropped=      0 render_x=98.994
+slowmo1/3  frames=274 ticks= 123 acc= 1402 dropped=      0 render_x=122.140
+breakpoint frames=276 ticks= 128 acc= 8346 dropped=2950000 render_x=127.835
+resumed    frames=326 ticks= 163 acc= 5546 dropped=2950000 render_x=162.555
+game loop OK

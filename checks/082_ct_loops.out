@@ -1,0 +1,12 @@
+dot = 70
+Player fields:
+  hp: int
+  mana: int
+  speed: float
+  name: String
+  gold: int
+sum of int fields = 137
+RED = 0
+GREEN = 1
+BLUE = 2
+sum of squares = 30

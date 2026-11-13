@@ -1,0 +1,5 @@
+convert: ok
+interleave: ok
+frames=64 peak=32767
+checksum=f8261831
+-6dB as s16 = 16422

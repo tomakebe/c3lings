@@ -1,0 +1,8 @@
+x= 2.50000 trunc= 2 round= 2
+x= 3.50000 trunc= 3 round= 4
+x=-1.50000 trunc=-1 round=-2
+x= 0.49999 trunc= 0 round= 0
+x= 7.00000 trunc= 7 round= 7
+trunc(1e300) = -9223372036854775808
+average = 32.0000
+average = 2.5000

@@ -1,0 +1,76 @@
+# =====================================================================
+#  a1002 · Горизонтальная сумма и «хвост» цикла
+# =====================================================================
+#
+#  Векторизованная сумма массива: держим 4 частичные суммы в одном
+#  регистре и прибавляем по 4 элемента за итерацию:
+#
+#      acc = {0,0,0,0}
+#      for (i = 0; i + 4 <= n; i += 4) acc += a[i..i+3]
+#
+#  В конце надо сложить 4 элемента acc между собой — «горизонтальная»
+#  операция, которую SIMD не любит. Классика (SSE):
+#
+#      movhlps xmm1, xmm0     # xmm1[0,1] = xmm0[2,3]
+#      addps   xmm0, xmm1     # xmm0[0] = a0+a2, xmm0[1] = a1+a3
+#      movaps  xmm1, xmm0
+#      shufps  xmm1, xmm1, 1  # xmm1[0] = xmm0[1]   (imm: по 2 бита на поле)
+#      addss   xmm0, xmm1     # xmm0[0] = a0+a1+a2+a3
+#
+#  (Есть haddps, но она медленнее этой пары: 3 мкоп, из них 2 перестановки.)
+#
+#  Потом — «хвост»: оставшиеся n % 4 элементов скалярно (addss).
+#  Без хвоста функция работает только для n, кратных 4 — частая ошибка.
+#
+#  Заметьте: векторная сумма складывает элементы В ДРУГОМ ПОРЯДКЕ, чем
+#  простой цикл. Для float результат может отличаться в последних битах —
+#  поэтому компилятор не векторизует такой цикл сам без -O5 (fast-math).
+#  В тестах — целые значения, сумма которых точна.
+#
+#  ЗАДАЧА:
+#      hsum4(v)       — сумма 4 float из памяти
+#      sum_f32(a, n)  — сумма n float, n >= 0 любое
+#
+    .intel_syntax noprefix
+    .text
+
+# float hsum4(float* v)
+    .globl hsum4
+hsum4:
+    movups xmm0, [rdi]
+    movhlps xmm1, xmm0
+    addps xmm0, xmm1
+    movaps xmm1, xmm0
+    shufps xmm1, xmm1, 1
+    addss xmm0, xmm1
+    ret
+
+# float sum_f32(float* a /*rdi*/, long n /*rsi*/)
+    .globl sum_f32
+sum_f32:
+    xorps xmm0, xmm0        # acc
+    xor eax, eax            # i
+    lea rcx, [rsi - 3]      # пока i < n - 3, т.е. i + 4 <= n
+    jmp 2f
+1:
+    movups xmm1, [rdi + rax*4]
+    addps xmm0, xmm1
+    add rax, 4
+2:
+    cmp rax, rcx
+    jl 1b
+    movhlps xmm1, xmm0
+    addps xmm0, xmm1
+    movaps xmm1, xmm0
+    shufps xmm1, xmm1, 1
+    addss xmm0, xmm1
+    jmp 4f
+3:
+    addss xmm0, [rdi + rax*4]
+    inc rax
+4:
+    cmp rax, rsi
+    jl 3b
+    ret
+
+    .section .note.GNU-stack,"",@progbits

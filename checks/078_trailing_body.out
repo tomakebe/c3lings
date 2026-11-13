@@ -1,0 +1,12 @@
+hello #0
+hello #1
+hello #2
+[load] begin
+loading assets...
+[load] end
+data[0] = 10
+data[2] = 12
+data[4] = 14
+total of even positions = 36
+first_big = 12
+none      = -1

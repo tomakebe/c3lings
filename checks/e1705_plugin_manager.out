@@ -1,0 +1,6 @@
+engine plugins:
+  load:   fonts os render ui particles audio
+  unload: audio particles ui render os fonts
+reload render -> render ui particles
+broken: e1705_plugin_manager::MISSING_DEPENDENCY
+cyclic: e1705_plugin_manager::DEPENDENCY_CYCLE

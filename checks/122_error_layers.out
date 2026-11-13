@@ -1,0 +1,10 @@
+POST /transfer alice->bob 30 => 200
+POST /transfer alice->bob 0 => 400 (122_error_layers::INVALID_AMOUNT: amount must be positive, got 0)
+POST /transfer bob->bob 5 => 400 (122_error_layers::SAME_ACCOUNT: cannot transfer to itself)
+POST /transfer alice->dave 5 => 404 (122_error_layers::ACCOUNT_NOT_FOUND: no account 'dave')
+POST /transfer bob->alice 500 => 409 (122_error_layers::INSUFFICIENT_FUNDS: bob has 50, needs 500)
+POST /transfer carol->bob 1 => 500 (122_error_layers::CORRUPTED: bad balance '12abc' for carol)
+POST /transfer alice->bob 10 => 503 (122_error_layers::STORAGE_UNAVAILABLE: storage write failed for bob)
+POST /transfer alice->bob 10 => 503 (122_error_layers::STORAGE_UNAVAILABLE: storage write failed for alice)
+POST /transfer alice->bob 70 => 200
+final: alice=0 bob=120, writes=9

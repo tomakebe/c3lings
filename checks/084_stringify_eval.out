@@ -1,0 +1,7 @@
+add=12 sub=2 mul=35
+1 + 2 * 3 => 7
+lives * 100 => 300
+config: 640x480 fullscreen=true
+counter=5 backup=5 (ushort)
+d=1.25 big=1099511627776 (long)
+cfg.width * 2

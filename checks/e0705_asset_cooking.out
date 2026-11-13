@@ -1,0 +1,5 @@
+cooked: 92 bytes (header 24 + payload 68)
+header: 4d534831 03000000 04000000 09000000 44000000 67f5b4ee 
+loaded: 4 vertices, 3 triangles
+checksum eeb4f567
+cook/load round trip ok

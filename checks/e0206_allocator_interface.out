@@ -1,0 +1,5 @@
+[ai] offset=416 peak=944/8192 acquires=4 in_place=1 moved=1 reclaimed=1 failures=0
+100000 bytes from 'ai': mem::OUT_OF_MEMORY
+[gameplay] offset=4112 peak=4112/32768 acquires=1 in_place=6 moved=0 reclaimed=0 failures=0
+[gameplay] offset=16704 peak=16704/32768 acquires=56 in_place=6 moved=1 reclaimed=0 failures=0
+allocator interface OK

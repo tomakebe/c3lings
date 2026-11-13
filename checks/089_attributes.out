@@ -1,0 +1,6 @@
+WireHeader:    size=7 align=1
+SharedCounter: size=64 align=64
+SimdBlock:     size=32, data at offset 16
+header: kind=1 length=512 crc=beef
+hp after hit: 70
+cold path: 7000

@@ -1,0 +1,2 @@
+jobs: 10000, total steps: 849666, longest: 6171 (261 steps)
+pool: sum of squares 0..99 = 328350

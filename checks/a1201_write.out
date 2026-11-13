@@ -1,0 +1,4 @@
+[c3] before
+[asm] hello from syscall
+[asm] zero-terminated string
+[c3] wrote 25 + 29 bytes

@@ -1,0 +1,8 @@
+Bad      size=24 align=8 padding=14
+Good     size=16 align=8 padding=6
+Vec3     size=12 align=4 padding=0
+Mixed    size=40 align=8 padding=14
+Nested   size=56 align=8 padding=13
+Fat      size=32 align=8 padding=7
+counters: 4 threads x 1000000 = 4000000
+Header: 11 bytes on disk, version at offset 4

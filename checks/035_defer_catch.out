@@ -1,0 +1,8 @@
+transfers:
+  30 alice -> bob ok
+  500 bob -> alice failed: 035_defer_catch::INSUFFICIENT_FUNDS
+  60 alice -> bob failed: 035_defer_catch::LIMIT_EXCEEDED
+  40 alice -> bob ok
+  31 alice -> bob failed: 035_defer_catch::INSUFFICIENT_FUNDS
+  100 bob -> alice ok
+alice=130 bob=20

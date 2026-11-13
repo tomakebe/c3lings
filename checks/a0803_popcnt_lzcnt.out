@@ -1,0 +1,5 @@
+x=1          popcnt=1  ctz=0  log2=0  next_pow2=1
+x=7          popcnt=3  ctz=0  log2=2  next_pow2=8
+x=64         popcnt=1  ctz=6  log2=6  next_pow2=64
+x=1000       popcnt=6  ctz=3  log2=9  next_pow2=1024
+x=3735928559 popcnt=24 ctz=0  log2=31 next_pow2=4294967296

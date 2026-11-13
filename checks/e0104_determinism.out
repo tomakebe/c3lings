@@ -1,0 +1,7 @@
+30Hz    frames= 300 ticks=600 hash=067a069409b3f52e
+60Hz    frames= 600 ticks=600 hash=067a069409b3f52e
+144Hz   frames=1441 ticks=600 hash=067a069409b3f52e
+jitter  frames= 305 ticks=600 hash=067a069409b3f52e
+final: pos=(26,0) angle=5 shots=29
+float + variable dt depends on frame rate: true
+deterministic OK

@@ -1,0 +1,13 @@
+// Тестовый стенд упражнения a0105. НЕ редактируйте этот файл — правьте pack.s.
+import std::io;
+
+extern fn uint asm_pack2(char lo, char hi);
+
+fn void main()
+{
+    assert(asm_pack2(0x34, 0x12) == 0x1234, "asm_pack2(0x34, 0x12) = %x", asm_pack2(0x34, 0x12));
+    assert(asm_pack2(0xFF, 0x01) == 0x01FF, "asm_pack2(0xFF, 0x01) = %x", asm_pack2(0xFF, 0x01));
+    assert(asm_pack2(0x00, 0xAB) == 0xAB00, "asm_pack2(0x00, 0xAB) = %x", asm_pack2(0x00, 0xAB));
+    assert(asm_pack2(0x80, 0x80) == 0x8080, "asm_pack2(0x80, 0x80) = %x", asm_pack2(0x80, 0x80));
+    io::printfn("pack2 = %x %x %x", asm_pack2(0x34, 0x12), asm_pack2(0xFF, 0x01), asm_pack2(0x00, 0xAB));
+}

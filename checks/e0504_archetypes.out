@@ -1,0 +1,9 @@
+archetypes=7 moves=614
+  { Pos } x 117
+  { Pos Vel } x 93
+  { Pos Vel Hp } x 27
+  { Pos Hp } x 33
+  { Pos Vel Hp Frozen } x 6
+  { Pos Vel Frozen } x 24
+moving entities=120, sum of y after 10 ticks=3600.0
+archetypes OK

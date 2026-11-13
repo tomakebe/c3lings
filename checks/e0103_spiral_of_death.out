@@ -1,0 +1,6 @@
+naive steps: 1 1 1 2 2 3 4 5 6 7 9 11 13 16
+protected: ticks=592 dropped=1550000us limited=155 clamped=0 worst_frame=38000us
+game time runs at 79% of real time
+breakpoint steps: 1 2 8 1 2
+breakpoint: ticks=14 dropped=4920000us
+spiral of death avoided

@@ -1,0 +1,5 @@
+hero at (4, 6)
+dragon at (10, 0)
+hero: player with 100 hp
+dragon: boss in phase 2
+rock: plain entity

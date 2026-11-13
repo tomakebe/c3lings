@@ -1,0 +1,4 @@
+ok to stdout
+write(99)        -> errno 9
+write(bad ptr)   -> errno 14
+close(-1)        -> errno 9

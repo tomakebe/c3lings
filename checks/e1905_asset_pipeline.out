@@ -1,0 +1,6 @@
+initial build          cooked: rock.png lit.shader rock.fbx rock.mat rock.model grass.png grass.mat
+no changes             cooked: (nothing)
+edit rock.png          cooked: rock.png rock.mat rock.model
+edit shader comment    cooked: lit.shader
+edit shader code       cooked: lit.shader rock.mat rock.model grass.mat
+texture builder v4     cooked: rock.png rock.mat rock.model grass.png grass.mat

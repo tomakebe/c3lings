@@ -1,0 +1,24 @@
+15 lines checked: endpoints, pixel count, one per major step, no gaps
+clipped line wrote 39 pixels
++------------------------------------------------+
+||----------------------------------------------||
+||                    f     g                   ||
+||                    f     g                   ||
+||                     f   g                    ||
+||                     f   g                    ||
+||                     f   g                    ||
+||                      f g                     ||
+||       eee            f g            hhh      ||
+||          eeeeee      f g      hhhhhh         ||
+||                eeeee  g  hhhhh               ||
+||                     ee@hh                    ||
+||                ddddd  c  aaaaa               ||
+||          dddddd      c b      aaaaaa         ||
+||       ddd            c b            aaa      ||
+||                      c b                     ||
+||                     c   b                    ||
+||                     c   b                    ||
+||                     c   b                    ||
+||                    c     b                   ||
+||--------------------c-----b-------------------||
++------------------------------------------------+

@@ -1,0 +1,7 @@
+int map: len=5001 cap=16384 found=5000 sum=25000000
+the   -> 4
+fox   -> 2
+dog   -> 2
+cat   -> 0
+runs  -> 1
+unique words left: 10

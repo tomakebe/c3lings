@@ -1,0 +1,5 @@
+pan: ok
+clipped: master=1.0 -> 6, master=0.5 -> 0
+soft clipped count: 6
+pcm[0..4] with headroom: -5158 18319 -4189 -14047
+hard != soft: true

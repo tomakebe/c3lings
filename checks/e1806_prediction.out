@@ -1,0 +1,10 @@
+reconcile: ok
+tick  9: client x=  30 server x=  18 pending=8
+tick 19: client x=  60 server x=  48 pending=8
+tick 29: client x=  60 server x=  60 pending=8
+tick 39: client x=  25 server x=  37 pending=8
+tick 49: client x=  -5 server x=   7 pending=8
+tick 59: client x=  25 server x=  13 pending=8
+tick 69: client x=  25 server x=  25 pending=0
+tick 79: client x=  25 server x=  25 pending=0
+corrections=1 rubber-band frames=0

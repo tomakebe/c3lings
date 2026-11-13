@@ -1,0 +1,7 @@
+north bounds: (-25, -5) - (1460, 500)
+north-w   visible= 4 tests= 18 (brute force: 60) checksum=63587
+gap       visible= 0 tests=  5 (brute force: 60) checksum=0
+east      visible= 1 tests= 13 (brute force: 60) checksum=24
+all       visible=60 tests=125 (brute force: 60) checksum=3073519072
+far-east  visible= 7 tests= 23 (brute force: 60) checksum=2935253493
+scene culling ok

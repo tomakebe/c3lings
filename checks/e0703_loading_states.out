@@ -1,0 +1,12 @@
+legend: . unloaded, Q queued, L loading, W waiting deps, O loaded, F failed
+         h h h a n h m b u
+tick  0: Q Q Q Q Q Q Q Q .   in_flight=0
+tick  1: L L Q Q Q Q Q Q .   in_flight=2
+tick  2: O O L L Q Q Q Q .   in_flight=2
+tick  3: O O O L L Q Q Q .   in_flight=2
+tick  4: O O O L L Q Q Q .   in_flight=2
+tick  5: O O O L L Q Q Q .   in_flight=2
+tick  6: O O O O O L L Q .   in_flight=2
+tick  7: O O O O O O L L .   in_flight=2
+tick  8: O O O O O O F F .   in_flight=0
+hero.mat ready at tick 7, total ticks 8, io_starts=8

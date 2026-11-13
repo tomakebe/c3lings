@@ -1,0 +1,5 @@
+width=4 / height=5 -> area 20
+width=4 / heigth=5 -> error 033_rethrow::WRONG_KEY
+width4 / height=5 -> error 033_rethrow::NO_EQUALS
+width=x / height=5 -> error string::MALFORMED_INTEGER
+perimeter 60

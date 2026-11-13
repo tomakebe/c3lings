@@ -1,0 +1,11 @@
+n=   0 dot=     0.0 saturated=   0
+n=   1 dot=   -54.0 saturated=   1
+n=   7 dot=    20.0 saturated=   2
+n=   8 dot=    59.0 saturated=   4
+n=  15 dot=   143.0 saturated=   7
+n=  16 dot=   186.0 saturated=   8
+n=  17 dot=    21.0 saturated=   6
+n= 100 dot=   -76.0 saturated=  46
+n=1003 dot=  -385.0 saturated= 376
+checksum=-86.0 hits=450
+SIMD results match scalar reference

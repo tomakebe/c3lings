@@ -1,0 +1,5 @@
+sum of all: 210
+middle: [30, 40, 50]
+last: 60
+after zeroing middle: [10, 20, 0, 0, 0, 60]
+from pointer: [20, 0]

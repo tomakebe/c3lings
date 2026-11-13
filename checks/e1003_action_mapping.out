@@ -1,0 +1,13 @@
+gameplay: W+SPACE            -> MOVE_FORWARD JUMP
+gameplay: SOUTH+EAST         -> JUMP INTERACT
+dialog: W+SPACE              -> MOVE_FORWARD DIALOG_NEXT
+dialog: E+ESC                -> PAUSE DIALOG_NEXT
+menu: W+E+SPACE              -> MENU_UP CONFIRM
+menu: START                  -> BACK
+gameplay: nothing            -> (none)
+rebind JUMP SPACE->E: CONFLICT
+rebind JUMP ENTER->J: NOT_BOUND
+rebind JUMP SPACE->J: ok
+gameplay: SPACE              -> (none)
+gameplay: J+SOUTH            -> JUMP
+action mapping ok

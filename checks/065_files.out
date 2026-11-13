@@ -1,0 +1,5 @@
+wrote 3 scores
+total = 225
+first line: alice 90
+error: io::FILE_NOT_FOUND
+cleaned up: true

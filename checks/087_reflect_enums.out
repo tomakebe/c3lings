@@ -1,0 +1,13 @@
+3 planets: [MERCURY, EARTH, MARS]
+associated: mass (double)
+associated: moons (int)
+  MERCURY mass=0.33 moons=0
+  EARTH mass=5.97 moons=1
+  MARS mass=0.64 moons=2
+two moons: MARS
+NORTH EAST SOUTH WEST NORTH 
+parse UP: enum_demo::NOT_FOUND
+parse SOUTH: SOUTH, ordinal 2
+cmd_left -> x=-1
+cmd_jump -> x=9
+cmd_right -> x=10

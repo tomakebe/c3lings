@@ -1,0 +1,7 @@
+x = 2, y = 1
+arr = [30, 20, 10]
+x = 99, t = 2
+a = 5, b = -1, expensive called 1 time(s)
+PASS: x > 0
+FAIL: arr[1] == 21
+square_lazy(next()) = 2

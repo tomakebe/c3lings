@@ -1,0 +1,13 @@
+frame [0..34] = 34
+  input [0..2] = 2
+  update [2..27] = 25
+    physics [2..17] = 15
+      step [2..7] = 5
+      step [7..12] = 5
+      step [12..17] = 5
+    ai [17..27] = 10
+      find_path [17..20] = 3
+      find_path [20..27] = 7
+  render [27..34] = 7
+burst: recorded=16 dropped=5
+profiler ok

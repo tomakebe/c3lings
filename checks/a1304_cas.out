@@ -1,0 +1,3 @@
+single-thread ok
+max   = 1000000
+total = 200000

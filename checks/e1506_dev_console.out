@@ -1,0 +1,46 @@
+bad value for sim_steps: x
+god is cheat protected
+-- self-tests passed --
+> help
+  echo          print arguments
+  god           invulnerability
+  help          list commands and cvars
+  prof_dump     print zones by self time
+  prof_enabled  capture profiler zones
+  sim_steps     physics substeps per frame
+  sv_cheats     allow cheat cvars
+  timescale     game speed
+  version       engine version
+> sim_steps
+sim_steps = 2
+> sim_steps 4; god 1
+god is cheat protected
+> sv_cheats on; god 1;; timescale 0.5
+> version 16
+version is read-only
+> timescale fast
+bad value for timescale: fast
+> echo "hello world" twice;echo done
+hello world|twice
+done
+> frobnicate 3
+unknown command: frobnicate
+> prof_enabled 1
+> prof_dump
+5 zones:
+  step     calls=4 total=12 self=12
+  ai       calls=1 total=5 self=5
+  render   calls=1 total=4 self=4
+  frame    calls=1 total=22 self=1
+  physics  calls=1 total=12 self=0
+> sim_steps 1; god off
+> prof_dump
+5 zones:
+  ai       calls=1 total=5 self=5
+  render   calls=1 total=4 self=4
+  step     calls=1 total=3 self=3
+  frame    calls=1 total=13 self=1
+  physics  calls=1 total=3 self=0
+complete 's': [sim_steps, sv_cheats]
+complete 'prof': [prof_dump, prof_enabled]
+console ok

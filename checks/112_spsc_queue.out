@@ -1,0 +1,2 @@
+single-thread checks passed
+received 200000 messages in order, payload sum = 60000500000

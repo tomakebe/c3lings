@@ -1,0 +1,4 @@
+slerp steps (deg): 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0 16.0
+slerp step range 16.00..16.00 deg, nlerp 12.25..19.05 deg
+halfway to 30 deg: 15.00 deg (via -q: 15.00 deg)
+slerp OK

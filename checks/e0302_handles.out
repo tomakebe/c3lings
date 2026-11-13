@@ -1,0 +1,6 @@
+make_handle(5, 3) = 0x00300005
+next slots: 2 3 4 5
+reused slot 0 gen 2
+table worn out after 262080 objects, retired=64
+live=2 retired=0
+handles OK

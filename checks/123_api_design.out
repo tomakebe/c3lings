@@ -1,0 +1,4 @@
+albedo: 256x256, 9 mips, 349524 bytes
+mask: 100x60, 1 mips, 6000 bytes
+live textures: 16 (filled 11 more slots)
+reused id: slot 1 gen 2

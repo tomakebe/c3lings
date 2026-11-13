@@ -1,0 +1,5 @@
+buffer: ok
+delay= 20 ms: starved frames=94, max error=540, last x=600
+delay= 60 ms: starved frames=70, max error=420, last x=600
+delay=120 ms: starved frames=14, max error=240, last x=600
+delay=180 ms: starved frames= 2, max error=60, last x=600

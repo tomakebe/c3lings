@@ -1,0 +1,10 @@
+last frame:
+  frame calls=1 total=31 self=1
+    physics calls=1 total=12 self=0
+      step calls=3 total=12 self=12
+    ai calls=1 total=11 self=1
+      path calls=2 total=10 self=10
+    render calls=1 total=7 self=5
+      cull calls=1 total=2 self=2
+history: min=24 avg=27 max=31
+zone tree ok

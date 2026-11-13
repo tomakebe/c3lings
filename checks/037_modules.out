@@ -1,0 +1,5 @@
+dot = 11.0
+len_sq = 25.0
+area = 12.57
+contains (1,1): true
+contains (2,2): false

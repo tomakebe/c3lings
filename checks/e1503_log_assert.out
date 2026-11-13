@@ -1,0 +1,12 @@
+[CORE:INFO] engine start, build 7
+[RENDER:WARN] texture rock.png missing
+[PHYSICS:VERBOSE] broadphase pairs=42
+[CORE:ERROR] check failed: u.hp > 0 (damage to dead unit) in apply_damage
+[CORE:ERROR] check failed: side_effects == 0 (different call site reports again) in main
+emitted: error=2 warn=1 info=1 verbose=1
+--- crash dump (last messages) ---
+  texture rock.png missing
+  broadphase pairs=42
+  check failed: u.hp > 0 (damage to dead unit) in apply_damage
+  check failed: side_effects == 0 (different call site reports aga
+logging ok

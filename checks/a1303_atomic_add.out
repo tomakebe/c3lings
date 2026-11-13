@@ -1,0 +1,3 @@
+single-thread ok
+counter   = 800000 (expected 800000)
+counter64 = 800000

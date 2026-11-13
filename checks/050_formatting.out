@@ -1,0 +1,6 @@
+id     item        qty     price
+0x00FF sword         1     12.50
+0x0A10 arrow       120      0.25
+0xBEEF potion        7      3.00
+flags: 00000101
+total: 63.50 (100%)

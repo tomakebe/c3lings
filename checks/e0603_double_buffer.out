@@ -1,0 +1,12 @@
+frame 1: events=1 exploded=[]
+frame 2: events=1 exploded=[3]
+frame 3: events=2 exploded=[]
+frame 4: events=2 exploded=[24]
+frame 5: events=4 exploded=[]
+frame 6: events=2 exploded=[15]
+frame 7: events=4 exploded=[]
+frame 8: events=1 exploded=[6]
+frame 9: events=2 exploded=[]
+chain: frames=9 events=19
+pingpong: pings=3 pongs=2
+double buffer: all checks passed

@@ -1,0 +1,5 @@
+pos: len=2 pages=3
+sizes: pos=2001 vel=444 ai=40
+pos & vel & ai (9, probes=80): 150 300 600 750 1050 1200 1500 1650 1950
+pos & vel: 444 (probes=444)
+sparse set OK

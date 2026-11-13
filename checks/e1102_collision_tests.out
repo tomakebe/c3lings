@@ -1,0 +1,12 @@
+aabb vs aabb           ok
+circle vs circle       hit n=(0.600, 0.800) depth=1.000
+circle vs circle far   miss
+circle same center     hit n=(0.000, 1.000) depth=3.000
+box vs circle top      hit n=(0.000, 1.000) depth=0.500
+box vs circle corner   hit n=(0.600, 0.800) depth=0.000
+box vs circle far      miss
+box vs circle inside   hit n=(1.000, 0.000) depth=0.750
+ray +x                 t=2.000
+ray diagonal           t=2.000
+ray misses             ok
+all collision tests passed

@@ -1,0 +1,9 @@
+frame 10:
+  draw mesh(24 verts) with texture 256x256
+created 6 more textures while brick is pending (live=7)
+frame 12: collected 1, destroyed so far 1
+frame 12: destroyed textures=0 meshes=0
+frame 13: destroyed textures=0 meshes=0
+frame 14: destroyed textures=7 meshes=1
+live textures=1 meshes=0; destroyed textures=8 meshes=1
+resource pool OK

@@ -1,0 +1,11 @@
+Player v3: id:int pos:Vec2 vel:Vec2(transient) hp:int keys:bool[3] stats:Stats(since 2) gold:uint(since 3) path_cost:float(transient)
+v3 bytes: 27
+03 00 00 00 00 00 c0 3f 00 00 10 c0 4d 00 00 00
+01 00 01 0e 00 08 00 d2 04 00 00
+v3: id=3 pos=(1.50, -2.25) hp=77 keys=true/false/true str=14 agi=8 gold=1234
+v1: id=7 pos=(10.00, -5.00) hp=42 keys=true/false/true str=5 agi=5 gold=10
+v2: id=8 pos=(1.00, 2.00) hp=99 keys=false/true/false str=12 agi=3 gold=10
+v2 bytes read as v3: e1303_reflect_binary::END_OF_DATA
+v2 bytes read as v1: e1303_reflect_binary::CORRUPT
+bad bool: e1303_reflect_binary::CORRUPT
+reflection serializer ok

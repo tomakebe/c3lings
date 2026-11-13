@@ -1,0 +1,47 @@
+// Драйвер упражнения a0805. Этот файл НЕ нужно править — правьте morton.s.
+import std::io;
+
+extern fn uint morton_encode(uint x, uint y);
+extern fn uint morton_decode_x(uint code);
+extern fn uint morton_decode_y(uint code);
+extern fn ulong gather_nibbles(ulong x);
+
+// Медленная эталонная версия — по биту за итерацию.
+fn uint ref_encode(uint x, uint y)
+{
+    uint r;
+    for (uint i = 0; i < 16; i++)
+    {
+        r |= ((x >> i) & 1) << (2 * i);
+        r |= ((y >> i) & 1) << (2 * i + 1);
+    }
+    return r;
+}
+
+fn void main()
+{
+    uint seed = 12345;
+    for (int i = 0; i < 1000; i++)
+    {
+        seed = seed * 1103515245 + 12345;
+        uint x = (seed >> 8) & 0xFFFF;
+        seed = seed * 1103515245 + 12345;
+        uint y = (seed >> 8) & 0xFFFF;
+        uint m = morton_encode(x, y);
+        assert(m == ref_encode(x, y), "encode(%d, %d)", x, y);
+        assert(morton_decode_x(m) == x);
+        assert(morton_decode_y(m) == y);
+    }
+    io::printfn("encode(3, 5)       = %d", morton_encode(3, 5));
+    io::printfn("encode(0xFFFF, 0)  = 0x%08X", morton_encode(0xFFFF, 0));
+    io::printfn("encode(0, 0xFFFF)  = 0x%08X", morton_encode(0, 0xFFFF));
+    io::printfn("decode(39)         = (%d, %d)", morton_decode_x(39), morton_decode_y(39));
+    // Z-порядок 4x4: в каком порядке обходятся клетки
+    for (uint y = 0; y < 4; y++)
+    {
+        for (uint x = 0; x < 4; x++) io::printf("%3d", morton_encode(x, y));
+        io::printn();
+    }
+    assert(gather_nibbles(0x0A0B_0C0D_0E0F_0102UL) == 0xABCDEF12);
+    io::printfn("gather_nibbles = 0x%X", gather_nibbles(0x0A0B_0C0D_0E0F_0102UL));
+}

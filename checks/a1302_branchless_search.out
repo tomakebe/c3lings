@@ -1,0 +1,5 @@
+count_less(7)  = 6
+count_less(100) = 12
+lower_bound(1)   = 7
+lower_bound(-99) = 0
+lower_bound(999) = 64

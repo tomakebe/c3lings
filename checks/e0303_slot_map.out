@@ -1,0 +1,3 @@
+enemies: len=3 total_hp=135
+stress: inserts=9014 removes=8808 stale=2178 len=206 slots=223 sum=6658654
+slot map OK

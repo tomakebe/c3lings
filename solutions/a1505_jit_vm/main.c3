@@ -1,0 +1,84 @@
+// Драйвер упражнения a1505. Этот файл НЕ нужно править — правьте compile.c3.
+import std::io, jit;
+
+alias JitFn = fn long(long);
+
+extern fn void* jit_make(char* code, long len);
+extern fn long jit_free(void* p, long len);
+
+// ---- функции хоста, которые может вызывать скрипт (CALL k) ----
+fn long host_square(long v) => v * v;
+
+fn long host_trace(long v)
+{
+    io::printfn("  trace: %d", v);
+    return v;
+}
+
+fn void main()
+{
+    jit::host_table = { &host_square, &host_trace };
+    run("factorial", {
+        { CONST, 1 }, { STORE, 0 },              // acc = 1
+        { CONST, 1 }, { STORE, 1 },              // i = 1
+        { ARG, 0 }, { LOAD, 1 }, { LT, 0 },      // 4: x < i ?
+        { JZ, 9 }, { JMP, 18 },                  // 7
+        { LOAD, 0 }, { LOAD, 1 }, { MUL, 0 }, { STORE, 0 },   // 9: acc *= i
+        { LOAD, 1 }, { CONST, 1 }, { ADD, 0 }, { STORE, 1 },  // i += 1
+        { JMP, 4 },                              // 17
+        { LOAD, 0 }, { RET, 0 },                 // 18
+    }, { 0, 1, 5, 10, 20 }, false);
+
+    run("sum of squares", {
+        { CONST, 0 }, { STORE, 0 },              // s = 0
+        { ARG, 0 }, { STORE, 1 },                // i = x
+        { CONST, 0 }, { LOAD, 1 }, { LT, 0 },    // 4: 0 < i ?
+        { JZ, 18 },                              // 7
+        { LOAD, 0 }, { LOAD, 1 }, { CALL, 0 }, { ADD, 0 }, { STORE, 0 },  // 8: s += square(i)
+        { LOAD, 1 }, { CONST, 1 }, { SUB, 0 }, { STORE, 1 },  // i -= 1
+        { JMP, 4 },                              // 17
+        { LOAD, 0 }, { RET, 0 },                 // 18
+    }, { 0, 1, 3, 100, 1000 }, false);
+
+    run("trace calls", {
+        { ARG, 0 }, { CALL, 1 },                 // trace(x)
+        { CONST, 3 }, { MUL, 0 }, { CALL, 1 },   // trace(3x)
+        { CONST, 7 }, { CONST, 5 }, { LT, 0 },   // 7 < 5 -> 0
+        { CALL, 1 }, { ADD, 0 }, { RET, 0 },
+    }, { 4, -2 }, true);
+
+    run("max(x, 10) via branches", {
+        { ARG, 0 }, { CONST, 10 }, { LT, 0 },    // x < 10 ?
+        { JZ, 6 },
+        { CONST, 10 }, { RET, 0 },               // 4
+        { ARG, 0 }, { RET, 0 },                  // 6
+    }, { -5, 9, 10, 11, 1000 }, false);
+}
+
+fn void run(String name, Instr[] prog, long[] inputs, bool verbose)
+{
+    Emitter e;
+    jit::compile(&e, prog);
+    void* code = jit_make(&e.buf, (long)e.len);
+    assert(code != null);
+    defer (void)jit_free(code, (long)e.len);
+    JitFn f = (JitFn)code;
+    io::printfn("%s (%d bytecodes -> %d bytes):", name, prog.len, e.len);
+    foreach (x : inputs)
+    {
+        long want;
+        if (verbose)
+        {
+            io::printn(" interpreter:");
+            want = jit::interpret(prog, x);
+            io::printn(" jit:");
+        }
+        else
+        {
+            want = jit::interpret(prog, x);
+        }
+        long got = f(x);
+        assert(got == want, "%s(%d): jit %d, interpreter %d", name, x, got, want);
+        io::printfn("  f(%d) = %d", x, got);
+    }
+}

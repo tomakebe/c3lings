@@ -1,0 +1,55 @@
+// Драйвер упражнения a1503. Этот файл НЕ нужно править — правьте emit.c3.
+import std::io, jit;
+
+extern fn void ref_code();
+extern uint ref_offsets;
+
+const int CASES = 15;
+
+fn void emit_case(Emitter* e, int i)
+{
+    switch (i)
+    {
+        case 0: e.ret();   // ret
+        case 1: e.push(jit::RBX);   // push rbx
+        case 2: e.push(jit::R12);   // push r12
+        case 3: e.pop(jit::RAX);   // pop rax
+        case 4: e.pop(jit::R15);   // pop r15
+        case 5: e.mov_imm64(jit::RAX, 0x1122334455667788);   // movabs rax, 0x1122334455667788
+        case 6: e.mov_imm64(jit::R11, -1);   // movabs r11, -1
+        case 7: e.add(jit::RAX, jit::RCX);   // add rax, rcx
+        case 8: e.add(jit::R10, jit::RDX);   // add r10, rdx
+        case 9: e.add(jit::RBX, jit::R14);   // add rbx, r14
+        case 10: e.sub(jit::RSI, jit::RDI);   // sub rsi, rdi
+        case 11: e.sub(jit::R9, jit::R8);   // sub r9, r8
+        case 12: e.imul(jit::RAX, jit::RCX);   // imul rax, rcx
+        case 13: e.imul(jit::R12, jit::RBX);   // imul r12, rbx
+        case 14: e.imul(jit::RDX, jit::R15);   // imul rdx, r15
+        default: unreachable();
+    }
+}
+
+fn void main()
+{
+    char* ref = (char*)(void*)&ref_code;
+    uint* offs = &ref_offsets;
+    int ok = 0;
+    for (int i = 0; i < CASES; i++)
+    {
+        Emitter e;
+        emit_case(&e, i);
+        char[] want = ref[offs[i]:offs[i + 1] - offs[i]];
+        bool same = e.len == want.len;
+        for (usz k = 0; same && k < want.len; k++) same = e.buf[k] == want[k];
+        io::printf("case %2d %s:", i, same ? "ok  " : "FAIL");
+        foreach (b : want) io::printf(" %02X", b);
+        if (!same)
+        {
+            io::print("   <- got:");
+            for (usz k = 0; k < e.len; k++) io::printf(" %02X", e.buf[k]);
+        }
+        io::printn();
+        if (same) ok++;
+    }
+    io::printfn("%d/%d encodings match GNU as", ok, CASES);
+}

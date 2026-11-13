@@ -1,0 +1,86 @@
+> (define x 10)
+= x
+> (+ x 5 (* 2 3))
+= 21
+> (- 10)
+= -10
+> (if (< x 20) (quote small) (quote big))
+= small
+> (if #f 1)
+= ()
+> (quote (1 (2 3) () #t))
+= (1 (2 3) () #t)
+> (define (square n) (* n n))
+= square
+> (square 12)
+= 144
+> (define fact (lambda (n) (if (< n 2) 1 (* n (fact (- n 1))))))
+= fact
+> (fact 15)
+= 1307674368000
+> (define (fib n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))
+= fib
+> (fib 20)
+= 6765
+> (define (make-adder k) (lambda (y) (+ y k)))
+= make-adder
+> (define add5 (make-adder 5))
+= add5
+> (add5 37)
+= 42
+> (define k 1000)
+= k
+> (add5 1)
+= 6
+> (define (map f xs) (if (null? xs) (quote ()) (cons (f (car xs)) (map f (cdr xs)))))
+= map
+> (map square (quote (1 2 3 4)))
+= (1 4 9 16)
+> (map (make-adder 10) (list 1 2 3))
+= (11 12 13)
+> (define (filter p xs) (if (null? xs) (quote ()) (if (p (car xs)) (cons (car xs) (filter p (cdr xs))) (filter p (cdr xs)))))
+= filter
+> (filter (lambda (n) (= 0 (- n (* 2 (/ n 2))))) (quote (1 2 3 4 5 6)))
+= (2 4 6)
+> (cons 1 2)
+= (1 . 2)
+> (let ((a 2) (b 3)) (* a b))
+= 6
+> (let ((x 1) (y x)) (+ x y))
+= 11
+> (define counter (let ((n 0)) (lambda () (set! n (+ n 1)) n)))
+= counter
+> (counter)
+= 1
+> (counter)
+= 2
+> (begin (define z 3) (* z z))
+= 9
+> (and 1 #f (car (quote ())))
+= #f
+> (or #f (quote ()) 0)
+= 0
+> (and)
+= #t
+> (not (quote ()))
+= #t
+> (define (count-to n acc) (if (= n 0) acc (count-to (- n 1) (+ acc 1))))
+= count-to
+> (count-to 100000 0)
+= 100000
+> (undefined-thing 1)
+! lisp::UNBOUND_SYMBOL
+> (car 5)
+! lisp::TYPE_ERROR
+> ((lambda (a b) a) 1)
+! lisp::ARITY_MISMATCH
+> (/ 1 0)
+! lisp::DIV_BY_ZERO
+> (5 6)
+! lisp::NOT_A_FUNCTION
+> (set! nope 1)
+! lisp::UNBOUND_SYMBOL
+> (if)
+! lisp::BAD_FORM
+tail-call depth for 100000 iterations: 3
+errors reported: 7

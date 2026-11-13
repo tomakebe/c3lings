@@ -1,0 +1,4 @@
+clamp_int: 10 0
+clamp double: 0.25
+greeting = hello
+answer = 42

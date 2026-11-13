@@ -1,0 +1,7 @@
+inventory: 5 items, 23 total qty
+after inventory: live allocations = 0
+report: 1, 3, 4, 7, 9
+after report: live allocations = 0
+bad input rejected: report::NEGATIVE_VALUE
+after error: live allocations = 0
+no leaks

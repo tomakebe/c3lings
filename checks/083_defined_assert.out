@@ -1,0 +1,5 @@
+header: 8 bytes, version 1
+areas: 12.0 12.0 0.0
+defined: Rect.w=true Rect.depth=false Label.area=false
+int from 1.5 allowed: false
+to_double: 3.0 2.5 1.0

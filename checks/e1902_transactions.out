@@ -1,0 +1,4 @@
+doc: 5 11 20 30 40 50 0 0 | history: Move(1) Align(6)
+doc: 5 11 20 30 40 50 0 100 | history: Move(1) Align(6) Drag x(1)
+doc: 5 11 20 30 40 50 42 1 | history: Move(1) Align(6) Paint(1) Drag x(1)
+commands stored: 9

@@ -1,0 +1,3 @@
+scene: (world (player gun hat) (car wheel wheel) light)
+scene: (world (car wheel wheel (player hat)) (gun light))
+nodes=100008 total=100040

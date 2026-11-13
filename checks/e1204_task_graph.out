@@ -1,0 +1,10 @@
+order: input anim ai audio skin physics cull render
+  input    = 1
+  anim     = 11
+  ai       = 101
+  audio    = 1001
+  skin     = 10011
+  physics  = 100101
+  cull     = 1110112
+  render   = 11111113
+cycle: detected

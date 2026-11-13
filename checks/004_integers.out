@@ -1,0 +1,5 @@
+sizes: 1 2 4 8 16
+byte range: 0..255, ichar range: -128..127
+population: 8100000000
+perms: 493
+flags: 10

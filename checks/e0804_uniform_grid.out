@@ -1,0 +1,6 @@
+small    found=  6 tested= 25 (brute force: 400) checksum=4251750340
+edge     found=  4 tested=  4 (brute force: 400) checksum=4421398
+strip    found= 22 tested= 50 (brute force: 400) checksum=4260077970
+all      found=400 tested=400 (brute force: 400) checksum=3552506056
+moved    found=  6 tested= 32 (brute force: 400) checksum=614619664
+uniform grid ok

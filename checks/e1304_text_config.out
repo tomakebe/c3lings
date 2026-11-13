@@ -1,0 +1,22 @@
+--- defaults ---
+window.width = 1280
+window.height = 720
+window.fullscreen = false
+vsync = true
+msaa = 4
+gamma = 2.200
+fov = 90.000
+round trip: applied=7
+user file: applied=4 unknown=1 clamped=1
+window.width = 1920
+window.height = 720
+window.fullscreen = true
+vsync = true
+msaa = 8
+gamma = 2.200
+fov = 110.500
+no '=': e1304_text_config::SYNTAX at line 2
+bad int: string::MALFORMED_INTEGER at line 2
+bad bool: e1304_text_config::BAD_VALUE at line 4
+bad float: string::MALFORMED_FLOAT at line 1
+text config ok

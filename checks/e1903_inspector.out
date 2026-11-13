@@ -1,0 +1,11 @@
+cached_hash: e1903_inspector::NOT_FOUND
+[Transform]
+  x          42.50   [-100.0 .. 100.0]
+  y          -100.00   [-100.0 .. 100.0]
+  scale      2.50   [0.1 .. 10.0]
+  layer      7   [0.0 .. 7.0]
+  visible    false
+[Light]
+  intensity  1000.00   [0.0 .. 1000.0]
+  color      255
+  shadows    true

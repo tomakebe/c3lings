@@ -1,0 +1,15 @@
+Particle: size=16 align=8
+  x      double offset=0  size=8
+  y      float  offset=8  size=4
+  id     short  offset=12 size=2
+  alive  char   offset=14 size=1
+  padding=1
+Vec3: size=12 align=4
+  x      float  offset=0  size=4
+  y      float  offset=4  size=4
+  z      float  offset=8  size=4
+  padding=0
+offset of p.y via $reflect: 8
+second member: y
+kind: STRUCT, qname: layout_demo::Particle
+runtime typeid: size=12 kind=STRUCT

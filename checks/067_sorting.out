@@ -1,0 +1,4 @@
+by age: dave(25) alice(25) bob(30) carol(35)
+by name: alice bob carol dave
+scores desc: 99 87 64 42 15
+ranking: carol alice bob dave

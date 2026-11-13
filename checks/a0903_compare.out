@@ -1,0 +1,4 @@
+fcompare: -1 0 1 2
+clamp: 1.00 0.00 0.25
+count_greater(2.0) = 3
+count_greater(-9)  = 6

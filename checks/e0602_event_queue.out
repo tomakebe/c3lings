@@ -1,0 +1,4 @@
+sizeof(Event) = 16
+ring: dropped=2 head=5
+frame: processed=8 hp=[50 0 50] deaths=1
+event queue: all checks passed

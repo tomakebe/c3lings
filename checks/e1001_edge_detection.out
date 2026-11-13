@@ -1,0 +1,9 @@
+frame 0: held=[A] pressed=[A] released=[] naive=[A]
+frame 1: held=[A] pressed=[] released=[] naive=[]
+frame 2: held=[] pressed=[] released=[A] naive=[]
+frame 3: held=[] pressed=[SPACE] released=[SPACE] naive=[]
+frame 4: held=[D,W] pressed=[D,W] released=[] naive=[D,W]
+frame 5: held=[W] pressed=[W] released=[D,W] naive=[]
+frame 6: held=[W] pressed=[] released=[] naive=[]
+jumps: 1
+edge detection ok

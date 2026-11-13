@@ -1,0 +1,5 @@
+cos(0) = 1.000
+sqrt(2) = 1.414
+cos(pi) = -1.000
+missing: os::DYLIB_NOT_FOUND
+unloaded

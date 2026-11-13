@@ -1,0 +1,5 @@
+sum() = 0
+sum(1, 2, 3) = 6
+total = 25, max = 9
+monster: string 'orc' int 42 bool true
+misc: unknown int 7

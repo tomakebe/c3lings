@@ -1,0 +1,7 @@
+first read finger:  recomputes=4
+cached reads:       recomputes=0
+5x set_local(arm):  mark_visits=8 recomputes=0
+read thumb:         recomputes=3
+1000x set_local(root): mark_visits=1005
+read foot+finger:   recomputes=6
+dirty flags ok

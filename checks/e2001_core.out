@@ -1,0 +1,3 @@
+arena: peak=728 failed=1
+pool full after 128 handles: core::POOL_FULL
+handles: live=14 checksum=b5fa87e5

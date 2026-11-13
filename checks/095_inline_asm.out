@@ -1,0 +1,6 @@
+add_asm(2, 40) = 42
+mul_wide = 18446744065119617025
+mul_wide(100000, 300000) = 30000000000
+100 / 7 = 14 rem 2
+fetch_add: old=10 new=15
+cpuid vendor: 12 printable chars

@@ -1,0 +1,19 @@
+asm error: cutscene::UNKNOWN_OP at line 2
+asm error: cutscene::BAD_NUMBER at line 1
+asm error: cutscene::UNKNOWN_GLOBAL at line 2
+asm error: cutscene::UNKNOWN_NATIVE at line 3
+asm error: cutscene::UNKNOWN_LABEL at line 2
+asm error: cutscene::DUPLICATE_LABEL at line 2
+intro: 25 instructions, 2 labels, camera: 6 instructions
+t=0   [stage] actor 0 appears at x=0
+t=0 intro: hero enters
+t=0   [stage] actor 0 walks to x=2
+t=0 camera: fade in
+t=1   [stage] actor 0 walks to x=4
+t=2   [stage] actor 0 walks to x=6
+t=2 camera: shake
+t=3   [stage] door opens
+t=3 intro: the door creaks
+t=5 intro: fin
+t=5 camera: fade out
+cutscene finished at t=5

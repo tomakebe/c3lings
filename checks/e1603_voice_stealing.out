@@ -1,0 +1,5 @@
+stolen=5 rejected=1
+  slot 0: sound=100 prio=10 vol=70% tick=1
+  slot 1: sound=1 prio=5 vol=90% tick=8
+  slot 2: sound=1 prio=5 vol=90% tick=7
+  slot 3: free

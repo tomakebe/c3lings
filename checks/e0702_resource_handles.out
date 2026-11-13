@@ -1,0 +1,16 @@
+level 1:
+  load   hero.png   slot=0 gen=1
+  load   tree.png   slot=1 gen=1
+level switch: release everything, then acquire level 2
+  load   rock.png   slot=2 gen=1
+end of frame: collect
+  unload hero.png   slot=0 gen=1
+reuse freed slot:
+  load   bush.png   slot=0 gen=2
+  load   grass.png  slot=3 gen=1
+shutdown:
+  unload bush.png   slot=0 gen=2
+  unload tree.png   slot=1 gen=1
+  unload rock.png   slot=2 gen=1
+  unload grass.png  slot=3 gen=1
+loads=5 unloads=5
