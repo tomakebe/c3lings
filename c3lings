@@ -193,22 +193,25 @@ cmd_check_all() {
     return 0
 }
 
+# Fingerprint of all exercise sources: path + mtime (ns) + size. Any save —
+# including editors that write a temp file and rename it — changes it.
+sources_fingerprint() {
+    find "$ROOT/exercises" "$ROOT/asm/exercises" "$ROOT/engine/exercises" \
+        \( -name '*.c3' -o -name '*.s' -o -name '*.S' \) -printf '%p %T@ %s\n' 2>/dev/null | sort | sha1sum
+}
+
 cmd_watch() {
-    local last=""
+    local snap
     while true; do
+        # Snapshot BEFORE checking, so saves made while compiling are not lost.
+        snap="$(sources_fingerprint)"
         clear
         cmd_check_all
         echo; echo "${DIM}слежу за изменениями… (Ctrl+C для выхода)${RESET}"
-        if command -v inotifywait >/dev/null 2>&1; then
-            inotifywait -qq -r -e close_write,moved_to "$ROOT/exercises" "$ROOT/asm/exercises" "$ROOT/engine/exercises" 2>/dev/null
-        else
-            local now
-            while true; do
-                now="$(find "$ROOT/exercises" "$ROOT/asm/exercises" "$ROOT/engine/exercises" \( -name '*.c3' -o -name '*.s' -o -name '*.S' \) -newer "$PROGRESS" 2>/dev/null | head -1)"
-                [[ -n "$now" && "$now" != "$last" ]] && { last="$now"; touch "$PROGRESS"; break; }
-                sleep 1
-            done
-        fi
+        while [[ "$(sources_fingerprint)" == "$snap" ]]; do
+            sleep 0.5
+        done
+        sleep 0.2   # let the editor finish writing
     done
 }
 
