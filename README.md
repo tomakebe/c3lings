@@ -1,5 +1,7 @@
 # c3lings
 
+**AI GENERATED**
+
 Курс в стиле [ziglings](https://codeberg.org/ziglings/exercises) и [rustlings](https://rustlings.rust-lang.org/):
 сотни маленьких сломанных программ, которые нужно починить. Курс ведёт от «Hello, world» на
 [C3](https://c3-lang.org) до уровня, на котором вы сами пишете игровые движки.
