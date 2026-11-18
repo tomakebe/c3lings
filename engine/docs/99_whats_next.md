@@ -8,6 +8,31 @@
 и вести движок, на котором команда пять лет делает игры» лежат тысячи часов практики.
 Эта глава — карта этой дороги.
 
+**Как читать эту главу.** Ниже много ссылок, и пугаться их не надо: никто не читает всё
+подряд. У каждого ресурса указано, **для кого** он и **когда** за него браться. Пометки:
+
+* **[сейчас]** — доступно сразу после курса, без дополнительной подготовки;
+* **[по теме]** — читать, когда начнёте соответствующую подсистему;
+* **[позже]** — требует опыта или глубокой специализации.
+
+А в разделе 0 — готовый порядок на первые месяцы.
+
+## 0. Предлагаемый порядок на первые месяцы
+
+1. **Первые недели: сделать игру.** Раздел 1 — поставьте окно (глава 20, раздел 4) и
+   доведите мини-игру до конца. Параллельно читайте Nystrom, «Game Programming Patterns» —
+   короткие главы, прямо про то, что вы делаете.
+2. **Затем: производительность.** Доклад Mike Acton «Data-Oriented Design and C++» (1 час),
+   потом книга Fabian «Data-Oriented Design». Это изменит, как вы смотрите на код всех
+   подсистем.
+3. **Затем: одна подсистема вглубь.** Выберите то, что нужнее вашей игре (рендер, физика,
+   сеть, звук), и возьмите из раздела 2 одну книгу + из раздела 3 один исходник по этой теме.
+   Читайте главу книги → смотрите, как это сделано в исходниках → пишите своё.
+4. **Gregory, «Game Engine Architecture»** — не читайте от корки до корки: открывайте главу,
+   когда начинаете соответствующую подсистему, как справочник.
+5. **Через полгода-год практики** — раздел 5 (рост до senior+) и книги по инженерии
+   (Ousterhout, затем Staff Engineer-литература).
+
 ## 1. Главный совет: делайте игры
 
 Движок без игры — это набор предположений о том, что понадобится игре. Почти все они
@@ -39,50 +64,73 @@
 
 **Архитектура движков и геймплея**
 
-* Jason Gregory, **«Game Engine Architecture»** (3-е изд.) — энциклопедия; читайте главу,
-  когда начинаете соответствующую подсистему.
-* Robert Nystrom, **«Game Programming Patterns»** (бесплатно онлайн) — паттерны игрового кода
-  с честным разбором компромиссов.
-* Mike McShaffry, David Graham, «Game Coding Complete».
+* [по теме] Jason Gregory, **«Game Engine Architecture»** (3-е изд.) — энциклопедия; читайте главу,
+  когда начинаете соответствующую подсистему. Для всех; как справочник, а не роман.
+* [сейчас] Robert Nystrom, **«Game Programming Patterns»** (бесплатно онлайн) — паттерны игрового кода
+  с честным разбором компромиссов. Лучшая первая книга после курса: лёгкий язык, короткие главы.
+* [по теме] Mike McShaffry, David Graham, «Game Coding Complete» — практичный обзор «как собрать
+  игру целиком»; для тех, кто доводит свою первую игру до релиза.
 * Eric Lengyel (ред.), серия **«Game Engine Gems»**; серии «Game Programming Gems»,
-  «GPU Gems», «GPU Pro», «GPU Zen» — сборники приёмов из индустрии.
+  «GPU Gems», «GPU Pro», «GPU Zen» — сборники приёмов из индустрии. [позже] Не для чтения
+  подряд: ищите в оглавлении статью под конкретную задачу.
 
 **Производительность и железо**
 
-* Richard Fabian, **«Data-Oriented Design»** (бесплатно онлайн).
-* Ulrich Drepper, **«What Every Programmer Should Know About Memory»**.
-* Agner Fog, руководства по оптимизации (agner.org/optimize).
-* Denis Bakhvalov, «Performance Analysis and Tuning on Modern CPUs».
-* Mike Acton, доклад **«Data-Oriented Design and C++»** (CppCon 2014) — обязательно.
+* [сейчас] Richard Fabian, **«Data-Oriented Design»** (бесплатно онлайн) — как думать данными, а не
+  объектами; читать после доклада Mike Acton.
+* [по теме] Ulrich Drepper, **«What Every Programmer Should Know About Memory»** — подробно про кэши и
+  память; плотный текст, читайте частями, когда начнёте оптимизировать.
+* [позже] Agner Fog, руководства по оптимизации (agner.org/optimize) — справочник для низкоуровневой
+  оптимизации и ассемблера; пригодится, когда профайлер упрётся в конкретный цикл.
+* [по теме] Denis Bakhvalov, «Performance Analysis and Tuning on Modern CPUs» — как пользоваться
+  профайлерами и счётчиками процессора; практичнее Агнера Фога, читать раньше него.
+* [сейчас] Mike Acton, доклад **«Data-Oriented Design and C++»** (CppCon 2014) — обязательно; час
+  видео, с него стоит начать тему производительности.
 
 **Рендеринг**
 
-* Tomas Akenine-Möller и др., **«Real-Time Rendering»** (4-е изд.).
-* Matt Pharr, Wenzel Jakob, Greg Humphreys, **«Physically Based Rendering»** (бесплатно онлайн).
-* «Computer Graphics from Scratch» (Gabriel Gambetta) — софтверный растеризатор и трассировщик.
+* [по теме] Tomas Akenine-Möller и др., **«Real-Time Rendering»** (4-е изд.) — главный справочник по
+  графике реального времени; для тех, кто всерьёз берётся за рендер.
+* [позже] Matt Pharr, Wenzel Jakob, Greg Humphreys, **«Physically Based Rendering»** (бесплатно онлайн)
+  — теория физически корректного рендера (трассировка лучей); для углублённой специализации.
+* [сейчас] «Computer Graphics from Scratch» (Gabriel Gambetta) — софтверный растеризатор и трассировщик.
+  Прямое продолжение главы 09; первая книга по графике.
 * Блоги: Aras Pranckevičius, Matt Pettineo (MJP), Bart Wronski, Inigo Quilez, «A trip through
-  the Graphics Pipeline» (Fabian Giesen).
+  the Graphics Pipeline» (Fabian Giesen). [по теме] Giesen — после первой книги по графике, чтобы
+  понять, что происходит внутри GPU; остальные блоги — по конкретным темам.
 
 **Физика и математика**
 
-* Christer Ericson, **«Real-Time Collision Detection»** — лучшая книга по теме.
-* Ian Millington, «Game Physics Engine Development».
-* Erin Catto, доклады GDC (box2d.org/publications) — solver'ы, непрерывные столкновения.
-* Eric Lengyel, «Foundations of Game Engine Development» (тома 1–2: математика, рендеринг).
+* [по теме] Christer Ericson, **«Real-Time Collision Detection»** — лучшая книга по теме; продолжение
+  главы 11, читать, когда понадобятся новые формы или broadphase.
+* [по теме] Ian Millington, «Game Physics Engine Development» — пошаговая сборка физического движка;
+  доступнее Ericson по стилю, хороша как первая книга по физике.
+* [по теме] Erin Catto, доклады GDC (box2d.org/publications) — solver'ы, непрерывные столкновения;
+  после Millington, вместе с исходниками Box2D.
+* [по теме] Eric Lengyel, «Foundations of Game Engine Development» (тома 1–2: математика, рендеринг) —
+  если математика из главы 04 показалась недостаточной, начните с первого тома.
 
 **Сеть, звук, инструменты** — см. списки «Что почитать» в главах 16–19 (Glenn Fiedler,
-Gabriel Gambetta, «Game Audio Programming», Our Machinery blog).
+Gabriel Gambetta, «Game Audio Programming», Our Machinery blog). В каждой из этих глав
+список уже упорядочен «от вводного к глубокому»: начинайте с первого пункта.
 
 **Инженерия и лидерство**
 
-* John Ousterhout, **«A Philosophy of Software Design»** — о сложности и глубоких модулях.
+* [сейчас] John Ousterhout, **«A Philosophy of Software Design»** — о сложности и глубоких модулях.
+  Короткая и полезная любому программисту уже сейчас.
 * Fred Brooks, «The Mythical Man-Month»; Will Larson, «Staff Engineer»; Tanya Reilly,
-  «The Staff Engineer's Path» — про следующий уровень после senior.
+  «The Staff Engineer's Path» — про следующий уровень после senior. [позже] Читать, когда вы уже
+  уверенный senior и думаете о следующем шаге.
 
 ## 3. Исходники, которые стоит прочитать
 
 Читать чужие движки — самый быстрый способ научиться принимать решения. Выбирайте одну
 подсистему и сравнивайте, как её решили в 3–4 движках.
+
+Порядок для первого знакомства: начните с маленьких библиотек (**stb**, **sokol**,
+**miniaudio**, **raylib** — их можно прочитать за вечер), затем Quake 3 с разборами Sanglard,
+затем один «большой» движок (Godot или Bevy) по одной подсистеме. Unreal и O3DE — [позже] позже:
+без опыта в них легко утонуть.
 
 * **id Software: Doom, Quake, Quake 3, Doom 3** (GPL, GitHub id-Software). Компактно,
   читаемо, исторически важно. Обязательно — с комментариями Fabien Sanglard
@@ -112,6 +160,11 @@ Gabriel Gambetta, «Game Audio Programming», Our Machinery blog).
 
 ## 4. Доклады
 
+Доклады — самый лёгкий вход в тему: час видео вместо недели чтения. Начните с [сейчас] Acton и
+Muratori («Simple Code, High Performance»), остальные смотрите, когда берётесь за
+соответствующую подсистему (Ford — сеть, Gyrling — многопоточность, O'Donnell — рендер,
+Catto — физика).
+
 * Mike Acton — «Data-Oriented Design and C++» (CppCon 2014).
 * Tim Ford — «Overwatch Gameplay Architecture and Netcode» (GDC 2017).
 * Christian Gyrling — «Parallelizing the Naughty Dog Engine Using Fibers» (GDC 2015).
@@ -125,6 +178,8 @@ Gabriel Gambetta, «Game Audio Programming», Our Machinery blog).
 * Доклады GDC Vault в разделах Programming и Tools — по любой интересующей подсистеме.
 
 ## 5. Как расти до senior+ и principal
+
+(Этот раздел — [позже] на будущее: перечитайте его через год практики, он будет звучать иначе.)
 
 Уровни в движковом программировании отличаются не количеством известных алгоритмов, а
 **масштабом последствий ваших решений**.
