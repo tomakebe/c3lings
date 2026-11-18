@@ -1,29 +1,29 @@
 // =====================================================================
-//  087 · Рефлексия enum'ов и методов
+//  087 · Reflecting on enums and methods
 // =====================================================================
 //
-//  ENUM. Часть свойств вы видели в 026–027, теперь — полная картина:
+//  ENUM. You saw some of the properties in 026–027; here's the full picture:
 //
-//      Planet::len            // количество значений
-//      Planet::values         // все значения (массив, доступен в рантайме)
-//      Planet::names          // их имена-строки: { "MERCURY", ... }
-//      Planet::from_ordinal(i)   // значение по номеру
-//      Planet::members        // ассоциированные поля (mass, moons):
-//                             //   $m.name, $m.type — как у структур
-//      Planet::lookup_field(moons, 2)   // значение по первому совпадению
-//                                       // ассоциированного поля (Optional)
-//      p.ordinal, p.description         // номер и имя конкретного значения
+//      Planet::len            // number of values
+//      Planet::values         // all values (an array, available at runtime)
+//      Planet::names          // their names as strings: { "MERCURY", ... }
+//      Planet::from_ordinal(i)   // value by its number
+//      Planet::members        // associated fields (mass, moons):
+//                             //   $m.name, $m.type — just like for structs
+//      Planet::lookup_field(moons, 2)   // value by the first match of
+//                                       // an associated field (Optional)
+//      p.ordinal, p.description         // number and name of a specific value
 //
-//  Обратите внимание на `::` для свойств ТИПА и `.` для значений:
-//  `Dir::from_ordinal(1)`, но `Dir.NORTH`. Запись `Dir.from_ordinal`
-//  в 0.8.5 — ошибка.
+//  Note the `::` for properties of the TYPE and `.` for values:
+//  `Dir::from_ordinal(1)`, but `Dir.NORTH`. Writing `Dir.from_ordinal`
+//  is an error in 0.8.5.
 //
-//  Типичная задача — разбор строки в enum. В C это ручной `strcmp` по
-//  каждому имени (и таблица, которую забывают обновить). В C3 имена
-//  всегда под рукой: пройдитесь по `$Enum::names`.
+//  A typical task is parsing a string into an enum. In C that's a manual
+//  `strcmp` against every name (plus a table that people forget to update).
+//  In C3 the names are always at hand: just walk `$Enum::names`.
 //
-//  МЕТОДЫ. `Type::methods` — compile-time список ИМЁН методов типа
-//  (строк). Вместе с `$eval` это позволяет вызывать метод по имени:
+//  METHODS. `Type::methods` is a compile-time list of the type's method
+//  NAMES (strings). Together with `$eval` it lets you call a method by name:
 //
 //      $foreach $m : Robot::methods:
 //          $if $m.len > 4 &&& $m[0..3] == "cmd_":
@@ -31,25 +31,25 @@
 //          $endif
 //      $endforeach
 //
-//  Compile-time строки можно сравнивать, брать `.len` и срезы — так
-//  выбираются методы по префиксу. Оператор `&&&` нужен, чтобы срез
-//  `$m[0..3]` даже не рассматривался для коротких имён.
+//  Compile-time strings can be compared, you can take `.len` and slices —
+//  that's how methods get selected by prefix. The `&&&` operator is needed
+//  so that the slice `$m[0..3]` isn't even considered for short names.
 //
-//  Предупреждение из документации: методы регистрируются ПОСЛЕ типов,
-//  поэтому на верхнем уровне (например, в `$assert` вне функции) список
-//  может быть неполным. Внутри функций и макросов он надёжен. Порядок —
-//  порядок объявления.
+//  A warning from the docs: methods are registered AFTER types, so at the
+//  top level (e.g. in a `$assert` outside a function) the list may be
+//  incomplete. Inside functions and macros it is reliable. The order is
+//  the declaration order.
 //
-//  Это основа «автоматической регистрации»: консольные команды, тесты,
-//  обработчики событий — добавил метод с нужным префиксом, и он
-//  подхватился сам, без ручных таблиц.
+//  This is the foundation of "automatic registration": console commands,
+//  tests, event handlers — add a method with the right prefix and it gets
+//  picked up on its own, with no hand-maintained tables.
 //
-//  ЗАДАЧА:
-//    1. Реализуйте `@parse_enum($Enum, s)`: вернуть значение enum, имя
-//       которого равно s, или ошибку NOT_FOUND~.
-//    2. Допишите `run_all_commands`: вызвать у робота все методы, имя
-//       которых начинается с "cmd_", и после каждого напечатать
-//       "<имя метода> -> x=<x>".
+//  TASK:
+//    1. Implement `@parse_enum($Enum, s)`: return the enum value whose
+//       name equals s, or the error NOT_FOUND~.
+//    2. Finish `run_all_commands`: call every method on the robot whose
+//       name starts with "cmd_", and after each one print
+//       "<method name> -> x=<x>".
 //
 module enum_demo;
 import std::io;
@@ -79,13 +79,13 @@ fn void Robot.cmd_right(&self) => self.x += 1;
 
 macro @parse_enum($Enum, String s)
 {
-    // TODO: найдите s среди $Enum::names и верните соответствующее значение.
+    // TODO: find s among $Enum::names and return the corresponding value.
     return $Enum::from_ordinal(0);
 }
 
 fn void run_all_commands(Robot* r)
 {
-    // TODO: $foreach по Robot::methods, вызвать все cmd_* методы
+    // TODO: $foreach over Robot::methods, call every cmd_* method
 }
 
 fn void main()

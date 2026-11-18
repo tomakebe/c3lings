@@ -1,43 +1,43 @@
 # =====================================================================
-#  a0801 · Сдвиги: shl, shr, sar
+#  a0801 · Shifts: shl, shr, sar
 # =====================================================================
 #
-#  Сдвиг — самая дешёвая «арифметика» процессора (1 такт, несколько
-#  штук за такт). Три базовых сдвига:
+#  A shift is the cheapest "arithmetic" a processor has (1 cycle,
+#  several per cycle). The three basic shifts:
 #
-#      shl dst, k    — влево, справа приходят нули      (x * 2^k)
-#      shr dst, k    — вправо, слева приходят НУЛИ      (беззнаковое x / 2^k)
-#      sar dst, k    — вправо, слева копируется ЗНАКОВЫЙ бит
-#                      (знаковое деление на 2^k с округлением к -inf)
+#      shl dst, k    — left, zeros come in from the right   (x * 2^k)
+#      shr dst, k    — right, ZEROS come in from the left   (unsigned x / 2^k)
+#      sar dst, k    — right, the SIGN bit is copied in from the left
+#                      (signed division by 2^k, rounding toward -inf)
 #
-#  Счётчик сдвига k может быть:
-#    * константой:            shl rax, 3
-#    * регистром CL — и только им!   shl rax, cl
-#  Никакой `shl rax, rsi` не существует: если сдвиг лежит в rsi, его
-#  нужно сначала положить в rcx (`mov rcx, rsi` или `mov ecx, esi`),
-#  после чего использовать младший байт `cl`.
+#  The shift count k can be:
+#    * a constant:                       shl rax, 3
+#    * the CL register — and only CL!    shl rax, cl
+#  There is no such thing as `shl rax, rsi`: if the count is in rsi, you
+#  must first move it into rcx (`mov rcx, rsi` or `mov ecx, esi`),
+#  and then use its low byte `cl`.
 #
-#  Процессор берёт счётчик по модулю 64 (для 32-битных операндов —
-#  по модулю 32): `shl rax, cl` при cl = 65 сдвинет на 1. В C3 сдвиг на
-#  >= ширины типа — ошибка (паника в безопасном режиме), а железо молча
-#  маскирует счётчик.
+#  The processor takes the count modulo 64 (modulo 32 for 32-bit
+#  operands): `shl rax, cl` with cl = 65 shifts by 1. In C3, shifting by
+#  >= the type width is an error (a panic in safe mode), while the
+#  hardware silently masks the count.
 #
-#  Флаги: CF получает последний «выдвинутый» бит. При счётчике 0 флаги
-#  не меняются вовсе — поэтому сдвиги на переменную величину для
-#  процессора сложнее, чем кажутся (на Intel `shl r, cl` — это 2-3 мкоп).
-#  В BMI2 есть `shlx/shrx/sarx dst, src, cnt` — счётчик в любом регистре,
-#  флаги не трогаются, 1 мкоп. Подробнее — в главе asm/docs/08_bits.md.
+#  Flags: CF receives the last bit "shifted out". With a count of 0 the
+#  flags are not changed at all — which is why variable shifts are harder
+#  for the processor than they look (on Intel `shl r, cl` is 2-3 uops).
+#  BMI2 has `shlx/shrx/sarx dst, src, cnt` — count in any register,
+#  flags untouched, 1 uop. More in chapter asm/docs/08_bits.md.
 #
-#  Извлечение битового поля [pos, pos+len) классически делают так:
+#  Extracting the bit field [pos, pos+len) is classically done like this:
 #      (x >> pos) & ((1 << len) - 1)
-#  Маску (1 << len) - 1 тоже придётся строить сдвигом на переменную.
-#  Осторожно с len = 64: 1 << 64 по модулю даёт 1 << 0, и маска станет 0.
-#  В наших тестах len < 64.
+#  The mask (1 << len) - 1 also has to be built with a variable shift.
+#  Careful with len = 64: 1 << 64 wraps to 1 << 0, and the mask becomes 0.
+#  In our tests len < 64.
 #
-#  ЗАДАЧА: исправьте четыре функции (каждая помечена TODO).
+#  TASK: fix the four functions (each one is marked TODO).
 #      shl_var(x, n)  = x << n
-#      shr_var(x, n)  = x >> n    (беззнаковый)
-#      sar_var(x, n)  = x >> n    (знаковый)
+#      shr_var(x, n)  = x >> n    (unsigned)
+#      sar_var(x, n)  = x >> n    (signed)
 #      extract_bits(x, pos, len) = (x >> pos) & ((1 << len) - 1)
 #
     .intel_syntax noprefix
@@ -47,7 +47,7 @@
     .globl shl_var
 shl_var:
     mov rax, rdi
-    shl rax, 1              # TODO: сдвиг должен быть на n, а не на 1 (через cl)
+    shl rax, 1              # TODO: the shift must be by n, not by 1 (via cl)
     ret
 
 # ulong shr_var(ulong x, ulong n)
@@ -55,7 +55,7 @@ shl_var:
 shr_var:
     mov rax, rdi
     mov rcx, rsi
-    sar rax, cl             # TODO: какой сдвиг нужен для беззнакового числа?
+    sar rax, cl             # TODO: which shift do you need for an unsigned number?
     ret
 
 # long sar_var(long x, ulong n)
@@ -63,7 +63,7 @@ shr_var:
 sar_var:
     mov rax, rdi
     mov rcx, rsi
-    shr rax, cl             # TODO: а здесь число знаковое
+    shr rax, cl             # TODO: and here the number is signed
     ret
 
 # ulong extract_bits(ulong x /*rdi*/, ulong pos /*rsi*/, ulong len /*rdx*/)
@@ -72,8 +72,8 @@ extract_bits:
     mov rax, rdi
     mov rcx, rsi
     shr rax, cl             # rax = x >> pos
-    # TODO: постройте маску (1 << len) - 1 в каком-нибудь регистре
-    #       (например, r8) и сделайте `and rax, r8`
+    # TODO: build the mask (1 << len) - 1 in some register
+    #       (for example, r8) and do `and rax, r8`
     ret
 
     .section .note.GNU-stack,"",@progbits

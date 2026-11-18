@@ -1,4 +1,4 @@
-// Драйвер упражнения a1405. Этот файл НЕ нужно править — правьте transpose.s.
+// Driver for exercise a1405. You do NOT need to edit this file — edit transpose.s.
 import std::io;
 
 extern fn void transpose4x4(int* dst, long dst_stride, int* src, long src_stride);

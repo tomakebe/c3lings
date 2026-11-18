@@ -1,41 +1,40 @@
 // =====================================================================
-//  023 · Строки из стандартной библиотеки
+//  023 · Strings from the standard library
 // =====================================================================
 //
-//  У `String` много методов (см. lib/std/core/string.c3). Вызываются
-//  они через точку: `s.trim()`. Самые полезные:
+//  `String` has lots of methods (see lib/std/core/string.c3). You call
+//  them with a dot: `s.trim()`. The most useful ones:
 //
-//      s.trim()               убрать пробельные символы по краям
+//      s.trim()               strip whitespace from both ends
 //      s.starts_with("ab")    bool
 //      s.ends_with(".c3")     bool
 //      s.contains("needle")   bool
-//      s.index_of("x")        позиция подстроки (Optional, см. ниже)
-//      s.tsplit(",")          разбить по разделителю -> String[]
-//      s.to_int()             разобрать число (Optional, см. ниже)
+//      s.index_of("x")        position of a substring (Optional, see below)
+//      s.tsplit(",")          split on a separator -> String[]
+//      s.to_int()             parse a number (Optional, see below)
 //      s.to_double()
-//      s.to_upper_tcopy()     копия в верхнем регистре
+//      s.to_upper_tcopy()     an upper-case copy
 //
-//  Методы `trim`, срезы и т.п. НЕ копируют строку: результат — вид на
-//  те же байты. Методы с буквой `t` (`tsplit`, `tconcat`,
-//  `to_upper_tcopy`) выделяют память во ВРЕМЕННОМ аллокаторе — она
-//  освобождается автоматически, вызывать free не надо. Подробно об
-//  аллокаторах — в упражнениях 051–053; пока просто пользуйтесь
-//  t-версиями.
+//  `trim`, slices and the like do NOT copy the string: the result is a
+//  view of the same bytes. Methods with a `t` (`tsplit`, `tconcat`,
+//  `to_upper_tcopy`) allocate memory with the TEMPORARY allocator — it
+//  is freed automatically, no need to call free. Allocators are covered
+//  in detail in exercises 051–053; for now just use the t-versions.
 //
-//  OPTIONAL — НЕБОЛЬШОЙ АНОНС
-//  Разбор числа может не удаться ("abc" — не число). Поэтому `to_int()`
-//  возвращает не `int`, а `int?` — «int или ошибка». Присвоить `int?`
-//  в обычный `int` нельзя: компилятор заставляет решить, что делать
-//  при ошибке. Самый простой способ — оператор `??`, «значение по
-//  умолчанию при ошибке»:
+//  OPTIONAL — A SNEAK PEEK
+//  Parsing a number can fail ("abc" is not a number). That's why
+//  `to_int()` returns not an `int` but an `int?` — "an int or an
+//  error". You can't assign an `int?` to a plain `int`: the compiler
+//  forces you to decide what happens on error. The simplest way is the
+//  `??` operator, "a default value on error":
 //
 //      int n = "42".to_int() ?? 0;     // 42
 //      int m = "abc".to_int() ?? -1;   // -1
 //
-//  Подробно об Optional — в упражнениях 031–036.
+//  Optionals are covered in detail in exercises 031–036.
 //
-//  ЗАДАЧА: разберите строку сохранения игры. Исправьте три места с
-//  `// <-`. Программа должна напечатать:
+//  TASK: parse a game save string. Fix the three places marked
+//  `// <-`. The program should print:
 //
 //      fields: 4
 //      name: Ann
@@ -50,8 +49,8 @@ fn void main()
 {
     String save = "   hp=100; mp=40; gold=7; name=Ann  \n";
 
-    String clean = save.???();                     // <- убрать пробелы и \n по краям
-    String[] fields = clean.tsplit(???);           // <- поля разделены точкой с запятой и пробелом
+    String clean = save.???();                     // <- strip the spaces and \n from both ends
+    String[] fields = clean.tsplit(???);           // <- fields are separated by a semicolon and a space
     io::printfn("fields: %d", fields.len);
 
     String name = "?";
@@ -66,7 +65,7 @@ fn void main()
             name = value;
             continue;
         }
-        int n = value.to_int();                    // <- to_int() возвращает int?, а не int
+        int n = value.to_int();                    // <- to_int() returns int?, not int
         total += n;
     }
     io::printfn("name: %s", name);

@@ -1,2 +1,2 @@
-fetch_add: `mov eax, esi` и `lock xadd dword ptr [rdi], eax` — после неё в eax старое значение.
-inc64: то же самое с единицей в rax (`lock xadd qword ptr [rdi], rax`), а затем `inc rax`, чтобы вернуть новое значение.
+fetch_add: `mov eax, esi` and `lock xadd dword ptr [rdi], eax` — afterwards eax holds the old value.
+inc64: the same with one in rax (`lock xadd qword ptr [rdi], rax`), and then `inc rax` to return the new value.

@@ -1,3 +1,3 @@
-1. Имя типа не может быть целиком заглавным, а используется оно ниже как `Hero`.
-2. Позиционная инициализация идёт в порядке объявления полей: сначала `name`, потом `hp`.
-3. Можно написать `.pos = { .y = 7 }` или короче — `.pos.y = 7`.
+1. A type name can't be all capitals, and below it is used as `Hero`.
+2. Positional initialization follows the order in which the fields are declared: first `name`, then `hp`.
+3. You can write `.pos = { .y = 7 }`, or shorter — `.pos.y = 7`.

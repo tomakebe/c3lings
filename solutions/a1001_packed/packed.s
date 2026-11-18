@@ -1,30 +1,30 @@
 # =====================================================================
-#  a1001 · SIMD: упакованные операции SSE
+#  a1001 · SIMD: packed SSE operations
 # =====================================================================
 #
-#  Регистр xmm — 128 бит, то есть 4 float (или 2 double, 16 байтов,
-#  8 short, 4 int, 2 long). Packed-инструкции обрабатывают все элементы
-#  сразу — «одна инструкция, много данных» (SIMD):
+#  An xmm register is 128 bits, i.e. 4 floats (or 2 doubles, 16 bytes,
+#  8 shorts, 4 ints, 2 longs). Packed instructions process all elements
+#  at once — "single instruction, multiple data" (SIMD):
 #
-#      addps xmm0, xmm1     4 сложения float за одну инструкцию
+#      addps xmm0, xmm1     4 float additions in one instruction
 #      mulps, subps, divps, sqrtps, minps, maxps   ...
-#      addpd                2 сложения double
+#      addpd                2 double additions
 #
-#  Загрузка/сохранение 16 байтов:
-#      movaps xmm, [mem]   — адрес ОБЯЗАН быть кратен 16, иначе segfault
-#      movups xmm, [mem]   — любой адрес (на современных CPU так же быстро,
-#                            если данные на деле выровнены)
-#  Так же и операнд-память у addps/mulps: `addps xmm0, [rdi]` требует
-#  выравнивания! С невыровненными данными сначала movups в регистр.
+#  Loading/storing 16 bytes:
+#      movaps xmm, [mem]   — the address MUST be a multiple of 16, else segfault
+#      movups xmm, [mem]   — any address (just as fast on modern CPUs
+#                            if the data actually is aligned)
+#  The same goes for the memory operand of addps/mulps: `addps xmm0, [rdi]`
+#  requires alignment! With unaligned data, movups into a register first.
 #
-#  «Размножить» скаляр на все 4 элемента (broadcast) в SSE делается
-#  перестановкой:  shufps xmm1, xmm1, 0   — все 4 элемента = элемент 0.
-#  (В AVX есть vbroadcastss.)
+#  "Broadcasting" a scalar to all 4 elements in SSE is done with a
+#  shuffle:  shufps xmm1, xmm1, 0   — all 4 elements = element 0.
+#  (AVX has vbroadcastss.)
 #
-#  ЗАДАЧА:
+#  TASK:
 #      add4(dst, a, b)              — dst[0..3] = a[0..3] + b[0..3]
-#      scale4(v, k)                 — v[0..3] *= k   (k в xmm0)
-#      add_arrays(dst, a, b, n)     — n кратно 4; адреса НЕ выровнены
+#      scale4(v, k)                 — v[0..3] *= k   (k in xmm0)
+#      add_arrays(dst, a, b, n)     — n is a multiple of 4; addresses are NOT aligned
 #
     .intel_syntax noprefix
     .text

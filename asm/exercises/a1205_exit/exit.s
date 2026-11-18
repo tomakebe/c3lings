@@ -1,31 +1,31 @@
 # =====================================================================
-#  a1205 · Завершение процесса: exit_group
+#  a1205 · Terminating the process: exit_group
 # =====================================================================
 #
-#  Процесс завершается системным вызовом:
-#      exit        (60)  — завершает только текущий ПОТОК
-#      exit_group  (231) — завершает все потоки процесса; это то, что
-#                          делает _exit() в libc
-#  Аргумент (rdi) — код выхода 0..255. Вызов не возвращается.
+#  A process terminates with a system call:
+#      exit        (60)  — terminates only the current THREAD
+#      exit_group  (231) — terminates all threads of the process; this is
+#                          what _exit() in libc does
+#  The argument (rdi) is the exit code 0..255. The call does not return.
 #
-#  Важная тонкость: «сырой» exit_group не выполняет ничего из того, что
-#  делает обычный выход из main: не сбрасывает буферы stdio, не вызывает
-#  деструкторы/atexit, не освобождает память (последнее и не нужно —
-#  ядро заберёт всё само). Поэтому драйвер сбрасывает stdout ДО вызова
-#  finish. Если забыть — недописанный вывод пропадёт.
+#  An important subtlety: a "raw" exit_group does none of what a normal
+#  return from main does: it doesn't flush stdio buffers, doesn't call
+#  destructors/atexit, doesn't free memory (the last isn't needed anyway —
+#  the kernel reclaims everything itself). That's why the driver flushes
+#  stdout BEFORE calling finish. Forget that and unwritten output is lost.
 #
-#  После syscall exit_group принято ставить `ud2` или `hlt` — на случай,
-#  если «невозвращающийся» вызов всё-таки вернётся (например, номер
-#  перепутан): лучше аварийно упасть, чем выполнять мусор.
+#  After the exit_group syscall it's customary to put `ud2` or `hlt` — in
+#  case the "non-returning" call does return after all (say, the number is
+#  wrong): better to crash than to execute garbage.
 #
-#  ЗАДАЧА: finish(msg, len) — записать сообщение в stdout (write) и
-#  завершить процесс с кодом 0 через exit_group.
+#  TASK: finish(msg, len) — write the message to stdout (write) and
+#  terminate the process with code 0 via exit_group.
 #
     .intel_syntax noprefix
     .text
     .globl finish
 finish:
-    # TODO: write(1, msg, len), затем exit_group(0)
+    # TODO: write(1, msg, len), then exit_group(0)
     ret
 
     .section .note.GNU-stack,"",@progbits

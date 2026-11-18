@@ -1,31 +1,32 @@
 // =====================================================================
-//  a1104 · Inline-ассемблер: аппаратный CRC32C
+//  a1104 · Inline assembly: hardware CRC32C
 // =====================================================================
 //
-//  В SSE4.2 есть инструкция crc32 — она считает контрольную сумму
-//  CRC-32C (полином Кастаньоли 0x1EDC6F41) по 1, 2, 4 или 8 байтам за раз:
+//  SSE4.2 has a crc32 instruction — it computes the CRC-32C checksum
+//  (the Castagnoli polynomial 0x1EDC6F41) over 1, 2, 4 or 8 bytes at a time:
 //
-//      crc32 crc, src     // crc (32 бита) обновляется данными src
+//      crc32 crc, src     // crc (32 bits) is updated with the data in src
 //
-//  Размер обрабатываемых данных = размер src (char -> 1 байт, uint -> 4,
-//  ulong -> 8; при ulong-источнике crc тоже должен быть 64-битным,
-//  результат всё равно в младших 32 битах). CRC32C используют iSCSI, ext4,
-//  Btrfs, LevelDB/RocksDB, и как очень быструю хеш-функцию.
+//  The size of the data processed = the size of src (char -> 1 byte,
+//  uint -> 4, ulong -> 8; with a ulong source crc must also be 64-bit,
+//  though the result is still in the low 32 bits). CRC32C is used by iSCSI,
+//  ext4, Btrfs, LevelDB/RocksDB, and as a very fast hash function.
 //
-//  Алгоритм (как в стандарте):
+//  The algorithm (as in the standard):
 //      crc = 0xFFFFFFFF
-//      для каждого байта: crc = crc32_step(crc, byte)
-//      результат = ~crc
+//      for each byte: crc = crc32_step(crc, byte)
+//      result = ~crc
 //
-//  Ниже уже есть программная реализация (побитовая, медленная) — эталон.
+//  Below there is already a software implementation (bitwise, slow) —
+//  the reference.
 //
-//  ЗАДАЧА:
-//      crc32c_hw(data)   — побайтно через инструкцию crc32;
-//      crc32c_hw8(data)  — по 8 байт за раз (ulong из памяти: можно
-//                          взять `mem::load((ulong*)(data.ptr + i), 1)`:
-//                          обычное разыменование ulong* по невыровненному
-//                          адресу C3 в безопасном режиме считает ошибкой), затем хвост
-//                          побайтно. Длина данных — любая.
+//  TASK:
+//      crc32c_hw(data)   — byte by byte using the crc32 instruction;
+//      crc32c_hw8(data)  — 8 bytes at a time (a ulong from memory: you can
+//                          use `mem::load((ulong*)(data.ptr + i), 1)`:
+//                          a plain dereference of a ulong* at an unaligned
+//                          address is an error in C3's safe mode), then the
+//                          tail byte by byte. The data length can be anything.
 //
 import std::io;
 
@@ -45,7 +46,7 @@ fn uint crc32c_hw(char[] data)
     uint crc = 0xFFFF_FFFF;
     foreach (b : data)
     {
-        // TODO: один шаг crc32 по байту b
+        // TODO: one crc32 step over byte b
     }
     return ~crc;
 }
@@ -54,8 +55,8 @@ fn uint crc32c_hw8(char[] data)
 {
     ulong crc = 0xFFFF_FFFF;
     usz i = 0;
-    // TODO: блоки по 8 байт, затем хвост по одному байту
-    //       (для байтового шага понадобится 32-битная копия crc:
+    // TODO: 8-byte blocks, then the tail one byte at a time
+    //       (the byte step needs a 32-bit copy of crc:
     //        uint c32 = (uint)crc; asm { crc32 c32, b; } crc = c32;)
     return ~(uint)crc;
 }
@@ -63,7 +64,7 @@ fn uint crc32c_hw8(char[] data)
 fn void main()
 {
     String s = "123456789";
-    assert(crc32c_soft(s) == 0xE306_9283);     // стандартный тестовый вектор
+    assert(crc32c_soft(s) == 0xE306_9283);     // the standard test vector
     assert(crc32c_hw(s) == 0xE306_9283);
     assert(crc32c_hw8(s) == 0xE306_9283);
     char[300] buf;

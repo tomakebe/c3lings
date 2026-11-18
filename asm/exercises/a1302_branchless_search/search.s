@@ -1,22 +1,22 @@
 # =====================================================================
-#  a1302 · Branchless-алгоритмы: подсчёт и бинарный поиск
+#  a1302 · Branchless algorithms: counting and binary search
 # =====================================================================
 #
-#  1. Подсчёт элементов меньше pivot. Ветвление «if (a[i] < p) count++»
-#     на случайных данных угадывается в половине случаев. Без ветвления:
+#  1. Counting elements less than pivot. The branch "if (a[i] < p) count++"
+#     on random data is guessed right half the time. Without a branch:
 #
 #         cmp   dword ptr [rdi + rcx*4], edx
 #         setl  r8b
-#         add   rax, r8          ; (r8 обнулён заранее, вне цикла,
-#                                 ;  setl меняет только младший байт)
+#         add   rax, r8          ; (r8 is zeroed in advance, outside the loop;
+#                                 ;  setl only changes the low byte)
 #
-#     Ещё изящнее — флаг переноса: после `cmp a, p` CF = 1, если a < p
-#     БЕЗЗНАКОВО. Для знакового сравнения так нельзя — используйте setl.
+#     Even more elegant is the carry flag: after `cmp a, p`, CF = 1 if a < p
+#     UNSIGNED. That doesn't work for a signed comparison — use setl.
 #
-#  2. Бинарный поиск (lower_bound — первый индекс i, где a[i] >= key).
-#     Классическая версия ветвится на каждом шаге случайным образом.
-#     Branchless-версия (см. статьи Paul Khuong, «Array layouts for
-#     comparison-based searching»):
+#  2. Binary search (lower_bound — the first index i where a[i] >= key).
+#     The classic version branches randomly at every step.
+#     The branchless version (see Paul Khuong's articles, "Array layouts for
+#     comparison-based searching"):
 #
 #         base = 0; len = n
 #         while (len > 1) {
@@ -24,16 +24,16 @@
 #             if (a[base + half - 1] < key) base += half   // <- cmov
 #             len -= half
 #         }
-#         if (len == 1 && a[base] < key) base++            // последний шаг
+#         if (len == 1 && a[base] < key) base++            // last step
 #         return base
 #
-#     Каждая итерация выполняется одинаково, переходов по данным нет —
-#     только цикл, число итераций которого = log2(n) (и предсказывается
-#     идеально). На больших массивах её ещё ускоряют prefetch'ем.
+#     Every iteration executes identically, there are no data-dependent jumps —
+#     only the loop, whose iteration count = log2(n) (and is predicted
+#     perfectly). On large arrays it is sped up further with prefetching.
 #
-#  ЗАДАЧА:
-#      count_less(a, n, pivot)  — без ветвлений в теле цикла
-#      lower_bound(a, n, key)   — по схеме выше, с cmov
+#  TASK:
+#      count_less(a, n, pivot)  — no branches in the loop body
+#      lower_bound(a, n, key)   — following the scheme above, with cmov
 #
     .intel_syntax noprefix
     .text
@@ -47,7 +47,7 @@ count_less:
     jmp 2f
 1:
     cmp dword ptr [rdi + rcx*4], edx
-    # TODO: прибавить 1 к rax, если элемент меньше pivot (setl)
+    # TODO: add 1 to rax if the element is less than pivot (setl)
     inc rcx
 2:
     cmp rcx, rsi
@@ -57,7 +57,7 @@ count_less:
 # long lower_bound(int* a /*rdi*/, long n /*rsi*/, int key /*edx*/)
     .globl lower_bound
 lower_bound:
-    # TODO: целиком
+    # TODO: the whole thing
     xor eax, eax
     ret
 

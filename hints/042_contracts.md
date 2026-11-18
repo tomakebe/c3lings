@@ -1,6 +1,6 @@
-1. `copy_ints` пишет в `dst` и читает из `src`. Запись в `[in]` и чтение из `[out]` запрещены —
-   поменяйте направления местами.
-2. Компилятор видит, что аргумент `isqrt` — отрицательная константа. Расстояние по теореме
-   Пифагора: корень из `DX*DX + DY*DY`.
-3. После этого `@ensure` поймает ошибку в `isqrt` во время выполнения: цикл делает на один шаг
-   больше. Увеличивайте `r`, только пока `(r + 1) * (r + 1) <= n`.
+1. `copy_ints` writes to `dst` and reads from `src`. Writing to an `[in]` and reading from an `[out]` are forbidden —
+   swap the directions.
+2. The compiler sees that the argument to `isqrt` is a negative constant. The distance by the Pythagorean
+   theorem: the square root of `DX*DX + DY*DY`.
+3. After that, `@ensure` will catch the bug in `isqrt` at runtime: the loop takes one step too
+   many. Only increase `r` while `(r + 1) * (r + 1) <= n`.

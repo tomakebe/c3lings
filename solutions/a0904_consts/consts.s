@@ -1,10 +1,10 @@
 # =====================================================================
-#  a0904 · Константы в .rodata, маски знака, sqrtsd, схема Горнера
+#  a0904 · Constants in .rodata, sign masks, sqrtsd, Horner's scheme
 # =====================================================================
 #
-#  У SSE нет «непосредственных» плавающих операндов: `addsd xmm0, 1.5`
-#  не существует. Константы кладут в секцию данных только для чтения и
-#  адресуют относительно RIP:
+#  SSE has no floating-point "immediate" operands: `addsd xmm0, 1.5`
+#  does not exist. Constants are placed in a read-only data section and
+#  addressed relative to RIP:
 #
 #          .section .rodata
 #          .p2align 3
@@ -14,28 +14,28 @@
 #          ...
 #          mulsd xmm0, qword ptr [rip + one_half]
 #
-#  (Можно ещё собрать константу в целом регистре и перебросить:
+#  (You can also build the constant in an integer register and move it over:
 #   mov rax, 0x3FE0000000000000; movq xmm1, rax.)
 #
-#  Модуль и смена знака делаются битовыми операциями над знаковым битом
-#  (бит 63 для double):
-#      fabs:  andpd xmm0, [маска 0x7FFFFFFFFFFFFFFF]
-#      fneg:  xorpd xmm0, [маска 0x8000000000000000]
-#  andpd/xorpd — «упакованные» (packed) инструкции, они работают со всеми
-#  128 битами, и их операнд в памяти ДОЛЖЕН быть выровнен на 16 байт
-#  (иначе — segfault). Поэтому маску кладут как 16-байтную константу с
-#  .p2align 4. Именно так делают GCC и Clang.
+#  Absolute value and negation are done with bit operations on the sign bit
+#  (bit 63 for a double):
+#      fabs:  andpd xmm0, [mask 0x7FFFFFFFFFFFFFFF]
+#      fneg:  xorpd xmm0, [mask 0x8000000000000000]
+#  andpd/xorpd are "packed" instructions: they operate on all 128 bits,
+#  and their memory operand MUST be 16-byte aligned (otherwise — segfault).
+#  So the mask is stored as a 16-byte constant with .p2align 4. This is
+#  exactly what GCC and Clang do.
 #
-#  sqrtsd xmm0, xmm1 — корень, корректно округлённый (IEEE 754).
+#  sqrtsd xmm0, xmm1 — square root, correctly rounded (IEEE 754).
 #
-#  Схема Горнера: p(x) = c0 + c1 x + c2 x^2 + ... + c_{n-1} x^{n-1}
+#  Horner's scheme: p(x) = c0 + c1 x + c2 x^2 + ... + c_{n-1} x^{n-1}
 #      acc = c[n-1]; for i = n-2 downto 0: acc = acc * x + c[i]
 #
-#  ЗАДАЧА: напишите функции.
-#      asm_fabs(x), asm_fneg(x)   — через маски из .rodata (см. ниже)
+#  TASK: write the functions.
+#      asm_fabs(x), asm_fneg(x)   — using the masks from .rodata (see below)
 #      vec2_length(x, y)          = sqrt(x*x + y*y)
 #      horner(c, n, x)            (n >= 1)
-#      circle_area(r)             = pi * r * r; pi — константа в .rodata
+#      circle_area(r)             = pi * r * r; pi is a constant in .rodata
 #                                   (.double 3.141592653589793)
 #
     .intel_syntax noprefix

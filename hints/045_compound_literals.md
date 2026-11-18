@@ -1,5 +1,5 @@
-1. Адрес временного значения (литерала) берётся оператором `&&`, а не `&`.
-2. Массив фиксированного размера внутри структуры копируется целиком: у `copy` свой массив.
-3. Указатель копируется как адрес: `copy.bonus` и `red.bonus` указывают на одну переменную.
-4. `reset_scores` получает копию структуры. Чтобы изменить оригинал, принимайте `Team*`
-   и передавайте `&blue`.
+1. The address of a temporary value (a literal) is taken with the `&&` operator, not `&`.
+2. A fixed-size array inside a struct is copied in full: `copy` has its own array.
+3. A pointer is copied as an address: `copy.bonus` and `red.bonus` point at the same variable.
+4. `reset_scores` receives a copy of the struct. To change the original, take a `Team*`
+   and pass `&blue`.

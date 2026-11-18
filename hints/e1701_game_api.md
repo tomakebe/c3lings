@@ -1,5 +1,5 @@
-`api_compatible`: null -> false; иначе сравните `magic` с API_MAGIC, `version` с API_VERSION
-и `size` с `GameApi::size` (так ловится модуль, собранный с другой версией заголовка).
-`reload`: получите `next = get_api()`; если несовместим — верните false, НЕ трогая `self.api`.
-Иначе: если старый api есть — `on_unload(&self.memory)`, затем `self.api = next`,
-`self.api.on_load(&self.memory)`, `reload_count++`, вернуть true.
+`api_compatible`: null -> false; otherwise compare `magic` with API_MAGIC, `version` with API_VERSION
+and `size` with `GameApi::size` (this catches a module built against a different version of the header).
+`reload`: get `next = get_api()`; if it's incompatible - return false WITHOUT touching `self.api`.
+Otherwise: if there's an old api - `on_unload(&self.memory)`, then `self.api = next`,
+`self.api.on_load(&self.memory)`, `reload_count++`, return true.

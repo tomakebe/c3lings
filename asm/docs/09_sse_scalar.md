@@ -1,19 +1,21 @@
-# Глава 09. Плавающая точка: скалярный SSE
+# Chapter 09. Floating point: scalar SSE
 
-В 64-битном коде x86 плавающая арифметика почти целиком живёт в блоке SSE:
-16 регистров `xmm0`–`xmm15` по 128 бит. Старый стековый сопроцессор x87
-(`fld`, `fadd`, `st0`…`st7`) остался ради совместимости и 80-битного
-`long double`, но компиляторы для `float`/`double` его не используют.
+In 64-bit x86 code, floating-point arithmetic lives almost entirely in the
+SSE unit: 16 registers `xmm0`–`xmm15`, 128 bits each. The old stack-based
+x87 coprocessor (`fld`, `fadd`, `st0`…`st7`) survives for compatibility and
+for the 80-bit `long double`, but compilers do not use it for
+`float`/`double`.
 
-В этой главе мы используем только **младшую часть** xmm-регистра —
-«скалярные» инструкции. В главе 10 те же регистры заработают как векторы.
+In this chapter we use only the **low part** of an xmm register — the
+"scalar" instructions. In chapter 10 the same registers start working as
+vectors.
 
-Упражнения: `a0901`–`a0905`.
+Exercises: `a0901`–`a0905`.
 
-## 1. IEEE 754 за две минуты
+## 1. IEEE 754 in two minutes
 
-`double` — 64 бита: 1 бит знака, 11 бит порядка, 52 бита мантиссы.
-`float` — 32 бита: 1 + 8 + 23.
+`double` is 64 bits: 1 sign bit, 11 exponent bits, 52 mantissa bits.
+`float` is 32 bits: 1 + 8 + 23.
 
 ```
 double 1.0  = 0x3FF0000000000000
@@ -21,50 +23,51 @@ double -2.5 = 0xC004000000000000
 float  1.0  = 0x3F800000
 ```
 
-Особые значения: `±0` (два нуля!), `±inf` (порядок из единиц, мантисса 0),
-`NaN` (порядок из единиц, мантисса не 0), денормализованные числа (порядок
-0). Важные следствия:
+Special values: `±0` (two zeros!), `±inf` (exponent all ones, mantissa 0),
+`NaN` (exponent all ones, mantissa non-zero), denormal numbers (exponent
+0). Important consequences:
 
-* `NaN != NaN`; любое сравнение с NaN, кроме `!=`, ложно.
-* `-0.0 == 0.0`, но `1 / -0.0 = -inf`.
-* Знак — это ровно старший бит, поэтому `fabs` и `-x` делаются битовыми
-  масками, а не арифметикой.
-* Сложение не ассоциативно: `(a + b) + c` может отличаться от
-  `a + (b + c)`. Поэтому компилятор **не имеет права** переставлять
-  плавающие операции (без `-ffast-math`, в c3c — без `-O5`), и это
-  сильно мешает векторизации редукций (глава 10).
-* Денормализованные числа на многих процессорах обрабатываются в десятки
-  раз медленнее (микрокод). Режимы FTZ/DAZ в MXCSR их отключают.
+* `NaN != NaN`; every comparison with NaN except `!=` is false.
+* `-0.0 == 0.0`, but `1 / -0.0 = -inf`.
+* The sign is exactly the top bit, so `fabs` and `-x` are done with bit
+  masks, not arithmetic.
+* Addition is not associative: `(a + b) + c` may differ from
+  `a + (b + c)`. That is why the compiler **is not allowed** to reorder
+  floating-point operations (without `-ffast-math`; in c3c, without
+  `-O5`), and this seriously hampers vectorization of reductions
+  (chapter 10).
+* On many processors denormal numbers are handled tens of times slower
+  (microcode). The FTZ/DAZ modes in MXCSR turn them off.
 
-## 2. Регистры и суффиксы
+## 2. Registers and suffixes
 
-Имя SSE-инструкции кодирует тип данных:
+The name of an SSE instruction encodes the data type:
 
-| Суффикс | Значение | Тип |
+| Suffix | Meaning | Type |
 |---|---|---|
-| `ss` | scalar single | один `float` в битах 0–31 |
-| `sd` | scalar double | один `double` в битах 0–63 |
-| `ps` | packed single | 4 `float` (глава 10) |
-| `pd` | packed double | 2 `double` (глава 10) |
+| `ss` | scalar single | one `float` in bits 0–31 |
+| `sd` | scalar double | one `double` in bits 0–63 |
+| `ps` | packed single | 4 `float`s (chapter 10) |
+| `pd` | packed double | 2 `double`s (chapter 10) |
 
-## 3. Основные инструкции
+## 3. Core instructions
 
-| Инструкция | Действие |
+| Instruction | Action |
 |---|---|
-| `movss xmm, m32` / `movsd xmm, m64` | загрузка; **обнуляет** остальные биты xmm |
-| `movss xmm, xmm` / `movsd xmm, xmm` | копирует только младший элемент, остальное сохраняет |
-| `movaps`/`movapd xmm, xmm` | копия всего регистра — так компиляторы копируют скаляры |
-| `movd`/`movq` | между xmm и целым регистром (`movq rax, xmm0`) |
-| `addsd`, `subsd`, `mulsd`, `divsd` | арифметика: `dst = dst op src` |
-| `sqrtsd xmm, xmm/m64` | корень, корректно округлённый |
-| `minsd`, `maxsd` | минимум/максимум (несимметричны для NaN!) |
-| `ucomisd`, `comisd` | сравнение → EFLAGS |
-| `cmpsd xmm, xmm, pred` | сравнение → маска из единиц/нулей в xmm |
-| `andpd`, `orpd`, `xorpd`, `andnpd` | битовые операции над всеми 128 битами |
-| `roundsd xmm, xmm, imm` | округление с явным режимом (SSE4.1) |
-| `cvt*` | преобразования, см. ниже |
+| `movss xmm, m32` / `movsd xmm, m64` | load; **zeroes** the remaining bits of xmm |
+| `movss xmm, xmm` / `movsd xmm, xmm` | copies only the low element, keeps the rest |
+| `movaps`/`movapd xmm, xmm` | copy of the whole register — this is how compilers copy scalars |
+| `movd`/`movq` | between xmm and an integer register (`movq rax, xmm0`) |
+| `addsd`, `subsd`, `mulsd`, `divsd` | arithmetic: `dst = dst op src` |
+| `sqrtsd xmm, xmm/m64` | square root, correctly rounded |
+| `minsd`, `maxsd` | minimum/maximum (asymmetric for NaN!) |
+| `ucomisd`, `comisd` | comparison → EFLAGS |
+| `cmpsd xmm, xmm, pred` | comparison → mask of all ones/zeros in xmm |
+| `andpd`, `orpd`, `xorpd`, `andnpd` | bitwise operations on all 128 bits |
+| `roundsd xmm, xmm, imm` | rounding with an explicit mode (SSE4.1) |
+| `cvt*` | conversions, see below |
 
-Пример: `double hyp(double x, double y) => sqrt(x*x + y*y);`
+Example: `double hyp(double x, double y) => sqrt(x*x + y*y);`
 
 ```asm
 hyp:
@@ -75,110 +78,113 @@ hyp:
     ret
 ```
 
-### AVX-формы
+### AVX forms
 
-С AVX у каждой SSE-инструкции появилась VEX-версия с префиксом `v` и
-**тремя** операндами: `vaddsd xmm0, xmm1, xmm2` (xmm0 = xmm1 + xmm2).
-Источники не портятся — меньше лишних `movapd`. Посмотрите вывод c3c:
-по умолчанию он компилирует под ваш процессор, и вы увидите именно
-`vaddsd`, `vucomisd` и т.д. Смешивать в одном регистре «старые» SSE и
-VEX-инструкции на некоторых процессорах дорого (см. `vzeroupper` в главе
-10); в скалярном коде под один стиль это не проблема.
+With AVX, every SSE instruction gained a VEX version with a `v` prefix and
+**three** operands: `vaddsd xmm0, xmm1, xmm2` (xmm0 = xmm1 + xmm2). The
+sources are not clobbered — fewer extra `movapd`s. Look at c3c's output:
+by default it compiles for your CPU, and you will see exactly `vaddsd`,
+`vucomisd` and so on. Mixing "legacy" SSE and VEX instructions on the
+same register is expensive on some CPUs (see `vzeroupper` in chapter 10);
+in scalar code written in a single style this is not a problem.
 
-## 4. ABI: плавающие аргументы
+## 4. ABI: floating-point arguments
 
 System V AMD64:
 
-* `float`/`double` аргументы — в `xmm0`…`xmm7`, **отдельная нумерация**
-  от целых (`rdi, rsi, rdx, rcx, r8, r9`);
-* возврат — в `xmm0` (для пары double в структуре — `xmm0:xmm1`);
-* **все** xmm-регистры caller-saved: после любого `call` их содержимое
-  потеряно;
-* у вариадических функций (`printf`) в `al` передаётся число
-  использованных векторных регистров.
+* `float`/`double` arguments go in `xmm0`…`xmm7`, **numbered separately**
+  from the integer ones (`rdi, rsi, rdx, rcx, r8, r9`);
+* the return value is in `xmm0` (for a pair of doubles in a struct,
+  `xmm0:xmm1`);
+* **all** xmm registers are caller-saved: after any `call` their contents
+  are lost;
+* for variadic functions (`printf`), `al` holds the number of vector
+  registers used.
 
 ```
 double mix(long k, double x, long m, float y)
             rdi       xmm0      rsi     xmm1
 ```
 
-Отсутствие callee-saved xmm-регистров — главное практическое отличие от
-целых регистров. Если ваша функция вызывает другую и держит в xmm живые
-значения, сохраняйте их на стеке (`movsd [rsp+8], xmm1`) или в
-целочисленном callee-saved регистре (`movq rbx, xmm1`). На Windows x64,
-напротив, `xmm6`–`xmm15` callee-saved — переносимый код это учитывает.
+The absence of callee-saved xmm registers is the main practical difference
+from integer registers. If your function calls another one and keeps live
+values in xmm, save them on the stack (`movsd [rsp+8], xmm1`) or in an
+integer callee-saved register (`movq rbx, xmm1`). On Windows x64, by
+contrast, `xmm6`–`xmm15` are callee-saved — portable code accounts for
+this.
 
-Выравнивание стека перед `call` по-прежнему 16 байт — и здесь это не
-формальность: вызываемая функция может использовать `movaps [rsp+...]`,
-требующий выравнивания, и упадёт.
+Stack alignment before `call` is still 16 bytes — and here it is not a
+formality: the callee may use `movaps [rsp+...]`, which requires
+alignment, and crash.
 
-## 5. Преобразования
+## 5. Conversions
 
-| Инструкция | Из → в | Округление |
+| Instruction | From → to | Rounding |
 |---|---|---|
-| `cvtsi2sd xmm, r/m32/64` | целое → double | по MXCSR (для больших long) |
-| `cvtsi2ss xmm, r/m32/64` | целое → float | по MXCSR |
-| `cvttsd2si r32/64, xmm/m64` | double → целое | **к нулю** (как приведение в C3) |
-| `cvtsd2si r32/64, xmm/m64` | double → целое | по MXCSR (по умолчанию к ближайшему чётному) |
-| `cvtss2sd`, `cvtsd2ss` | float ↔ double | по MXCSR |
-| `roundsd xmm, xmm, imm` | double → double | imm: 0 ближ., 1 вниз, 2 вверх, 3 к нулю |
+| `cvtsi2sd xmm, r/m32/64` | integer → double | per MXCSR (for large longs) |
+| `cvtsi2ss xmm, r/m32/64` | integer → float | per MXCSR |
+| `cvttsd2si r32/64, xmm/m64` | double → integer | **toward zero** (like a cast in C3) |
+| `cvtsd2si r32/64, xmm/m64` | double → integer | per MXCSR (round to nearest even by default) |
+| `cvtss2sd`, `cvtsd2ss` | float ↔ double | per MXCSR |
+| `roundsd xmm, xmm, imm` | double → double | imm: 0 nearest, 1 down, 2 up, 3 toward zero |
 
-Нюансы:
+Subtleties:
 
-* Округление к ближайшему **чётному**: `2.5 → 2`, `3.5 → 4`, `-2.5 → -2`.
-  Это не школьное правило, это стандарт IEEE («banker's rounding»),
-  уменьшающий систематическую ошибку при суммировании.
-* Если значение не помещается в целевой тип или это NaN, результат —
-  «integer indefinite» `0x8000...0` (`long.min`). В C3 переполнение при
-  приведении — неопределённое поведение, а на x86 вы получите именно это.
-* Беззнаковых преобразований `u64 ↔ double` в SSE нет (появились только в
-  AVX-512). Компиляторы строят их из нескольких инструкций — посмотрите на
-  `(double)x` для `ulong`.
-* `cvtsi2sd xmm0, rdi` меняет только младшие 64 бита и потому зависит от
-  старого значения xmm0. Компиляторы разрывают зависимость:
-  `xorps xmm0, xmm0` перед ней, или (как c3c/LLVM с AVX)
-  `vcvtsi2sd xmm0, xmm15, rdi` — берут «старшие биты» из давно не
-  тронутого регистра.
+* Round to nearest **even**: `2.5 → 2`, `3.5 → 4`, `-2.5 → -2`. This is
+  not the schoolbook rule; it is the IEEE standard ("banker's rounding"),
+  which reduces systematic error when summing.
+* If the value does not fit in the target type, or is NaN, the result is
+  the "integer indefinite" `0x8000...0` (`long.min`). In C3, overflow in a
+  cast is undefined behavior, and on x86 this is exactly what you get.
+* SSE has no unsigned `u64 ↔ double` conversions (they appeared only in
+  AVX-512). Compilers build them out of several instructions — look at
+  `(double)x` for a `ulong`.
+* `cvtsi2sd xmm0, rdi` changes only the low 64 bits and therefore depends
+  on the old value of xmm0. Compilers break the dependency: `xorps xmm0,
+  xmm0` before it, or (like c3c/LLVM with AVX) `vcvtsi2sd xmm0, xmm15,
+  rdi` — taking the "upper bits" from a register that hasn't been touched
+  in a long time.
 
-## 6. Сравнения
+## 6. Comparisons
 
-`ucomisd a, b` выставляет флаги как **беззнаковое** сравнение плюс PF для
-неупорядоченного результата:
+`ucomisd a, b` sets the flags like an **unsigned** comparison, plus PF for
+an unordered result:
 
-| Результат | ZF | PF | CF |
+| Result | ZF | PF | CF |
 |---|---|---|---|
 | a > b | 0 | 0 | 0 |
 | a < b | 0 | 0 | 1 |
 | a == b | 1 | 0 | 0 |
 | NaN | 1 | 1 | 1 |
 
-Отсюда правила:
+Hence the rules:
 
-* после `ucomisd` используйте `ja`/`jae`/`jb`/`jbe`/`je`, а не `jg`/`jl`;
-* NaN выглядит как «и меньше, и равно» — проверяйте `jp` первым, если
-  это важно;
-* `ja` и `jae` для NaN ложны — компиляторы этим пользуются: `a < b`
-  компилируется как `ucomisd b, a; seta al` (поменяли операнды местами);
-* `a == b` требует двух проверок (`ZF=1 и PF=0`): `sete al; setnp cl;
-  and al, cl` — или, как делает LLVM, `cmpeqsd` + извлечение бита.
+* after `ucomisd`, use `ja`/`jae`/`jb`/`jbe`/`je`, not `jg`/`jl`;
+* NaN looks like "both less and equal" — check `jp` first if that
+  matters;
+* `ja` and `jae` are false for NaN — compilers exploit this: `a < b`
+  compiles to `ucomisd b, a; seta al` (the operands are swapped);
+* `a == b` needs two checks (`ZF=1 and PF=0`): `sete al; setnp cl;
+  and al, cl` — or, as LLVM does, `cmpeqsd` + extracting a bit.
 
-`cmpsd xmm0, xmm1, pred` (`cmpltsd`, `cmpeqsd`, `cmpunordsd` …) вместо
-флагов кладёт в xmm0 маску из всех единиц или всех нулей. Это основа
-branchless-кода с плавающей точкой: `blend = (mask & a) | (~mask & b)`
-через `andpd`/`andnpd`/`orpd`, а с SSE4.1 — `blendvpd`.
+`cmpsd xmm0, xmm1, pred` (`cmpltsd`, `cmpeqsd`, `cmpunordsd` …) puts a
+mask of all ones or all zeros into xmm0 instead of setting flags. This is
+the basis of branchless floating-point code: `blend = (mask & a) | (~mask
+& b)` via `andpd`/`andnpd`/`orpd`, and with SSE4.1, `blendvpd`.
 
-### min и max
+### min and max
 
-`minsd dst, src` = `dst < src ? dst : src`. Если хотя бы один — NaN,
-результат — `src`; для `minsd(+0, -0)` — тоже `src`. Это не похоже на
-`fmin` из libm (который игнорирует NaN), зато в точности совпадает с
-выражением на C3 `a < b ? a : b` — поэтому компилятор превращает такое
-выражение в одну инструкцию. `clamp(x, lo, hi)` — это `maxsd` + `minsd`.
+`minsd dst, src` = `dst < src ? dst : src`. If at least one is NaN, the
+result is `src`; for `minsd(+0, -0)` it is also `src`. This is not like
+`fmin` from libm (which ignores NaN), but it matches the C3 expression
+`a < b ? a : b` exactly — which is why the compiler turns such an
+expression into a single instruction. `clamp(x, lo, hi)` is `maxsd` +
+`minsd`.
 
-## 7. Константы
+## 7. Constants
 
-Плавающих непосредственных операндов нет. Константы живут в `.rodata` и
-адресуются относительно `rip`:
+There are no floating-point immediate operands. Constants live in
+`.rodata` and are addressed relative to `rip`:
 
 ```asm
     .section .rodata
@@ -187,7 +193,7 @@ sign_mask: .quad 0x8000000000000000, 0x8000000000000000
 pi:        .double 3.141592653589793
     .text
 fneg:
-    xorpd xmm0, xmmword ptr [rip + sign_mask]   # нужен выровненный адрес!
+    xorpd xmm0, xmmword ptr [rip + sign_mask]   # needs an aligned address!
     ret
 area:
     mulsd xmm0, xmm0
@@ -195,67 +201,67 @@ area:
     ret
 ```
 
-Инструкции с `pd`/`ps` (не VEX) требуют, чтобы операнд в памяти был
-выровнен на 16 байт, иначе — `SIGSEGV` (general protection). Скалярные
-`mulsd xmm, m64` выравнивания не требуют. VEX-формы (`vxorpd`) тоже не
-требуют — это одно из их преимуществ.
+Instructions with `pd`/`ps` (non-VEX) require the memory operand to be
+16-byte aligned, otherwise you get `SIGSEGV` (general protection). The
+scalar `mulsd xmm, m64` does not require alignment. VEX forms (`vxorpd`)
+don't either — that is one of their advantages.
 
-Альтернатива без памяти: `mov rax, 0x400921FB54442D18; movq xmm1, rax`.
-`0.0` получается `xorps xmm0, xmm0`, а «все единицы» —
+An alternative without memory: `mov rax, 0x400921FB54442D18; movq xmm1,
+rax`. `0.0` is obtained with `xorps xmm0, xmm0`, and "all ones" with
 `pcmpeqd xmm0, xmm0`.
 
-## 8. Что выдаёт компилятор
+## 8. What the compiler emits
 
-Несколько функций и их `-O3`-вывод из c3c (AT&T-синтаксис переведён в
-Intel; c3c по умолчанию компилирует под текущий процессор, поэтому AVX):
+A few functions and their `-O3` output from c3c (AT&T syntax converted to
+Intel; c3c compiles for the current CPU by default, hence AVX):
 
-| C3 | Ассемблер |
+| C3 | Assembly |
 |---|---|
 | `a < b` (double) | `vucomisd xmm1, xmm0; seta al` |
 | `a == b` | `vcmpeqsd xmm0, xmm0, xmm1; vmovq rax, xmm0; and eax, 1` |
 | `a < 0 ? -a : a` | `vxorpd xmm1, xmm0, [rip+mask]; vmaxsd xmm0, xmm1, xmm0` |
 | `(long)a` | `vcvttsd2si rax, xmm0` |
 | `(double)n` | `vcvtsi2sd xmm0, xmm15, rdi` |
-| `a * b + c` (float) | `vmulss` + `vaddss` (без `-O5` FMA не сливается: другой результат округления!) |
+| `a * b + c` (float) | `vmulss` + `vaddss` (without `-O5` no FMA fusion: a different rounding result!) |
 
-Последняя строка важна: `fma(a, b, c)` округляет один раз, а `a*b + c` —
-дважды. Компилятор не имеет права молча подменить одно другим, если это
-не разрешено флагами «быстрой математики».
+The last row matters: `fma(a, b, c)` rounds once, while `a*b + c` rounds
+twice. The compiler is not allowed to silently substitute one for the
+other unless "fast math" flags permit it.
 
-## 9. Подводные камни
+## 9. Pitfalls
 
-* Перепутанный порядок операндов в `subsd`/`divsd`.
-* `jg`/`jl` после `ucomisd` — всегда неверно.
-* Забытый `jp` там, где NaN важен.
-* Живые значения в xmm через `call` — потеряны.
-* Невыровненный операнд в памяти у `andpd`/`xorpd`/`movaps`.
-* `movsd xmm0, xmm1` не обнуляет старшую половину, а `movsd xmm0, [mem]` —
-  обнуляет. Аналогично `movss`.
-* Сравнение плавающих чисел на точное равенство — почти всегда ошибка в
-  логике программы (а не в ассемблере); в тестах мы используем значения,
-  точно представимые в двоичной системе (0.5, 0.25, 7.75).
+* Swapped operand order in `subsd`/`divsd`.
+* `jg`/`jl` after `ucomisd` — always wrong.
+* A forgotten `jp` where NaN matters.
+* Live values in xmm across a `call` — lost.
+* An unaligned memory operand for `andpd`/`xorpd`/`movaps`.
+* `movsd xmm0, xmm1` does not zero the upper half, but `movsd xmm0, [mem]`
+  does. The same goes for `movss`.
+* Comparing floating-point numbers for exact equality is almost always a
+  bug in the program's logic (not in the assembly); in the tests we use
+  values that are exactly representable in binary (0.5, 0.25, 7.75).
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. В каких регистрах придут аргументы `f(int a, float b, double* c, double d)`?
-2. Почему после `ucomisd` используют `ja`, а не `jg`?
-3. Что вернёт `cvtsd2si` для 2.5 и для -3.5? А `cvttsd2si`?
-4. Почему `(long)1e300` на x86 даёт отрицательное число?
-5. Как вычислить `fabs(x)` одной инструкцией? Почему её операнд в памяти
-   должен быть выровнен?
-6. Какие xmm-регистры сохраняются через вызов функции в System V? А в
-   Windows x64?
-7. Чем `minsd` отличается от `fmin` для NaN?
-8. Зачем компилятор пишет `xorps xmm0, xmm0` перед `cvtsi2sd xmm0, rdi`?
+1. In which registers do the arguments of `f(int a, float b, double* c, double d)` arrive?
+2. Why use `ja` rather than `jg` after `ucomisd`?
+3. What does `cvtsd2si` return for 2.5 and for -3.5? And `cvttsd2si`?
+4. Why does `(long)1e300` give a negative number on x86?
+5. How do you compute `fabs(x)` with a single instruction? Why must its
+   memory operand be aligned?
+6. Which xmm registers are preserved across a function call in System V?
+   And in Windows x64?
+7. How does `minsd` differ from `fmin` for NaN?
+8. Why does the compiler emit `xorps xmm0, xmm0` before `cvtsi2sd xmm0, rdi`?
 
-## Что почитать
+## Further reading
 
-* David Goldberg, «What Every Computer Scientist Should Know About
-  Floating-Point Arithmetic» (1991) — классика.
-* Intel SDM Vol. 1, гл. 10–11 (SSE/SSE2) и Vol. 2 — описания `UCOMISD`,
-  `CVTSD2SI`, `MINSD`.
-* System V AMD64 ABI, раздел 3.2.3 «Parameter Passing».
-* Agner Fog, «Optimizing subroutines in assembly language», гл. про
-  плавающую точку; «Calling conventions for different C++ compilers».
-* Bruce Dawson, серия «Comparing Floating Point Numbers» (randomascii.wordpress.com).
-* https://float.exposed — побитовая визуализация float/double.
+* David Goldberg, "What Every Computer Scientist Should Know About
+  Floating-Point Arithmetic" (1991) — a classic.
+* Intel SDM Vol. 1, ch. 10–11 (SSE/SSE2) and Vol. 2 — descriptions of
+  `UCOMISD`, `CVTSD2SI`, `MINSD`.
+* System V AMD64 ABI, section 3.2.3 "Parameter Passing".
+* Agner Fog, "Optimizing subroutines in assembly language", the chapter on
+  floating point; "Calling conventions for different C++ compilers".
+* Bruce Dawson, the "Comparing Floating Point Numbers" series (randomascii.wordpress.com).
+* https://float.exposed — bit-level visualization of float/double.

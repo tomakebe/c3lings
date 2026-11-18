@@ -1,4 +1,4 @@
-// Драйвер упражнения a1401. Этот файл НЕ нужно править — правьте tsc.s.
+// Driver for exercise a1401. You do NOT need to edit this file — edit tsc.s.
 import std::io;
 
 extern fn ulong read_tsc();
@@ -21,7 +21,7 @@ fn void main()
     ulong t2 = read_tscp(&aux);
     assert(t2 >= prev && t2 - prev < 1UL << 40);
     assert(aux != 0xFFFF_FFFF, "rdtscp must store IA32_TSC_AUX (ecx)");
-    // Время зависит от машины, поэтому печатаем только факты.
+    // Timing depends on the machine, so we print only facts.
     io::printn("tsc is monotonic: true");
     io::printn("rdtscp aux written: true");
 }

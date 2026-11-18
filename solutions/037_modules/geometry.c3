@@ -1,4 +1,4 @@
-// Модуль geometry: базовые типы и функции.
+// The geometry module: basic types and functions.
 module geometry;
 
 const float PI = 3.14159;

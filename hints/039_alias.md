@@ -1,4 +1,4 @@
-1. Тип указателя на функцию — это объявление функции без имени: `fn ВОЗВРАТ(ПАРАМЕТРЫ)`.
-2. Синоним функции объявляется так же, как синоним типа: `alias имя = модуль::функция;`
-   (имя со строчной буквы).
-3. Чтобы передать функцию как значение, нужно взять её адрес оператором `&`.
+1. A function pointer type is a function declaration without a name: `fn RETURN(PARAMETERS)`.
+2. A function synonym is declared just like a type synonym: `alias name = module::function;`
+   (the name starts with a lowercase letter).
+3. To pass a function as a value, take its address with the `&` operator.

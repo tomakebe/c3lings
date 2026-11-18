@@ -1,36 +1,36 @@
-# Глава 15. Финал: JIT-компилятор
+# Chapter 15. Finale: a JIT compiler
 
-JIT (just-in-time) компилятор порождает машинный код **во время работы
-программы** и сразу его выполняет. Так работают JavaScript-движки (V8,
-SpiderMonkey), JVM, .NET, LuaJIT, PyPy, эмуляторы (Dolphin, QEMU),
-регулярные выражения (PCRE-JIT), базы данных (компиляция запросов в
-PostgreSQL/LLVM), шейдерные компиляторы в драйверах GPU и
-скриптовые системы игровых движков.
+A JIT (just-in-time) compiler generates machine code **while the program
+is running** and executes it immediately. This is how JavaScript engines
+(V8, SpiderMonkey), the JVM, .NET, LuaJIT, PyPy, emulators (Dolphin, QEMU),
+regular expressions (PCRE-JIT), databases (query compilation in
+PostgreSQL/LLVM), shader compilers in GPU drivers and the scripting
+systems of game engines work.
 
-Эта глава собирает всё, что было в треке: кодирование инструкций (главы
-01–08), ABI (05–06), системные вызовы и права страниц (12), вызов кода
-хоста с выравниванием стека (05, 09) — и даёт мост к главе про скрипты в
-треке по движкам.
+This chapter brings together everything from the track: instruction
+encoding (chapters 01–08), the ABI (05–06), system calls and page
+permissions (12), calling host code with an aligned stack (05, 09) — and
+builds a bridge to the scripting chapter of the engine track.
 
-Упражнения: `a1501`–`a1505`.
+Exercises: `a1501`–`a1505`.
 
-## 1. Общая схема
+## 1. The overall scheme
 
 ```
-исходный текст / байт-код ──► кодогенератор ──► буфер байтов
+source text / bytecode ──► code generator ──► byte buffer
                                                    │ mmap(RW), memcpy
                                                    ▼
-                                    страница RW ──mprotect──► страница RX
+                                       RW page ──mprotect──► RX page
                                                                  │
-                                                  указатель на функцию ──► вызов
+                                                function pointer ──► call
 ```
 
-1. **Фронтенд** разбирает программу (у нас — готовый байт-код).
-2. **Кодогенератор** превращает каждую операцию в байты x86-64 и пишет их
-   в обычный массив.
-3. **Загрузчик** выделяет страницы `mmap(PROT_READ|PROT_WRITE)`, копирует
-   код, переключает права на `PROT_READ|PROT_EXEC` (W^X).
-4. Адрес страницы приводится к типу функции и вызывается:
+1. The **front end** parses the program (in our case it is ready-made bytecode).
+2. The **code generator** turns each operation into x86-64 bytes and writes
+   them into an ordinary array.
+3. The **loader** allocates pages with `mmap(PROT_READ|PROT_WRITE)`, copies
+   the code in, and switches the permissions to `PROT_READ|PROT_EXEC` (W^X).
+4. The page address is cast to a function type and called:
 
 ```c3
 alias JitFn = fn long(long);
@@ -38,48 +38,49 @@ JitFn f = (JitFn)code;
 long r = f(42);
 ```
 
-## 2. Кодирование инструкций x86-64
+## 2. x86-64 instruction encoding
 
 ```
-[префиксы] [REX] [опкод 1–3 байта] [ModRM] [SIB] [disp 0/1/4] [imm 0/1/2/4/8]
+[prefixes] [REX] [opcode 1–3 bytes] [ModRM] [SIB] [disp 0/1/4] [imm 0/1/2/4/8]
 ```
 
 ### REX
 
 `0100 W R X B`:
 
-| Бит | Смысл |
+| Bit | Meaning |
 |---|---|
-| W | 64-битный операнд (`0x48`) |
-| R | 4-й бит поля ModRM.reg |
-| X | 4-й бит SIB.index |
-| B | 4-й бит ModRM.rm / SIB.base / регистра в опкоде |
+| W | 64-bit operand (`0x48`) |
+| R | 4th bit of the ModRM.reg field |
+| X | 4th bit of SIB.index |
+| B | 4th bit of ModRM.rm / SIB.base / a register encoded in the opcode |
 
-Регистры `r8`–`r15` нумеруются 8–15; младшие 3 бита идут в ModRM, 4-й — в
-REX. Поэтому `push r12` = `41 54` (REX.B + `50+4`), а `push rsp` = `54`.
+Registers `r8`–`r15` are numbered 8–15; the low 3 bits go into ModRM and
+the 4th bit goes into REX. That is why `push r12` = `41 54` (REX.B + `50+4`),
+while `push rsp` = `54`.
 
-### ModRM и SIB
+### ModRM and SIB
 
 `ModRM = mod(2) | reg(3) | rm(3)`:
 
-| mod | Значение rm |
+| mod | Meaning of rm |
 |---|---|
-| 11 | регистр |
+| 11 | register |
 | 00 | `[rm]` (rm=101 → `[rip + disp32]`, rm=100 → SIB) |
 | 01 | `[rm + disp8]` |
 | 10 | `[rm + disp32]` |
 
 `SIB = scale(2) | index(3) | base(3)`, scale 00/01/10/11 = ×1/2/4/8.
-Особые случаи: `rsp`/`r12` как база требуют SIB, `rbp`/`r13` как база
-без смещения требуют `mod=01` с `disp8 = 0`.
+Special cases: `rsp`/`r12` as a base require a SIB byte; `rbp`/`r13` as a
+base with no displacement require `mod=01` with `disp8 = 0`.
 
-Поле `reg` либо задаёт второй регистр, либо — у «групповых» опкодов —
-расширяет опкод (`/digit` в документации): `F7 /3` = `neg`, `F7 /2` =
-`not`, `FF /2` = `call r/m`, `FF /6` = `push r/m`.
+The `reg` field either names a second register or — for "group" opcodes —
+extends the opcode (`/digit` in the documentation): `F7 /3` = `neg`,
+`F7 /2` = `not`, `FF /2` = `call r/m`, `FF /6` = `push r/m`.
 
-### Примеры
+### Examples
 
-| Инструкция | Байты | Разбор |
+| Instruction | Bytes | Breakdown |
 |---|---|---|
 | `ret` | `C3` | |
 | `mov eax, 42` | `B8 2A 00 00 00` | `B8+r`, imm32 |
@@ -87,7 +88,7 @@ REX. Поэтому `push r12` = `41 54` (REX.B + `50+4`), а `push rsp` = `54`.
 | `mov r11, imm64` | `49 BB imm64` | REX.W+B, `B8+3` |
 | `add rax, rcx` | `48 01 C8` | `01 /r`: reg=rcx(1), rm=rax(0) |
 | `add r10, rdx` | `49 01 D2` | REX.W+B, reg=rdx(2), rm=r10(2) |
-| `imul rax, rcx` | `48 0F AF C1` | `0F AF /r`: reg=rax — приёмник! |
+| `imul rax, rcx` | `48 0F AF C1` | `0F AF /r`: reg=rax — the destination! |
 | `lea rax, [rdi+rsi]` | `48 8D 04 37` | mod=00 rm=100 → SIB(1, rsi, rdi) |
 | `push qword [rbp-8]` | `FF 75 F8` | `FF /6`, mod=01 rm=101, disp8=-8 |
 | `pop qword [rbp-16]` | `8F 45 F0` | `8F /0` |
@@ -98,154 +99,156 @@ REX. Поэтому `push r12` = `41 54` (REX.B + `50+4`), а `push rsp` = `54`.
 | `call rax` | `FF D0` | `FF /2`, mod=11 |
 | `leave` | `C9` | `mov rsp, rbp; pop rbp` |
 
-Как проверить себя — спросить у ассемблера:
+How to check yourself — ask the assembler:
 
 ```
 echo 'imul r12, rbx' | as -msyntax=intel -mnaked-reg -o /tmp/x.o && objdump -d -M intel /tmp/x.o
 ```
 
-В `a1503` тот же принцип автоматизирован: эталонные инструкции собраны
-GNU as в `ref.s`, драйвер сравнивает байты вашего эмиттера с ними.
+In `a1503` the same idea is automated: the reference instructions are
+assembled by GNU as in `ref.s`, and the driver compares your emitter's
+bytes against them.
 
-### Относительные переходы
+### Relative jumps
 
-`jmp`/`jcc`/`call` с `rel8`/`rel32` прыгают на адрес
-**конца инструкции** + смещение. Для перехода вперёд адрес цели ещё не
-известен — пишем заглушку и запоминаем, куда вернуться («fixup»), а после
-генерации дописываем (backpatching). Так работают и ассемблеры, и
-линкеры (релокации — это те же заплатки, только в файле).
+`jmp`/`jcc`/`call` with `rel8`/`rel32` jump to the address of the
+**end of the instruction** + the offset. For a forward jump the target
+address is not known yet — we write a placeholder and remember where to
+come back to (a "fixup"), and after code generation we fill it in
+(backpatching). Assemblers and linkers work the same way (relocations
+are the same patches, just stored in a file).
 
-## 3. Кодогенерация для стековой машины
+## 3. Code generation for a stack machine
 
-Самая простая схема — **стек байт-кода = машинный стек**:
+The simplest scheme is **bytecode stack = machine stack**:
 
-| Байт-код | Машинный код |
+| Bytecode | Machine code |
 |---|---|
 | `CONST k` | `mov rax, k; push rax` |
-| `ARG` | `push rdi` (или из кадра) |
+| `ARG` | `push rdi` (or from the frame) |
 | `ADD` | `pop rcx; pop rax; add rax, rcx; push rax` |
 | `LT` | `pop rcx; pop rax; cmp rax, rcx; setl al; movzx eax, al; push rax` |
 | `JZ t` | `pop rax; test rax, rax; jz rel32` |
 | `LOAD i` | `push qword [rbp - 16 - 8i]` |
 | `RET` | `pop rax; leave; ret` |
 
-Это «шаблонный» (template) JIT: каждая операция — фиксированный кусок
-кода. Он уже в 3–10 раз быстрее интерпретатора, потому что исчезают
-диспетчеризация (`switch` или косвенный переход на каждую операцию),
-декодирование операндов и обращения к массиву-стеку. Ранние JIT
-(первые версии V8, «baseline»-компиляторы) устроены именно так.
+This is a "template" JIT: every operation is a fixed chunk of code. It is
+already 3–10 times faster than an interpreter, because dispatch (a
+`switch` or an indirect jump per operation), operand decoding and
+accesses to the stack array all disappear. Early JITs (the first
+versions of V8, "baseline" compilers) are built exactly like this.
 
-Следующие шаги — каждый даёт кратный выигрыш:
+The next steps — each one gives a multiplicative speedup:
 
-* **Кеширование вершины стека в регистре** (TOS caching): держать
-  вершину в `rax`, тогда `CONST; ADD` → `add rax, imm`.
-* **Распределение регистров**: перевести стековый код в форму с
-  виртуальными регистрами (SSA) и раздать им физические регистры —
-  линейное сканирование (linear scan) быстро и даёт хороший результат.
-* **Свёртка констант и peephole-оптимизации** по окну из нескольких
-  инструкций.
-* **Специализация по типам** (для динамических языков): inline-кеши,
-  трассы (LuaJIT, TraceMonkey), деоптимизация при нарушении допущений.
-* Многоуровневость: интерпретатор → быстрый baseline-JIT → оптимизирующий
-  JIT для «горячих» функций (V8: Ignition → Sparkplug → Maglev → TurboFan).
+* **Top-of-stack caching** (TOS caching): keep the top of the stack in
+  `rax`, so that `CONST; ADD` → `add rax, imm`.
+* **Register allocation**: translate the stack code into a form with
+  virtual registers (SSA) and assign physical registers to them —
+  linear scan is fast and gives good results.
+* **Constant folding and peephole optimizations** over a window of a few
+  instructions.
+* **Type specialization** (for dynamic languages): inline caches,
+  traces (LuaJIT, TraceMonkey), deoptimization when assumptions are violated.
+* Tiering: interpreter → fast baseline JIT → optimizing JIT for "hot"
+  functions (V8: Ignition → Sparkplug → Maglev → TurboFan).
 
-## 4. Вызов кода хоста из сгенерированного кода
+## 4. Calling host code from generated code
 
-Скрипту нужны функции движка: «нанести урон», «найти ближайшего врага»,
-«проиграть звук». Из JIT-кода это обычный вызов по ABI System V:
+A script needs engine functions: "deal damage", "find the nearest enemy",
+"play a sound". From JIT code this is an ordinary System V ABI call:
 
 ```asm
-pop  rdi                ; аргумент
+pop  rdi                ; argument
 mov  rax, rsp
-and  rsp, -16           ; выравнивание стека на 16 перед call
-push rax                ; сохранить старый rsp (дважды — чтобы rsp
-push rax                ; остался кратным 16)
-mov  rax, <адрес функции хоста>
+and  rsp, -16           ; align the stack to 16 before call
+push rax                ; save the old rsp (twice — so that rsp
+push rax                ; stays a multiple of 16)
+mov  rax, <host function address>
 call rax
-pop  rsp                ; восстановить rsp
-push rax                ; результат
+pop  rsp                ; restore rsp
+push rax                ; result
 ```
 
-Важно:
+Important:
 
-* выравнивание — обязательно: функция хоста может использовать `movaps`
-  на стеке (глава 09);
-* все caller-saved регистры (`rax, rcx, rdx, rsi, rdi, r8–r11`, все xmm)
-  после вызова испорчены — живые значения держите в кадре или в
-  callee-saved регистрах;
-* `call rel32` к функции хоста работает, только если она в пределах
-  ±2 ГиБ от JIT-кода — `mmap` такой гарантии не даёт, поэтому
-  используют `mov rax, imm64; call rax` или таблицу адресов;
-* если JIT-код сам использует callee-saved регистры (`rbx`, `r12`–`r15`),
-  он обязан сохранить их в прологе.
+* alignment is mandatory: the host function may use `movaps` on the
+  stack (chapter 09);
+* all caller-saved registers (`rax, rcx, rdx, rsi, rdi, r8–r11`, all xmm)
+  are clobbered after the call — keep live values in the frame or in
+  callee-saved registers;
+* `call rel32` to a host function only works if it is within ±2 GiB of
+  the JIT code — `mmap` gives no such guarantee, so people use
+  `mov rax, imm64; call rax` or an address table;
+* if the JIT code itself uses callee-saved registers (`rbx`, `r12`–`r15`),
+  it must save them in the prologue.
 
-## 5. Безопасность и эксплуатация
+## 5. Security and operations
 
-* **W^X**: страница никогда не бывает одновременно записываемой и
-  исполняемой. Иначе уязвимость записи в память превращается в
-  исполнение произвольного кода. На macOS (Apple Silicon) это навязано
-  аппаратно (`MAP_JIT`, `pthread_jit_write_protect_np`); в SELinux —
-  политикой `execmem`.
-* **Двойное отображение**: одна и та же физическая память отображается
-  дважды — по одному адресу RW (для записи), по другому RX (для
-  исполнения), через `memfd_create` + два `mmap`. Так JIT может
-  дописывать код, не переключая права.
-* **Кеш инструкций**: на x86 после записи кода ничего делать не нужно —
-  процессор отслеживает самомодификацию (дорого, если писать в страницу,
-  которая сейчас исполняется!). На ARM — обязательна очистка кеша
-  инструкций.
-* **Отладка**: gdb и perf не знают о сгенерированном коде. Для perf есть
-  соглашение `/tmp/perf-<pid>.map` (адрес, размер, имя), для gdb —
-  JIT-интерфейс `__jit_debug_register_code`. Для простых случаев —
-  выгрузите буфер в файл и дизассемблируйте:
+* **W^X**: a page is never writable and executable at the same time.
+  Otherwise a memory-write vulnerability turns into arbitrary code
+  execution. On macOS (Apple Silicon) this is enforced in hardware
+  (`MAP_JIT`, `pthread_jit_write_protect_np`); on SELinux — by the
+  `execmem` policy.
+* **Dual mapping**: the same physical memory is mapped twice — at one
+  address as RW (for writing), at another as RX (for execution), via
+  `memfd_create` + two `mmap` calls. This lets the JIT append code
+  without switching permissions.
+* **Instruction cache**: on x86 nothing needs to be done after writing
+  code — the processor tracks self-modification (expensive if you write
+  to a page that is currently executing!). On ARM, flushing the
+  instruction cache is mandatory.
+* **Debugging**: gdb and perf know nothing about generated code. For perf
+  there is the `/tmp/perf-<pid>.map` convention (address, size, name); for
+  gdb, the JIT interface `__jit_debug_register_code`. For simple cases,
+  dump the buffer to a file and disassemble it:
   `objdump -D -b binary -m i386:x86-64 -M intel code.bin`.
-* **Ограничения и проверки**: байт-код из недоверенного источника
-  проверяют до компиляции (корректность стека, границы локальных
-  переменных, допустимые цели переходов), иначе JIT сгенерирует
-  произвольный машинный код по указке злоумышленника.
+* **Limits and validation**: bytecode from an untrusted source is
+  validated before compilation (stack correctness, local variable
+  bounds, valid jump targets); otherwise the JIT will generate arbitrary
+  machine code at an attacker's direction.
 
-## 6. Мост к треку по движкам
+## 6. A bridge to the engine track
 
-В главе про скрипты трека `engine/` вы будете проектировать скриптовую
-систему игры. Решения, которые там придётся принять, теперь понятны
-«изнутри»:
+In the scripting chapter of the `engine/` track you will design a game's
+scripting system. The decisions you will have to make there are now
+understandable "from the inside":
 
-* интерпретатор байт-кода — переносимо, просто, безопасно, медленнее;
-* JIT — быстро, но платформенно-зависимо и запрещено на некоторых
-  платформах (iOS, консоли — исполняемую память выделять нельзя);
-* AOT-компиляция скриптов в нативный код при сборке игры (например,
-  трансляция в C3 или C) — компромисс, который выбирают многие движки;
-* граница «скрипт ↔ движок» (вызовы хоста) — место, где теряется
-  производительность и где нужна чёткая ABI.
+* a bytecode interpreter — portable, simple, safe, slower;
+* a JIT — fast, but platform-dependent and forbidden on some platforms
+  (iOS, consoles — you cannot allocate executable memory);
+* AOT compilation of scripts to native code at game build time (for
+  example, translation to C3 or C) — a compromise many engines choose;
+* the "script ↔ engine" boundary (host calls) — the place where
+  performance is lost and where a clear ABI is needed.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Из каких частей состоит инструкция x86-64? Что такое REX.W, REX.R, REX.B?
-2. Закодируйте вручную `add rbx, r14` и `imul r12, rbx`. Почему у этих двух
-   инструкций приёмник находится в разных полях ModRM?
-3. Почему `push rsp` и `push r12` отличаются одним байтом REX?
-4. От какого адреса отсчитывается `rel32` в `jmp`? Как сгенерировать
-   переход вперёд, если адрес цели ещё неизвестен?
-5. Зачем нужен `mprotect` после записи кода? Что такое W^X?
-6. Как из JIT-кода корректно вызвать функцию C3, если глубина стека в
-   этот момент произвольна?
-7. Почему шаблонный JIT быстрее интерпретатора? Что дальше даёт
-   распределение регистров?
-8. Как увидеть сгенерированный код в дизассемблере?
+1. What parts does an x86-64 instruction consist of? What are REX.W, REX.R, REX.B?
+2. Encode `add rbx, r14` and `imul r12, rbx` by hand. Why is the destination
+   of these two instructions in different ModRM fields?
+3. Why do `push rsp` and `push r12` differ by one REX byte?
+4. From which address is the `rel32` in `jmp` measured? How do you
+   generate a forward jump when the target address is not yet known?
+5. Why is `mprotect` needed after writing the code? What is W^X?
+6. How do you correctly call a C3 function from JIT code when the stack
+   depth at that moment is arbitrary?
+7. Why is a template JIT faster than an interpreter? What does register
+   allocation add on top of that?
+8. How do you view the generated code in a disassembler?
 
-## Что почитать
+## Further reading
 
-* Intel SDM Vol. 2, гл. 2 «Instruction Format» и приложение A (таблицы
-  опкодов); https://www.felixcloutier.com/x86/ — удобная HTML-версия.
-* https://wiki.osdev.org/X86-64_Instruction_Encoding — сжатый справочник
-  по кодированию.
-* Eli Bendersky, «How to JIT — an introduction» и серия «Adventures in JIT
-  compilation» (eli.thegreenplace.net).
-* Robert Nystrom, «Crafting Interpreters» (craftinginterpreters.com) —
-  байт-код, стековые VM; естественное продолжение этой главы.
-* Mike Pall, заметки о LuaJIT (luajit.org) и исходники DynASM — эмиттер,
-  встроенный в C-код.
-* Блог V8 (v8.dev/blog): «Sparkplug — a non-optimizing JavaScript compiler».
-* Massimiliano Poletto, Vivek Sarkar, «Linear Scan Register Allocation».
-* Josh Haberman, «Parsing Protobuf at 2+GB/s: How I Learned To Love Tail
-  Calls in C» — когда интерпретатор почти догоняет JIT.
+* Intel SDM Vol. 2, ch. 2 "Instruction Format" and Appendix A (opcode
+  tables); https://www.felixcloutier.com/x86/ — a convenient HTML version.
+* https://wiki.osdev.org/X86-64_Instruction_Encoding — a concise
+  encoding reference.
+* Eli Bendersky, "How to JIT — an introduction" and the series "Adventures
+  in JIT compilation" (eli.thegreenplace.net).
+* Robert Nystrom, "Crafting Interpreters" (craftinginterpreters.com) —
+  bytecode, stack VMs; the natural continuation of this chapter.
+* Mike Pall, notes on LuaJIT (luajit.org) and the DynASM sources — an
+  emitter embedded in C code.
+* The V8 blog (v8.dev/blog): "Sparkplug — a non-optimizing JavaScript compiler".
+* Massimiliano Poletto, Vivek Sarkar, "Linear Scan Register Allocation".
+* Josh Haberman, "Parsing Protobuf at 2+GB/s: How I Learned To Love Tail
+  Calls in C" — when an interpreter almost catches up with a JIT.

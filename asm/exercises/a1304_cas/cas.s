@@ -1,34 +1,34 @@
 # =====================================================================
-#  a1304 · Compare-and-swap: lock cmpxchg и CAS-циклы
+#  a1304 · Compare-and-swap: lock cmpxchg and CAS loops
 # =====================================================================
 #
-#  `lock cmpxchg [mem], r` — главная атомарная инструкция:
+#  `lock cmpxchg [mem], r` is the key atomic instruction:
 #
-#      если [mem] == rax:  [mem] = r,   ZF = 1
-#      иначе:              rax = [mem], ZF = 0
+#      if [mem] == rax:  [mem] = r,   ZF = 1
+#      otherwise:        rax = [mem], ZF = 0
 #
-#  (rax — неявный операнд: «ожидаемое» значение.) Всё — атомарно.
-#  Через CAS выражается любая атомарная операция: читаем старое
-#  значение, вычисляем новое, пытаемся записать; если кто-то успел
-#  изменить ячейку — cmpxchg вернёт свежее значение в rax, и мы
-#  повторяем:
+#  (rax is an implicit operand: the "expected" value.) All of it is atomic.
+#  Any atomic operation can be expressed through CAS: read the old
+#  value, compute the new one, try to store it; if someone managed to
+#  change the cell in between, cmpxchg returns the fresh value in rax,
+#  and we retry:
 #
 #      mov rax, [p]
 #  retry:
 #      ...rcx = f(rax)...
 #      lock cmpxchg [p], rcx
-#      jne retry                 ; rax уже обновлён — заново читать не нужно
+#      jne retry                 ; rax is already updated — no need to re-read
 #
-#  Это «lock-free» алгоритм: какой-то поток всегда продвигается.
-#  Подводный камень CAS — проблема ABA (значение изменилось с A на B и
-#  обратно на A — CAS этого не заметит); для указателей её решают
-#  счётчиками версий и cmpxchg16b.
+#  This is a "lock-free" algorithm: some thread always makes progress.
+#  The pitfall of CAS is the ABA problem (the value changed from A to B and
+#  back to A — CAS won't notice); for pointers it is solved with
+#  version counters and cmpxchg16b.
 #
-#  ЗАДАЧА:
-#      atomic_cas(p, expected, desired) -> 1 при успехе, 0 при неудаче
-#                                          (sete al после cmpxchg)
-#      atomic_max(p, v) — атомарно *p = max(*p, v), вернуть старое *p
-#                         (CAS-цикл; если *p >= v, писать не нужно)
+#  TASK:
+#      atomic_cas(p, expected, desired) -> 1 on success, 0 on failure
+#                                          (sete al after cmpxchg)
+#      atomic_max(p, v) — atomically *p = max(*p, v), return the old *p
+#                         (a CAS loop; if *p >= v, no store is needed)
 #
     .intel_syntax noprefix
     .text

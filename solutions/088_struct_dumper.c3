@@ -1,44 +1,44 @@
 // =====================================================================
-//  088 · Рефлексия на практике: универсальный дампер структур
+//  088 · Reflection in practice: a universal struct dumper
 // =====================================================================
 //
-//  Соберём всё вместе и напишем то, ради чего рефлексию обычно и
-//  придумывают: ОДИН макрос, который красиво печатает ЛЮБУЮ структуру,
-//  включая вложенные. Никаких `to_format` для каждого типа, никакого
-//  ручного кода, который надо обновлять при добавлении поля.
+//  Let's put it all together and write the thing reflection is usually
+//  invented for: ONE macro that nicely prints ANY struct, including
+//  nested ones. No `to_format` for every type, no hand-written code that
+//  has to be updated every time you add a field.
 //
-//  В C такое невозможно без генератора кода. В Go/Java/C# это делают
-//  рантайм-рефлексией (медленно, с аллокациями). В C3 — compile-time
-//  рефлексией: макрос разворачивается в обычную цепочку `printf` для
-//  каждого поля, как если бы вы написали её руками.
+//  In C this is impossible without a code generator. Go/Java/C# do it
+//  with runtime reflection (slow, with allocations). C3 does it with
+//  compile-time reflection: the macro expands into a plain chain of
+//  `printf` calls for each field, as if you had written it by hand.
 //
-//  Ингредиенты, которые вы уже знаете:
-//    * `$Typeof(value)` — тип значения;
-//    * `$switch:` без выражения + условия на `::kind` / `::typeid` —
-//      выбор ветки по виду типа;
-//    * `$foreach $f : $Typeof(value)::members:` — обход полей;
-//    * `value.$eval($f.name)` — доступ к полю по имени;
-//    * РЕКУРСИЯ макроса: для поля-структуры макрос вызывает сам себя.
-//      Это работает, потому что рекурсия идёт по ТИПАМ, а они конечны:
-//      Unit -> Vec2 -> float, и на каждом уровне раскрывается своя
-//      версия кода. (Структура, содержащая указатель на саму себя,
-//      рекурсию бы не остановила — указатели мы печатаем как есть.)
+//  Ingredients you already know:
+//    * `$Typeof(value)` — the type of a value;
+//    * `$switch:` with no expression + conditions on `::kind` / `::typeid` —
+//      picking a branch by the kind of type;
+//    * `$foreach $f : $Typeof(value)::members:` — walking the fields;
+//    * `value.$eval($f.name)` — accessing a field by name;
+//    * macro RECURSION: for a struct field the macro calls itself.
+//      This works because the recursion goes over TYPES, and they are
+//      finite: Unit -> Vec2 -> float, and each level expands its own
+//      version of the code. (A struct holding a pointer to itself would
+//      not stop the recursion — that's why we print pointers as is.)
 //
-//  Порядок условий в `$switch` важен: `String` — это typedef над
-//  `char[]`, его `::kind` равен TYPEDEF, поэтому строки нужно поймать
-//  по typeid РАНЬШЕ общих правил. Enum'ы печатаются через `%s` своим
-//  именем, массивы и bool — тоже через `%s`.
+//  The order of conditions in `$switch` matters: `String` is a typedef
+//  over `char[]`, its `::kind` is TYPEDEF, so strings have to be caught
+//  by typeid BEFORE the general rules. Enums print their name via `%s`;
+//  arrays and bools also go through `%s`.
 //
-//  Параметр `int depth = 0` — у макросов, как и у функций, бывают
-//  значения по умолчанию.
+//  The `int depth = 0` parameter — macros, like functions, can have
+//  default values.
 //
-//  ЗАДАЧА: допишите `dump_value`:
-//    * строки печатаются в кавычках: "archer";
-//    * float/double — с двумя знаками после точки;
-//    * структура печатается как "{", затем каждое поле на новой строке
-//      с отступом depth + 1 в формате "имя: значение" (значение — тем же
-//      макросом), затем "}" с отступом depth.
-//  Точный формат — в ожидаемом выводе (checks/088_struct_dumper.out).
+//  TASK: finish `dump_value`:
+//    * strings are printed in quotes: "archer";
+//    * float/double — with two digits after the decimal point;
+//    * a struct is printed as "{", then each field on its own line,
+//      indented by depth + 1, in the form "name: value" (the value is
+//      printed by the same macro), then "}" indented by depth.
+//  The exact format is in the expected output (checks/088_struct_dumper.out).
 //
 import std::io;
 

@@ -1,43 +1,45 @@
 // =====================================================================
-//  048 · `@init`, `@finalizer` и `static` локальные переменные
+//  048 · `@init`, `@finalizer` and `static` local variables
 // =====================================================================
 //
-//  СТАТИЧЕСКИЕ ИНИЦИАЛИЗАТОРЫ. Глобальные переменные в C3 можно
-//  инициализировать только константными выражениями. А если таблицу
-//  нужно ВЫЧИСЛИТЬ при старте (таблица синусов, регистрация плагинов,
-//  разбор настроек)? Можно звать `init_everything()` первой строкой
-//  main, но легко забыть. C3 умеет запускать функции автоматически:
+//  STATIC INITIALIZERS. Global variables in C3 can only be initialized
+//  with constant expressions. But what if a table has to be COMPUTED at
+//  startup (a sine table, plugin registration, parsing settings)? You
+//  could call `init_everything()` on the first line of main, but that's
+//  easy to forget. C3 can run functions automatically:
 //
-//      fn void build_tables() @init       { ... }  // ДО main
-//      fn void flush_logs()   @finalizer  { ... }  // ПОСЛЕ выхода из main
+//      fn void build_tables() @init       { ... }  // BEFORE main
+//      fn void flush_logs()   @finalizer  { ... }  // AFTER main returns
 //
-//  Функции должны быть без параметров и возвращать void.
+//  The functions must take no parameters and return void.
 //
-//  Порядок задаётся приоритетом: `@init(1100)`, `@init(2000)`. Чем
-//  МЕНЬШЕ число — тем РАНЬШЕ запуск (для @finalizer — аналогично).
-//  Рекомендуемый диапазон — от 1024 до 65535; без числа приоритет
-//  самый поздний (65535). Если одна инициализация зависит от другой,
-//  явный приоритет обязателен — порядок объявления в файле ничего не
-//  гарантирует.
+//  The order is set by priority: `@init(1100)`, `@init(2000)`. The
+//  SMALLER the number, the EARLIER it runs (the same goes for
+//  @finalizer). The recommended range is 1024 to 65535; without a
+//  number the priority is the latest (65535). If one initialization
+//  depends on another, an explicit priority is a must — declaration
+//  order in the file guarantees nothing.
 //
-//  @finalizer выполняется при нормальном завершении программы (выход
-//  из main или exit). При падении/kill — не гарантируется. Это не
-//  деструкторы C++, а аналог `atexit` / `__attribute__((destructor))`.
+//  @finalizer runs on normal program termination (returning from main
+//  or exit). On a crash/kill it's not guaranteed. These aren't C++
+//  destructors, they're the equivalent of `atexit` /
+//  `__attribute__((destructor))`.
 //
-//  STATIC ЛОКАЛЬНЫЕ ПЕРЕМЕННЫЕ — как в C:
+//  STATIC LOCAL VARIABLES — just like in C:
 //
 //      fn int next_id()
 //      {
-//          static int counter = 1;   // инициализируется ОДИН раз
-//          return counter++;         // и сохраняет значение между вызовами
+//          static int counter = 1;   // initialized ONCE
+//          return counter++;         // and keeps its value between calls
 //      }
 //
-//  По сути это глобальная переменная, видимая только внутри функции.
-//  Без `static` переменная создавалась бы заново (= 1) при каждом
-//  вызове. Инициализатор у static, как и у глобальных, — константа.
+//  It's essentially a global variable that's only visible inside the
+//  function. Without `static` the variable would be created anew (= 1)
+//  on every call. A static's initializer, like a global's, must be a
+//  constant.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`. Обратите внимание,
-//  что последняя строка вывода печатается уже ПОСЛЕ main.
+//  TASK: fix the three spots marked with `// <-`. Note that the last
+//  line of output is printed AFTER main.
 //
 import std::io;
 
@@ -51,20 +53,20 @@ fn void load_config() @init(1100)
     io::printn("init: config loaded");
 }
 
-fn void build_table() @init(1200) // <- таблица использует scale, который задаёт load_config
+fn void build_table() @init(1200) // <- the table uses scale, which load_config sets
 {
     foreach (i, &v : table) *v = (int)i * scale;
     io::printn("init: table built");
 }
 
-fn void shutdown() @finalizer // <- должна выполниться после main
+fn void shutdown() @finalizer // <- must run after main
 {
     io::printfn("shutdown: %d ids issued", ids_issued);
 }
 
 fn int next_id()
 {
-    static int counter = 1; // <- значение должно сохраняться между вызовами
+    static int counter = 1; // <- the value must persist between calls
     ids_issued++;
     return counter++;
 }

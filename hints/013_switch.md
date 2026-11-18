@@ -1,4 +1,4 @@
-1. Пустой `case` проваливается в следующий. Поставьте `case 'e':`, `case 'i':` и т.д.
-   друг за другом над `vowels++`.
-2. Пустой `case 'y':` проваливается в ветку пробелов. Чтобы ветка ничего не делала,
-   в ней должна быть хотя бы одна инструкция — например, `break;`.
+1. An empty `case` falls through into the next one. Put `case 'e':`, `case 'i':` and so on
+   one after another above `vowels++`.
+2. The empty `case 'y':` falls through into the spaces branch. For a branch to do nothing,
+   it needs at least one statement — for example, `break;`.

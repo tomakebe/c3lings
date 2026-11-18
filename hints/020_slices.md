@@ -1,3 +1,3 @@
-1. Передайте срез на весь массив: `sum(&numbers)` или `sum(numbers[..])`.
-2. 30, 40, 50 — это индексы 2, 3, 4. Либо `2..4` (включительно), либо `2:3` (старт:длина).
-3. Последний элемент — `^1`.
+1. Pass a slice of the whole array: `sum(&numbers)` or `sum(numbers[..])`.
+2. 30, 40, 50 are at indices 2, 3, 4. Either `2..4` (inclusive) or `2:3` (start:length).
+3. The last element is `^1`.

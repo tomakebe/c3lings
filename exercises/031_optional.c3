@@ -1,73 +1,72 @@
 // =====================================================================
-//  031 · Optional: `T?`, `excuse` и возврат ошибки `ERR~`
+//  031 · Optional: `T?`, `excuse` and returning an error with `ERR~`
 // =====================================================================
 //
-//  Добро пожаловать во вторую часть курса! Начинаем с самой важной
-//  темы среднего уровня — обработки ошибок.
+//  Welcome to the second part of the course! We start with the most
+//  important intermediate topic: error handling.
 //
-//  В C функция, которая может не справиться, обычно возвращает
-//  «магическое» значение: -1, NULL, 0... и где-то сбоку кладёт код
-//  ошибки в errno. Забыть проверку очень легко, а -1 иногда вполне
-//  законный результат.
+//  In C, a function that can fail usually returns a "magic" value:
+//  -1, NULL, 0... and stashes an error code off to the side in errno.
+//  Forgetting the check is very easy, and -1 is sometimes a perfectly
+//  legitimate result.
 //
-//  В C3 для этого есть Optional. Тип `int?` означает:
-//  «здесь лежит ЛИБО обычный int, ЛИБО причина, почему int'а нет».
+//  C3 has Optionals for this. The type `int?` means:
+//  "this holds EITHER a regular int, OR the reason why there is no int".
 //
-//      int? a = 5;            // Optional с результатом 5
-//      int? b = NOT_FOUND~;   // пустой Optional с «отговоркой» NOT_FOUND
+//      int? a = 5;            // Optional with the result 5
+//      int? b = NOT_FOUND~;   // empty Optional with the "excuse" NOT_FOUND
 //
-//  Причина пустоты — значение типа `fault`. Новые значения `fault`
-//  объявляются на верхнем уровне ключевым словом `excuse`
-//  («отговорка»):
+//  The reason for emptiness is a value of type `fault`. New `fault`
+//  values are declared at the top level with the keyword `excuse`:
 //
-//      excuse FILE_MISSING;                    // одно значение
-//      excuse BAD_FORMAT, TOO_LONG;            // несколько сразу
-//      excuse { NO_SPACE, NO_ACCESS }          // или блоком в фигурных скобках
+//      excuse FILE_MISSING;                    // one value
+//      excuse BAD_FORMAT, TOO_LONG;            // several at once
+//      excuse { NO_SPACE, NO_ACCESS }          // or as a block in braces
 //
-//  Каждое такое значение глобально уникально. (В старых версиях C3 это
-//  называлось `faultdef` — не удивляйтесь, если встретите в интернете.)
+//  Each such value is globally unique. (In older versions of C3 this
+//  was called `faultdef` - don't be surprised if you see it online.)
 //
-//  Ключевой момент — суффикс `~`. Сам по себе `FILE_MISSING` — это
-//  обычное значение типа `fault` (его можно положить в переменную,
-//  сравнить). А `FILE_MISSING~` превращает его в ПУСТОЙ Optional:
+//  The key point is the `~` suffix. On its own, `FILE_MISSING` is just
+//  an ordinary value of type `fault` (you can store it in a variable,
+//  compare it). But `FILE_MISSING~` turns it into an EMPTY Optional:
 //
-//      fault f  = FILE_MISSING;    // просто значение-ошибка
-//      int?  x  = FILE_MISSING~;   // пустой Optional
+//      fault f  = FILE_MISSING;    // just an error value
+//      int?  x  = FILE_MISSING~;   // empty Optional
 //
-//  Функция, которая может завершиться неудачей, возвращает Optional:
+//  A function that can fail returns an Optional:
 //
 //      fn int? find_index(int[] arr, int value)
 //      {
 //          foreach (i, v : arr) if (v == value) return i;
-//          return NOT_FOUND~;      // <- обязательно с `~`!
+//          return NOT_FOUND~;      // <- the `~` is required!
 //      }
 //
-//  `fn void? f()` — функция, которая ничего не возвращает, но может
-//  сообщить об ошибке. Переменной типа `void?` быть не может.
+//  `fn void? f()` is a function that returns nothing but can report
+//  an error. There can be no variable of type `void?`.
 //
-//  Optional «заразен»: значение `int?` нельзя положить в обычный `int`
-//  — компилятор не даст вам забыть про ошибку. Выражение с Optional'ом
-//  тоже становится Optional'ом: если `a` — `int?`, то `a + 1` — тоже
-//  `int?`.
+//  Optionals are "contagious": an `int?` value can't be put into a plain
+//  `int` - the compiler won't let you forget about the error. An
+//  expression involving an Optional becomes an Optional too: if `a` is
+//  an `int?`, then `a + 1` is also an `int?`.
 //
-//  Как подсмотреть, что внутри (подробнее о распаковке — в 032):
+//  How to peek inside (more on unwrapping in 032):
 //
-//      @ok(x)      // true, если в x есть результат
-//      @catch(x)   // fault внутри x, или «пустой» fault, если x в порядке
+//      @ok(x)      // true if x holds a result
+//      @catch(x)   // the fault inside x, or the "empty" fault if x is fine
 //
-//  «Пустой» fault ведёт себя как false в условиях: `if (@catch(x)) ...`.
+//  The "empty" fault behaves like false in conditions: `if (@catch(x)) ...`.
 //
-//  ЗАДАЧА: почините программу (4 места помечены `// <-`). Программа
-//  сама проверит себя assert'ами и напечатает итог.
+//  TASK: fix the program (4 places are marked with `// <-`). The program
+//  checks itself with asserts and prints the result.
 //
 import std::io;
 
 excuse NOT_A_DIGIT;
-// <- объявите здесь ошибку TOO_BIG
+// <- declare the TOO_BIG error here
 
-fn int digit_value(char c) // <- эта функция может не справиться
+fn int digit_value(char c) // <- this function can fail
 {
-    if (c < '0' || c > '9') return NOT_A_DIGIT; // <- вернуть ПУСТОЙ Optional
+    if (c < '0' || c > '9') return NOT_A_DIGIT; // <- return an EMPTY Optional
     return c - '0';
 }
 
@@ -76,20 +75,20 @@ fn int? two_digits(char hi, char lo)
     if (hi > '5' && hi <= '9') return TOO_BIG~;
     int? h = digit_value(hi);
     int? l = digit_value(lo);
-    // Если h или l пусты — всё выражение тоже будет пустым Optional'ом
-    // с первой встретившейся ошибкой. Специально проверять не нужно!
+    // If h or l is empty, the whole expression will also be an empty
+    // Optional with the first error encountered. No need to check explicitly!
     return h * 10 + l;
 }
 
 fn void main()
 {
     int? seven = digit_value('7');
-    int bad = digit_value('x'); // <- здесь может не оказаться числа
+    int bad = digit_value('x'); // <- there might be no number here
 
     assert(@ok(seven));
     assert(!@ok(bad));
     assert(@catch(bad) == NOT_A_DIGIT);
-    assert(!@catch(seven)); // в seven ошибки нет
+    assert(!@catch(seven)); // seven holds no error
 
     assert(@ok(two_digits('4', '2')));
     assert(@catch(two_digits('9', '9')) == TOO_BIG);

@@ -1,61 +1,62 @@
-# Глава 13. Branchless-код, атомарные операции, барьеры памяти
+# Chapter 13. Branchless code, atomic operations, memory barriers
 
-Две темы этой главы объединяет одно: в них поведение программы зависит
-не только от того, *что* вычисляется, но и от того, *как* процессор это
-исполняет — спекулятивно, с переупорядочиванием, на нескольких ядрах.
+The two topics of this chapter share one thing: in both, the program's
+behavior depends not only on *what* is computed, but also on *how* the
+processor executes it — speculatively, out of order, on multiple cores.
 
-Упражнения: `a1301`–`a1305`.
+Exercises: `a1301`–`a1305`.
 
-## Часть 1. Код без ветвлений
+## Part 1. Code without branches
 
-### 1. Цена ветвления
+### 1. The cost of a branch
 
-Современный процессор — конвейер глубиной 15–20 стадий, который
-одновременно держит в работе сотни инструкций. Встретив условный переход,
-он не ждёт результата сравнения: **предсказатель переходов** угадывает
-направление, и процессор спекулятивно выполняет код дальше. Если угадал —
-переход стоит почти ноль. Если нет — всё начатое после перехода
-выбрасывается, и конвейер заполняется заново: **15–20 тактов** штрафа
-(на Zen 2 / Skylake).
+A modern processor is a pipeline 15–20 stages deep that keeps hundreds of
+instructions in flight at once. When it encounters a conditional jump, it
+does not wait for the result of the comparison: the **branch predictor**
+guesses the direction, and the processor speculatively keeps executing.
+If the guess is right, the branch costs almost nothing. If not, everything
+started after the branch is thrown away and the pipeline is refilled:
+a penalty of **15–20 cycles** (on Zen 2 / Skylake).
 
-Предсказатель очень хорош на регулярных паттернах (циклы, «почти всегда
-да», повторяющиеся последовательности) и беспомощен на случайных данных.
-Классическая демонстрация — суммирование элементов больше 128 в массиве:
-на отсортированном массиве код работает в несколько раз быстрее, чем на
-перемешанном, хотя инструкции те же самые.
+The predictor is very good at regular patterns (loops, "almost always
+yes", repeating sequences) and helpless on random data. The classic
+demonstration is summing the elements greater than 128 in an array: on a
+sorted array the code runs several times faster than on a shuffled one,
+even though the instructions are exactly the same.
 
-### 2. Инструкции
+### 2. Instructions
 
-| Инструкция | Действие |
+| Instruction | Action |
 |---|---|
-| `setCC r/m8` | байт = условие ? 1 : 0 |
-| `cmovCC r, r/m` | если условие — `r = src` (16/32/64 бит) |
-| `adc`/`sbb` | прибавить/вычесть CF — «условие» как число |
-| `sbb eax, eax` | eax = CF ? -1 : 0 (маска!) |
+| `setCC r/m8` | byte = condition ? 1 : 0 |
+| `cmovCC r, r/m` | if condition — `r = src` (16/32/64 bit) |
+| `adc`/`sbb` | add/subtract CF — the "condition" as a number |
+| `sbb eax, eax` | eax = CF ? -1 : 0 (a mask!) |
 
-Условия CC — те же, что у `jcc`:
+The CC conditions are the same as for `jcc`:
 
-| CC | Условие | Флаги |
+| CC | Condition | Flags |
 |---|---|---|
-| `e`/`z`, `ne`/`nz` | равно / не равно | ZF |
-| `l`, `le`, `g`, `ge` | знаковые <, ≤, >, ≥ | SF, OF, ZF |
-| `b`/`c`, `be`, `a`, `ae`/`nc` | беззнаковые <, ≤, >, ≥ | CF, ZF |
-| `s`, `ns` | отрицательно / нет | SF |
-| `o`, `no` | переполнение | OF |
-| `p`, `np` | чётность (NaN после `ucomisd`) | PF |
+| `e`/`z`, `ne`/`nz` | equal / not equal | ZF |
+| `l`, `le`, `g`, `ge` | signed <, ≤, >, ≥ | SF, OF, ZF |
+| `b`/`c`, `be`, `a`, `ae`/`nc` | unsigned <, ≤, >, ≥ | CF, ZF |
+| `s`, `ns` | negative / not | SF |
+| `o`, `no` | overflow | OF |
+| `p`, `np` | parity (NaN after `ucomisd`) | PF |
 
-Особенности:
+Details:
 
-* `setcc` пишет **один байт** — обнуляйте регистр заранее (`xor eax, eax`
-  **до** `cmp`, потому что `xor` портит флаги) или используйте `movzx`.
-* `cmov` не принимает непосредственный операнд.
-* `cmov` с памятью читает её **всегда** — даже когда условие ложно. Нельзя
-  заменять `p ? *p : 0` на `cmov` с разыменованием `p`.
-* `cmov` — не «бесплатная» ветка: он создаёт **зависимость по данным** от
-  обоих входов и флагов. Если ветка хорошо предсказывается, `jcc` быстрее:
-  процессору не надо ждать сравнения.
+* `setcc` writes **one byte** — zero the register beforehand (`xor eax, eax`
+  **before** `cmp`, because `xor` clobbers the flags) or use `movzx`.
+* `cmov` does not accept an immediate operand.
+* `cmov` with a memory operand **always** reads it — even when the
+  condition is false. You cannot replace `p ? *p : 0` with a `cmov` that
+  dereferences `p`.
+* `cmov` is not a "free" branch: it creates a **data dependency** on both
+  inputs and on the flags. If the branch is well predicted, `jcc` is faster:
+  the processor doesn't have to wait for the comparison.
 
-### 3. Приёмы
+### 3. Tricks
 
 ```asm
 ; max(a, b)
@@ -66,7 +67,7 @@ cmovl rax, rsi
 ; abs(x)
 mov   rax, rdi
 neg   rax
-cmovs rax, rdi        ; если -x < 0, значит x > 0 — берём x
+cmovs rax, rdi        ; if -x < 0, then x > 0 — take x
 
 ; sign(x) = (x > 0) - (x < 0)
 xor   eax, eax
@@ -78,220 +79,220 @@ sub   eax, ecx
 
 ; count += (a[i] < p)
 cmp   [rdi + rcx*4], edx
-setl  r8b             ; r8 обнулён один раз вне цикла
+setl  r8b             ; r8 is zeroed once, outside the loop
 add   rax, r8
 
-; маска без ветвлений: m = (x < y) ? -1 : 0  (беззнаково)
+; branchless mask: m = (x < y) ? -1 : 0  (unsigned)
 cmp   rdi, rsi
 sbb   rax, rax
 ```
 
-Арифметические трюки без флагов: `x >> 63` (sar) — маска «x отрицателен»;
-`(x ^ m) - m` — abs через эту маску; `y ^ ((x ^ y) & -(x < y))` — min.
+Arithmetic tricks without flags: `x >> 63` (sar) — the "x is negative" mask;
+`(x ^ m) - m` — abs via that mask; `y ^ ((x ^ y) & -(x < y))` — min.
 
-### 4. Branchless-алгоритмы
+### 4. Branchless algorithms
 
-* **Бинарный поиск** с `cmov` (упражнение `a1302`) обычно в 2–3 раза быстрее
-  ветвящегося на массивах, помещающихся в кеш: каждая итерация
-  одинакова, предсказывать нечего. Для больших массивов добавляют
-  prefetch обеих возможных следующих позиций.
-* **Партиционирование** в quicksort (branchless Lomuto, «BlockQuicksort»).
-* **Фильтрация** массива: записываем каждый элемент по индексу `j` и
-  делаем `j += условие` — запись безусловная, сдвигается только индекс.
-* В SIMD (глава 10) ветвлений нет вообще — маски и смешивание.
+* **Binary search** with `cmov` (exercise `a1302`) is usually 2–3 times
+  faster than the branching version on arrays that fit in cache: every
+  iteration is identical, there is nothing to predict. For large arrays,
+  a prefetch of both possible next positions is added.
+* **Partitioning** in quicksort (branchless Lomuto, "BlockQuicksort").
+* **Filtering** an array: write every element at index `j` and do
+  `j += condition` — the store is unconditional, only the index moves.
+* In SIMD (chapter 10) there are no branches at all — masks and blending.
 
-### 5. Что делает компилятор
+### 5. What the compiler does
 
-LLVM охотно превращает `a < b ? b : a` в `cmov`, а `if (x) count++` — в
-`setcc`+`add`. Но он не знает ваших данных: иногда ставит `cmov` там, где
-ветка была бы лучше, и наоборот. GCC: `__builtin_expect_with_probability`,
-`__builtin_unpredictable` (Clang). Решение всегда принимается
-измерением (глава 14), а не интуицией.
+LLVM readily turns `a < b ? b : a` into `cmov`, and `if (x) count++` into
+`setcc`+`add`. But it doesn't know your data: sometimes it uses `cmov` where
+a branch would be better, and vice versa. GCC: `__builtin_expect_with_probability`,
+`__builtin_unpredictable` (Clang). The decision is always made by
+measurement (chapter 14), not intuition.
 
-## Часть 2. Атомарные операции
+## Part 2. Atomic operations
 
-### 6. Почему `count++` не работает в нескольких потоках
+### 6. Why `count++` doesn't work with multiple threads
 
-`add dword ptr [rdi], 1` — для процессора это «прочитать, сложить,
-записать». Два ядра могут прочитать одно и то же значение, и одно из
-увеличений потеряется. Проверить легко: 4 потока по 200 000 инкрементов
-без `lock` дадут не 800 000, а случайное меньшее число.
+`add dword ptr [rdi], 1` is, for the processor, "read, add,
+write". Two cores can read the same value, and one of the increments
+is lost. It's easy to check: 4 threads doing 200,000 increments each
+without `lock` will give not 800,000 but some random smaller number.
 
-### 7. Префикс lock
+### 7. The lock prefix
 
-`lock` делает операцию «чтение-изменение-запись» атомарной. Ядро
-получает кеш-линию в эксклюзивное состояние (M в протоколе MESI) и не
-отвечает на запросы других ядер к ней, пока операция не закончится
-(«cache lock»; шинная блокировка — только для невыровненных операндов,
-пересекающих линии, и это **очень** дорого — «split lock»).
+`lock` makes a read-modify-write operation atomic. The core acquires the
+cache line in the exclusive state (M in the MESI protocol) and does not
+answer other cores' requests for it until the operation completes
+("cache lock"; a bus lock is used only for misaligned operands that
+cross lines, and it is **very** expensive — a "split lock").
 
-| Инструкция | Атомарная операция | C3 (`std::atomic`) |
+| Instruction | Atomic operation | C3 (`std::atomic`) |
 |---|---|---|
-| `lock add/sub/and/or/xor [m], r` | `*p op= v` | `a.add(v)` и т.п. |
+| `lock add/sub/and/or/xor [m], r` | `*p op= v` | `a.add(v)` etc. |
 | `lock inc/dec [m]` | `++*p` | |
-| `lock xadd [m], r` | `r = fetch_add(p, r)` | `a.add(v)` возвращает старое |
-| `xchg [m], r` | `r = exchange(p, r)` — `lock` неявный! | `a.store` (seq_cst) / swap |
-| `lock cmpxchg [m], r` | CAS c `rax` как ожидаемым | `compare_exchange` |
-| `lock cmpxchg16b [m]` | CAS 128 бит (`rdx:rax` vs `rcx:rbx`) | указатель + счётчик |
-| `lock bts/btr/btc [m], r` | атомарная установка бита | |
+| `lock xadd [m], r` | `r = fetch_add(p, r)` | `a.add(v)` returns the old value |
+| `xchg [m], r` | `r = exchange(p, r)` — `lock` is implicit! | `a.store` (seq_cst) / swap |
+| `lock cmpxchg [m], r` | CAS with `rax` as the expected value | `compare_exchange` |
+| `lock cmpxchg16b [m]` | 128-bit CAS (`rdx:rax` vs `rcx:rbx`) | pointer + counter |
+| `lock bts/btr/btc [m], r` | atomic bit set | |
 
-Цена `lock`-инструкции без конкуренции — ~10–20 тактов (на Zen 2 ~8, на
-Skylake ~18). При конкуренции нескольких ядер за одну кеш-линию —
-сотни тактов: линия «пинг-понгом» летает между ядрами.
+The cost of an uncontended `lock` instruction is ~10–20 cycles (~8 on Zen 2,
+~18 on Skylake). When several cores contend for the same cache line —
+hundreds of cycles: the line "ping-pongs" between cores.
 
-### 8. CAS-циклы
+### 8. CAS loops
 
-`lock cmpxchg [p], new`: если `[p] == rax`, записать `new` и ZF=1; иначе
-`rax = [p]` и ZF=0. Через CAS выражается любая операция:
+`lock cmpxchg [p], new`: if `[p] == rax`, store `new` and set ZF=1; otherwise
+`rax = [p]` and ZF=0. Any operation can be expressed through CAS:
 
 ```asm
 ; atomic_max(p, v)
     mov  rax, [rdi]
 retry:
     cmp  rax, rsi
-    jge  done                       ; уже >= v
+    jge  done                       ; already >= v
     lock cmpxchg [rdi], rsi
-    jne  retry                      ; rax обновлён свежим значением
+    jne  retry                      ; rax was updated with the fresh value
 done:
 ```
 
-Свойства и ловушки:
+Properties and pitfalls:
 
-* **lock-free**: если CAS не удался, значит, *другой* поток продвинулся;
-* **ABA**: значение A → B → A, CAS не заметит изменения. Для
-  lock-free стека указателей это фатально; лечится счётчиком версий
-  (`cmpxchg16b`) или схемами освобождения памяти (hazard pointers, epoch);
-* **false sharing**: две независимые переменные в одной 64-байтной
-  кеш-линии ведут себя как одна — ядра отбирают линию друг у друга.
-  Горячие атомики выравнивают на 64 байта (`@align(64)` в C3).
+* **lock-free**: if a CAS fails, it means *another* thread made progress;
+* **ABA**: the value goes A → B → A, and CAS won't notice the change. For a
+  lock-free stack of pointers this is fatal; it is cured with a version
+  counter (`cmpxchg16b`) or memory reclamation schemes (hazard pointers, epochs);
+* **false sharing**: two independent variables in the same 64-byte
+  cache line behave like one — the cores keep stealing the line from each
+  other. Hot atomics are aligned to 64 bytes (`@align(64)` in C3).
 
-### 9. Спинлок
+### 9. Spinlock
 
-Упражнение `a1305`:
+Exercise `a1305`:
 
 ```asm
 spin_lock:
     mov   eax, 1
-    xchg  [rdi], eax          ; атомарно: захватить и узнать, что было
+    xchg  [rdi], eax          ; atomically: grab it and learn what was there
     test  eax, eax
     jz    acquired
 spin:
     pause
-    cmp   dword ptr [rdi], 0  ; ждём, только читая
+    cmp   dword ptr [rdi], 0  ; wait by reading only
     jne   spin
     jmp   spin_lock
 acquired:
     ret
 
 spin_unlock:
-    mov   dword ptr [rdi], 0  ; обычная запись = release на x86
+    mov   dword ptr [rdi], 0  ; a plain store = release on x86
     ret
 ```
 
-* «test and test-and-set»: ждём обычным чтением — кеш-линия в общем
-  (Shared) состоянии у всех ждущих, трафика нет. Пытаемся `xchg`, только
-  увидев 0.
-* `pause` — подсказка процессору; без неё выход из спин-цикла вызывает
-  сброс конвейера (memory order violation), а соседний гиперпоток
-  простаивает.
-* Спинлоки хороши для очень коротких критических секций. Если владелец
-  блокировки будет вытеснен планировщиком, остальные будут крутиться
-  впустую весь квант — поэтому мьютексы ОС (`futex`) сначала немного
-  крутятся, а потом засыпают в ядре.
+* "test and test-and-set": we wait with a plain read — the cache line is in
+  the Shared state for all waiters, no traffic. We attempt `xchg` only after
+  seeing 0.
+* `pause` is a hint to the processor; without it, exiting the spin loop
+  causes a pipeline flush (memory order violation), and the sibling
+  hyperthread sits starved.
+* Spinlocks are good for very short critical sections. If the lock holder
+  is preempted by the scheduler, everyone else spins uselessly for the whole
+  time slice — that's why OS mutexes (`futex`) spin a little first and then
+  go to sleep in the kernel.
 
-## Часть 3. Модель памяти и барьеры
+## Part 3. The memory model and barriers
 
-### 10. Модель памяти x86 (TSO)
+### 10. The x86 memory model (TSO)
 
-Процессор и компилятор могут переставлять обращения к памяти, если
-однопоточная программа этого не заметит. Многопоточная — заметит. Что
-именно разрешено, описывает **модель памяти**. У x86 она одна из самых
-строгих — Total Store Order:
+The processor and the compiler may reorder memory accesses as long as a
+single-threaded program can't notice. A multithreaded one will notice. What
+exactly is allowed is described by the **memory model**. x86's is one of the
+strictest — Total Store Order:
 
-| Перестановка | x86 |
+| Reordering | x86 |
 |---|---|
-| load → load | запрещена |
-| store → store | запрещена |
-| load → store (более поздняя запись раньше чтения) | запрещена |
-| **store → load** (более позднее чтение раньше записи) | **разрешена** |
-| `lock`-инструкции и `xchg` | полный барьер |
+| load → load | forbidden |
+| store → store | forbidden |
+| load → store (a later store before a read) | forbidden |
+| **store → load** (a later read before a store) | **allowed** |
+| `lock` instructions and `xchg` | full barrier |
 
-Единственная разрешённая перестановка — следствие **буфера записи**
-(store buffer): ядро кладёт запись в буфер и идёт дальше, а чтение
-другого адреса может выполниться раньше, чем запись станет видна
-другим ядрам. Классический тест (Dekker / «store buffering»):
+The only permitted reordering is a consequence of the **store buffer**:
+the core puts a store into the buffer and moves on, and a load from
+another address may execute before the store becomes visible to
+other cores. The classic test (Dekker / "store buffering"):
 
 ```
-поток 1:  x = 1;  r1 = y;        поток 2:  y = 1;  r2 = x;
+thread 1:  x = 1;  r1 = y;        thread 2:  y = 1;  r2 = x;
 ```
 
-На x86 возможно `r1 == 0 && r2 == 0` — оба чтения «обогнали» записи. Чтобы
-это запретить, между записью и чтением нужен `mfence` (или любая
-`lock`-инструкция, которая обычно дешевле).
+On x86, `r1 == 0 && r2 == 0` is possible — both loads "overtook" the stores. To
+forbid that, you need an `mfence` between the store and the load (or any
+`lock` instruction, which is usually cheaper).
 
-Следствия для C3/C++-атомиков на x86:
+Consequences for C3/C++ atomics on x86:
 
-| Операция | Инструкция x86 |
+| Operation | x86 instruction |
 |---|---|
-| load (acquire, seq_cst) | обычный `mov` |
-| store (release) | обычный `mov` |
-| store (seq_cst) | `xchg` (или `mov` + `mfence`) |
-| fetch_add, CAS (любой порядок) | `lock xadd`, `lock cmpxchg` |
-| fence(acquire/release) | ничего (только запрет для компилятора) |
-| fence(seq_cst) | `mfence` (или `lock or [rsp], 0`) |
+| load (acquire, seq_cst) | plain `mov` |
+| store (release) | plain `mov` |
+| store (seq_cst) | `xchg` (or `mov` + `mfence`) |
+| fetch_add, CAS (any ordering) | `lock xadd`, `lock cmpxchg` |
+| fence(acquire/release) | nothing (only a compiler barrier) |
+| fence(seq_cst) | `mfence` (or `lock or [rsp], 0`) |
 
-Поэтому код с ошибками в упорядочивании часто «работает» на x86 и
-ломается на ARM, где модель слабее и переставлять можно почти всё. Но
-**компилятор** переставлять может и на x86! Атомарные операции в языке —
-это обещание и процессору, и компилятору.
+That's why code with ordering bugs often "works" on x86 and breaks on ARM,
+where the model is weaker and almost anything can be reordered. But
+the **compiler** can reorder even on x86! Atomic operations in the language
+are a promise to both the processor and the compiler.
 
-### 11. Барьеры
+### 11. Barriers
 
-| Инструкция | Что упорядочивает |
+| Instruction | What it orders |
 |---|---|
-| `mfence` | все загрузки и записи до/после |
-| `sfence` | записи (нужен только для non-temporal `movnt*`) |
-| `lfence` | загрузки; на практике — «дождаться завершения всех предыдущих инструкций» (сериализация для `rdtsc`, защита от Spectre v1) |
-| `lock`-инструкции | полный барьер, как `mfence` |
+| `mfence` | all loads and stores before/after |
+| `sfence` | stores (needed only for non-temporal `movnt*`) |
+| `lfence` | loads; in practice — "wait for all previous instructions to complete" (serialization for `rdtsc`, Spectre v1 mitigation) |
+| `lock` instructions | full barrier, like `mfence` |
 
-## Подводные камни
+## Pitfalls
 
-* `setcc` без обнуления старших битов.
-* `cmov` с памятью по возможно-невалидному указателю.
-* Неатомарный «прочитать-изменить-записать» в многопоточном коде.
-* `xadd` без `lock` — не атомарен (а `xchg` — всегда атомарен).
-* Тесты многопоточного кода, «проходящие» случайно. Хороший тест должен
-  ломаться детерминированно (как однопоточные проверки в упражнениях) или
-  с подавляющей вероятностью.
-* Атомарные переменные в одной кеш-линии с горячими данными (false sharing).
-* «На x86 работает» ≠ корректно.
+* `setcc` without zeroing the upper bits.
+* `cmov` from memory through a possibly invalid pointer.
+* A non-atomic read-modify-write in multithreaded code.
+* `xadd` without `lock` is not atomic (whereas `xchg` is always atomic).
+* Tests of multithreaded code that "pass" by chance. A good test should
+  fail deterministically (like the single-threaded checks in the exercises)
+  or with overwhelming probability.
+* Atomic variables in the same cache line as hot data (false sharing).
+* "Works on x86" ≠ correct.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Когда `cmov` быстрее условного перехода, а когда медленнее?
-2. Почему `xor eax, eax` надо ставить до `cmp`, а не между `cmp` и `setcc`?
-3. Как без ветвлений посчитать количество элементов массива меньше заданного?
-4. Почему `add [rdi], 1` не атомарен? Что делает префикс `lock`?
-5. Чем `xadd` отличается от `add`? Почему `xchg` не нуждается в `lock`?
-6. Опишите CAS-цикл. Что такое проблема ABA?
-7. Почему спинлок ждёт обычным чтением, а не `xchg` в цикле? Зачем `pause`?
-8. Какую единственную перестановку обращений к памяти разрешает x86?
-   Как её запретить?
-9. Почему unlock спинлока на x86 — это обычный `mov`?
+1. When is `cmov` faster than a conditional jump, and when is it slower?
+2. Why must `xor eax, eax` go before `cmp`, and not between `cmp` and `setcc`?
+3. How do you count the array elements smaller than a given value without branches?
+4. Why is `add [rdi], 1` not atomic? What does the `lock` prefix do?
+5. How does `xadd` differ from `add`? Why doesn't `xchg` need `lock`?
+6. Describe a CAS loop. What is the ABA problem?
+7. Why does a spinlock wait with a plain read rather than `xchg` in a loop? Why `pause`?
+8. What is the only memory access reordering that x86 permits?
+   How do you forbid it?
+9. Why is a spinlock unlock on x86 just a plain `mov`?
 
-## Что почитать
+## Further reading
 
-* Intel SDM Vol. 3A, гл. 8.2 «Memory Ordering» и 8.1 «Locked Atomic Operations».
-* Peter Sewell et al., «x86-TSO: A Rigorous and Usable Programmer's Model
-  for x86 Multiprocessors».
-* Jeff Preshing, блог preshing.com — серия про lock-free и модели памяти
-  («Memory Reordering Caught in the Act», «Acquire and Release Semantics»).
-* Paul E. McKenney, «Is Parallel Programming Hard, And, If So, What Can You Do About It?».
-* Mara Bos, «Rust Atomics and Locks» — отличное объяснение атомиков,
-  модели памяти и устройства блокировок, применимое к любому языку.
-* Paul Khuong, «Binary search is a pathological case for caches» и
-  «Array layouts for comparison-based searching».
-* Agner Fog, «The microarchitecture of Intel, AMD and VIA CPUs» — разделы
-  про предсказание переходов.
-* Denis Bakhvalov, «Performance Analysis and Tuning on Modern CPUs», гл. про
+* Intel SDM Vol. 3A, sections 8.2 "Memory Ordering" and 8.1 "Locked Atomic Operations".
+* Peter Sewell et al., "x86-TSO: A Rigorous and Usable Programmer's Model
+  for x86 Multiprocessors".
+* Jeff Preshing, the blog preshing.com — a series on lock-free and memory models
+  ("Memory Reordering Caught in the Act", "Acquire and Release Semantics").
+* Paul E. McKenney, "Is Parallel Programming Hard, And, If So, What Can You Do About It?".
+* Mara Bos, "Rust Atomics and Locks" — an excellent explanation of atomics,
+  memory models and how locks work, applicable to any language.
+* Paul Khuong, "Binary search is a pathological case for caches" and
+  "Array layouts for comparison-based searching".
+* Agner Fog, "The microarchitecture of Intel, AMD and VIA CPUs" — the sections
+  on branch prediction.
+* Denis Bakhvalov, "Performance Analysis and Tuning on Modern CPUs", the chapter on
   branch mispredictions.

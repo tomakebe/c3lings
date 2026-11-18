@@ -1,36 +1,36 @@
 // =====================================================================
-//  018 · Рекурсия, отсутствие перегрузки и порядок объявлений
+//  018 · Recursion, no overloading, and declaration order
 // =====================================================================
 //
-//  ПОРЯДОК ОБЪЯВЛЕНИЙ НЕ ВАЖЕН
-//  В C функцию нужно объявить (или хотя бы написать прототип) ДО
-//  первого использования — отсюда заголовочные файлы и прототипы
-//  наверху файла. В C3 компилятор видит весь модуль целиком: функцию
-//  можно вызвать выше по тексту, чем она определена. Прототипов нет.
-//  В этом упражнении `main` стоит первой и вызывает функции, которые
-//  определены ниже.
+//  DECLARATION ORDER DOESN'T MATTER
+//  In C a function has to be declared (or at least have a prototype)
+//  BEFORE its first use — hence header files and prototypes at the top
+//  of the file. In C3 the compiler sees the whole module at once: you
+//  can call a function above the place where it is defined. There are
+//  no prototypes. In this exercise `main` comes first and calls
+//  functions that are defined further down.
 //
-//  РЕКУРСИЯ
-//  Функция может вызывать саму себя. Главное — базовый случай, который
-//  останавливает рекурсию:
+//  RECURSION
+//  A function can call itself. The key thing is a base case that stops
+//  the recursion:
 //
 //      fn int factorial(int n)
 //      {
-//          if (n <= 1) return 1;          // базовый случай
-//          return n * factorial(n - 1);   // рекурсивный шаг
+//          if (n <= 1) return 1;          // base case
+//          return n * factorial(n - 1);   // recursive step
 //      }
 //
-//  Без базового случая рекурсия бесконечна, стек переполняется, и
-//  программа падает.
+//  Without a base case the recursion never ends, the stack overflows,
+//  and the program crashes.
 //
-//  НЕТ ПЕРЕГРУЗКИ ФУНКЦИЙ
-//  Как и в C (и в отличие от C++), две функции с одним именем в одном
-//  модуле быть не могут, даже если у них разные параметры: "would
-//  shadow a previous declaration". Каждой функции — своё имя
-//  (`power`, `ipower`). Для обобщённого кода в C3 есть макросы и
-//  generics — о них позже.
+//  NO FUNCTION OVERLOADING
+//  Just like in C (and unlike C++), a module can't have two functions
+//  with the same name, even if their parameters differ: "would shadow
+//  a previous declaration". Every function gets its own name
+//  (`power`, `ipower`). For generic code C3 has macros and generics —
+//  more on those later.
 //
-//  ЗАДАЧА: исправьте места с `// <-`. Программа должна напечатать:
+//  TASK: fix the places marked `// <-`. The program should print:
 //
 //      fib: 0 1 1 2 3 5 8 13 21 34
 //      gcd(48, 18) = 6
@@ -53,11 +53,11 @@ fn void main()
 // fib(0) = 0, fib(1) = 1, fib(n) = fib(n-1) + fib(n-2)
 fn int fib(int n)
 {
-    if (???) return n;                     // <- базовый случай
+    if (???) return n;                     // <- the base case
     return fib(n - 1) + fib(n - 2);
 }
 
-// Алгоритм Евклида: gcd(a, 0) = a, иначе gcd(b, a % b)
+// Euclid's algorithm: gcd(a, 0) = a, otherwise gcd(b, a % b)
 fn int gcd(int a, int b) => b == 0 ? a : gcd(b, a % b);
 
 fn double power(double base, int exp)
@@ -66,7 +66,7 @@ fn double power(double base, int exp)
     return base * power(base, exp - 1);
 }
 
-fn int power(int base, int exp)            // <- перегрузки нет: как её зовут в main?
+fn int power(int base, int exp)            // <- no overloading: what does main call it?
 {
     if (exp == 0) return 1;
     return base * ipower(base, exp - 1);

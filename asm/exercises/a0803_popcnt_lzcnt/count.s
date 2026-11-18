@@ -1,38 +1,38 @@
 # =====================================================================
-#  a0803 · Подсчёт битов: popcnt, lzcnt, tzcnt
+#  a0803 · Counting bits: popcnt, lzcnt, tzcnt
 # =====================================================================
 #
-#  Три инструкции «посчитай биты» (все — 1 мкоп, задержка ~1-3 такта):
+#  Three "count the bits" instructions (all 1 uop, latency ~1-3 cycles):
 #
-#      popcnt dst, src   — количество единичных битов     (POPCNT)
-#      lzcnt  dst, src   — количество ведущих нулей       (LZCNT/ABM)
-#      tzcnt  dst, src   — количество хвостовых нулей     (BMI1)
+#      popcnt dst, src   — number of set bits                (POPCNT)
+#      lzcnt  dst, src   — number of leading zeros           (LZCNT/ABM)
+#      tzcnt  dst, src   — number of trailing zeros          (BMI1)
 #
-#  Для src = 0 lzcnt и tzcnt возвращают ширину операнда (64) и ставят CF.
+#  For src = 0, lzcnt and tzcnt return the operand width (64) and set CF.
 #
-#  Их старые родственники — bsr/bsf (bit scan reverse/forward) — возвращают
-#  ИНДЕКС старшего/младшего единичного бита, а при src = 0 оставляют dst
-#  НЕОПРЕДЕЛЁННЫМ (на практике — не трогают) и ставят ZF. Связь:
+#  Their old relatives — bsr/bsf (bit scan reverse/forward) — return the
+#  INDEX of the highest/lowest set bit, and for src = 0 they leave dst
+#  UNDEFINED (in practice, untouched) and set ZF. The relationship:
 #
 #      bsr(x) = 63 - lzcnt(x)       (x != 0)
 #      bsf(x) = tzcnt(x)            (x != 0)
 #
-#  Ловушка: tzcnt кодируется как `rep bsf`. Старый процессор без BMI1
-#  молча выполнит его как bsf — с другим результатом для нуля. Поэтому
-#  перед использованием BMI/LZCNT проверяют cpuid (у нас — есть всё).
+#  Pitfall: tzcnt is encoded as `rep bsf`. An old processor without BMI1
+#  will silently execute it as bsf — with a different result for zero. So
+#  before using BMI/LZCNT you check cpuid (here we have everything).
 #
-#  Ещё ловушка (историческая): на Intel до Cannon Lake у popcnt/lzcnt/tzcnt
-#  была «ложная зависимость» от регистра-приёмника. Компиляторы вставляют
-#  `xor eax, eax` перед `popcnt rax, rdi`, чтобы её разорвать.
+#  Another (historical) pitfall: on Intel before Cannon Lake, popcnt/lzcnt/tzcnt
+#  had a "false dependency" on the destination register. Compilers insert
+#  `xor eax, eax` before `popcnt rax, rdi` to break it.
 #
-#  Полезные формулы:
+#  Useful formulas:
 #      floor(log2(x))   = 63 - lzcnt(x)                      (x >= 1)
 #      next_pow2(x)     = 1 << (64 - lzcnt(x - 1))           (x >= 2)
-#                         и next_pow2(1) = 1 — особый случай, потому что
-#                         lzcnt(0) = 64, а сдвиг на 64 по модулю = сдвиг на 0 —
-#                         ...что, внезапно, даёт 1 << 0 = 1. Повезло!
+#                         and next_pow2(1) = 1 is a special case, because
+#                         lzcnt(0) = 64, and a shift by 64 modulo 64 = a shift by 0 —
+#                         ...which, surprisingly, gives 1 << 0 = 1. Lucky!
 #
-#  ЗАДАЧА: допишите функции (TODO).
+#  TASK: complete the functions (TODO).
 #      asm_popcount(x), asm_ctz(x) (ctz(0) = 64),
 #      asm_log2_floor(x) (x >= 1), asm_next_pow2(x) (x >= 1, x <= 2^63)
 #
@@ -47,13 +47,13 @@ asm_popcount:
 
     .globl asm_ctz
 asm_ctz:
-    bsf rax, rdi            # TODO: bsf неправильно работает для нуля
+    bsf rax, rdi            # TODO: bsf works incorrectly for zero
     ret
 
     .globl asm_log2_floor
 asm_log2_floor:
     lzcnt rax, rdi
-    # TODO: превратите количество ведущих нулей в индекс старшего бита
+    # TODO: turn the leading-zero count into the index of the highest bit
     ret
 
     .globl asm_next_pow2

@@ -1,4 +1,4 @@
-// Драйвер упражнения a1002. Этот файл НЕ нужно править — правьте hsum.s.
+// Driver for exercise a1002. You do NOT need to edit this file — edit hsum.s.
 import std::io;
 
 extern fn float hsum4(float* v);
@@ -11,7 +11,7 @@ fn void main()
     io::printfn("hsum4 = %.1f", hsum4(&v));
 
     float[37] a;
-    for (int i = 0; i < 37; i++) a[i] = (float)(i + 1);   // 1..37, сумма = 703
+    for (int i = 0; i < 37; i++) a[i] = (float)(i + 1);   // 1..37, sum = 703
     for (long n = 0; n <= 37; n++)
     {
         float expect = (float)(n * (n + 1) / 2);

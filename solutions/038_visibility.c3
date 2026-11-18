@@ -1,49 +1,49 @@
 // =====================================================================
-//  038 · Видимость: `@private`, `@local`, секции модулей
+//  038 · Visibility: `@private`, `@local`, module sections
 // =====================================================================
 //
-//  По умолчанию всё, что объявлено в модуле (функции, типы, глобальные
-//  переменные, константы), видно ВСЕМ, кто этот модуль импортировал.
-//  Чтобы спрятать детали реализации, есть атрибуты видимости:
+//  By default, everything declared in a module (functions, types,
+//  global variables, constants) is visible to EVERYONE who imports that
+//  module. To hide implementation details, there are visibility
+//  attributes:
 //
-//      fn void helper() @private { ... }  // видно только внутри модуля
-//                                         // (во всех его файлах)
-//      fn void tiny()   @local   { ... }  // видно только в этой
-//                                         // СЕКЦИИ модуля (см. ниже)
-//      int counter @private;              // работает и для глобальных
-//                                         // переменных, и для типов
+//      fn void helper() @private { ... }  // visible only inside the module
+//                                         // (in all of its files)
+//      fn void tiny()   @local   { ... }  // visible only in this
+//                                         // module SECTION (see below)
+//      int counter @private;              // works for global variables
+//                                         // and for types too
 //
-//  Это аналог `static` в C, но гибче: `@private` не ограничивается
-//  одним файлом — модуль может быть разбит на несколько файлов, и они
-//  видят приватные символы друг друга.
+//  It's the equivalent of `static` in C, but more flexible: `@private`
+//  isn't limited to one file - a module can be split across several
+//  files, and they see each other's private symbols.
 //
-//  СЕКЦИИ. В одном файле может быть несколько объявлений `module` —
-//  в том числе для разных модулей или одного и того же. Каждый кусок
-//  от `module ...;` до следующего `module` — это «секция». У секции
-//  можно поменять видимость по умолчанию:
+//  SECTIONS. A single file can contain several `module` declarations -
+//  including for different modules or the same one. Each chunk from
+//  `module ...;` up to the next `module` is a "section". A section can
+//  change the default visibility:
 //
-//      module bank @private;    // всё ниже — приватное...
-//      fn void audit() { }      // приватная
-//      fn int peek() @public { } // ...кроме явно помеченного @public
+//      module bank @private;    // everything below is private...
+//      fn void audit() { }      // private
+//      fn int peek() @public { } // ...except what's explicitly marked @public
 //
-//  Импорты тоже действуют только внутри своей секции.
+//  Imports also only apply within their own section.
 //
-//  Важная деталь: `@local` в C3 0.8.5 означает «видно только в текущей
-//  секции». Даже другая секция ТОГО ЖЕ модуля в ТОМ ЖЕ файле такой
-//  символ не увидит.
+//  An important detail: in C3 0.8.5, `@local` means "visible only in
+//  the current section". Even another section of THE SAME module in
+//  THE SAME file won't see such a symbol.
 //
-//  Иногда нужно «подсмотреть» приватное (например, в тестах или в
-//  соседних модулях одной библиотеки): `import bank @public;` делает
-//  приватные (но не @local) символы bank видимыми в этой секции.
-//  Пользуйтесь этим осознанно — обычно правильнее завести публичную
-//  функцию.
+//  Sometimes you need to "peek" at private things (for example, in
+//  tests or in neighboring modules of the same library):
+//  `import bank @public;` makes bank's private (but not @local) symbols
+//  visible in this section. Use it deliberately - usually it's better
+//  to add a public function.
 //
-//  В этом файле три секции: публичная часть модуля bank, приватная
-//  часть bank и модуль app с main.
+//  This file has three sections: the public part of the bank module,
+//  the private part of bank, and the app module with main.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`. Не делайте
-//  публичным то, что должно быть скрыто: `ops` должна остаться
-//  приватной.
+//  TASK: fix the three places marked with `// <-`. Don't make public
+//  what should stay hidden: `ops` must remain private.
 //
 module bank;
 
@@ -53,9 +53,9 @@ struct Account
     int balance;
 }
 
-int ops @private; // сколько операций выполнено — деталь реализации
+int ops @private; // how many operations were performed - an implementation detail
 
-fn bool valid_amount(int amount) @private // <- нужна и в другой секции модуля
+fn bool valid_amount(int amount) @private // <- also needed in another section of the module
 {
     return amount > 0 && amount <= 10_000;
 }
@@ -71,14 +71,14 @@ fn int op_count() => ops;
 
 module bank @private;
 
-// Всё в этой секции приватно по умолчанию.
+// Everything in this section is private by default.
 fn void apply(Account* a, int delta)
 {
     a.balance += delta;
     ops++;
 }
 
-fn bool withdraw(Account* a, int amount) @public // <- должна быть доступна снаружи
+fn bool withdraw(Account* a, int amount) @public // <- must be accessible from outside
 {
     if (!valid_amount(amount) || amount > a.balance) return false;
     apply(a, -amount);
@@ -97,5 +97,5 @@ fn void main()
     assert(bank::withdraw(&acc, 120));
     assert(!bank::withdraw(&acc, 1000));
     io::printfn("%s has %d", acc.owner, acc.balance);
-    io::printfn("operations: %d", bank::op_count()); // <- переменная ops приватна
+    io::printfn("operations: %d", bank::op_count()); // <- the ops variable is private
 }

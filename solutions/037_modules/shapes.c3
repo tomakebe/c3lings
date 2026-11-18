@@ -1,5 +1,5 @@
-// Подмодуль geometry::shapes. Тип Point из родительского модуля виден
-// без префикса, а вот функции и константы родителя — только с префиксом.
+// The geometry::shapes submodule. The Point type from the parent module is visible
+// without a prefix, but the parent's functions and constants only with a prefix.
 module geometry::shapes;
 
 struct Circle
@@ -8,7 +8,7 @@ struct Circle
     float radius;
 }
 
-fn float area(Circle c) => geometry::PI * c.radius * c.radius; // <- константа из модуля geometry
+fn float area(Circle c) => geometry::PI * c.radius * c.radius; // <- a constant from the geometry module
 
 fn bool contains(Circle c, Point p)
 {

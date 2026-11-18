@@ -1,42 +1,42 @@
 // =====================================================================
-//  019 · Массивы фиксированного размера
+//  019 · Fixed-size arrays
 // =====================================================================
 //
-//  СИНТАКСИС: размер пишется у ТИПА, а не у имени, как в C:
+//  SYNTAX: the size goes on the TYPE, not on the name as in C:
 //
 //      int[5] scores;                 // C: int scores[5];
 //      int[3] rgb = { 255, 128, 0 };
-//      int[*] primes = { 2, 3, 5 };   // размер выводится: int[3]
-//      int[10] sparse = { [2] = 7, [9] = 1 };   // остальные — нули
+//      int[*] primes = { 2, 3, 5 };   // the size is inferred: int[3]
+//      int[10] sparse = { [2] = 7, [9] = 1 };   // the rest are zeros
 //
-//  `int[5]` читается слева направо: «массив из 5 int». Неуказанные
-//  элементы, как и всё в C3, обнуляются. Если элементов в
-//  инициализаторе больше размера — ошибка компиляции.
+//  `int[5]` reads left to right: "an array of 5 ints". Elements you
+//  don't specify are zeroed, like everything in C3. If the initializer
+//  has more elements than the size allows, that's a compile error.
 //
-//  Длина массива: `scores.len` (тип `sz` — знаковый размер). Индексы с 0. Выход за
-//  границы ловится: для константного индекса — при компиляции, для
-//  переменного — в отладочной сборке программа аварийно завершится с
-//  понятным сообщением вместо тихой порчи памяти.
+//  The array length: `scores.len` (of type `sz`, a signed size). Indices start at 0.
+//  Out-of-bounds access gets caught: for a constant index at compile
+//  time, for a variable index in a debug build the program aborts with
+//  a clear message instead of silently corrupting memory.
 //
-//  МАССИВ — ЭТО ЗНАЧЕНИЕ
-//  Главное отличие от C. В C массив «распадается» в указатель: его
-//  нельзя присвоить, а в функцию на самом деле передаётся адрес. В C3
-//  массив фиксированного размера ведёт себя как обычное значение
-//  (как структура):
+//  AN ARRAY IS A VALUE
+//  This is the big difference from C. In C an array "decays" into a
+//  pointer: you can't assign it, and what actually gets passed to a
+//  function is an address. In C3 a fixed-size array behaves like an
+//  ordinary value (like a struct):
 //
 //      int[3] a = { 1, 2, 3 };
-//      int[3] b = a;        // КОПИЯ всех элементов
-//      b[0] = 100;          // a не изменился
+//      int[3] b = a;        // a COPY of all the elements
+//      b[0] = 100;          // a is unchanged
 //
-//  И при передаче в функцию массив тоже КОПИРУЕТСЯ: функция работает со
-//  своей копией. Чтобы получить изменённый массив назад, его можно
-//  вернуть (`fn int[3] f(int[3] a)`) — или передать указатель/срез
-//  (об этом в следующих упражнениях).
+//  And when passed to a function, the array is COPIED too: the function
+//  works with its own copy. To get the modified array back you can
+//  return it (`fn int[3] f(int[3] a)`) — or pass a pointer/slice
+//  (more on that in the next exercises).
 //
-//  Массивы одного типа можно сравнивать `==` поэлементно, а `%s` в
-//  printf печатает их как `[1, 2, 3]`.
+//  Arrays of the same type can be compared with `==` element by element,
+//  and `%s` in printf prints them as `[1, 2, 3]`.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      primes: [2, 3, 5, 7, 11] (5 items)
 //      backup: [10, 20, 30]
@@ -49,21 +49,21 @@ fn int[3] doubled(int[3] values)
 {
     for (int i = 0; i < values.len; i++)
     {
-        values[i] *= 2;          // меняем локальную копию...
+        values[i] *= 2;          // we modify the local copy...
     }
-    return values;               // ...и возвращаем её
+    return values;               // ...and return it
 }
 
 fn void main()
 {
-    int[3] primes = { 2, 3, 5, 7, 11 };          // <- пусть размер выведется сам
+    int[3] primes = { 2, 3, 5, 7, 11 };          // <- let the size be inferred
     io::printfn("primes: %s (%d items)", primes, primes.len);
 
     int[3] scores = { 10, 20, 30 };
-    int[3] backup = scores;                      // копия!
-    doubled(scores);                             // <- результат выброшен, scores не изменился
+    int[3] backup = scores;                      // a copy!
+    doubled(scores);                             // <- the result is thrown away, scores is unchanged
     assert(scores[0] == 20);
-    assert(backup[0] == ???);                    // <- что лежит в копии?
+    assert(backup[0] == ???);                    // <- what's in the copy?
     io::printfn("backup: %s", backup);
     io::printfn("doubled: %s", scores);
 

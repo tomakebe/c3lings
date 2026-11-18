@@ -1,5 +1,5 @@
 `write`: `scratch |= (ulong)value << scratch_bits; scratch_bits += bits; total_bits += bits;`
-если `scratch_bits >= 32` — сбросить младшие 32 бита в `words[word_count++]`, `scratch >>= 32`, `scratch_bits -= 32`.
-`read` — зеркально: если битов меньше, чем нужно, подгрузить слово `(ulong)words[word_index++] << scratch_bits`;
-результат — `scratch & ((1ul << bits) - 1)`, затем сдвинуть scratch.
-`quantize`: clamp; `(uint)math::round((x - min) / (max - min) * steps)`, где steps = `(float)((1u << bits) - 1)`.
+if `scratch_bits >= 32` - flush the low 32 bits into `words[word_count++]`, `scratch >>= 32`, `scratch_bits -= 32`.
+`read` is the mirror image: if there are fewer bits than needed, load a word `(ulong)words[word_index++] << scratch_bits`;
+the result is `scratch & ((1ul << bits) - 1)`, then shift scratch.
+`quantize`: clamp; `(uint)math::round((x - min) / (max - min) * steps)`, where steps = `(float)((1u << bits) - 1)`.

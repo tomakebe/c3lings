@@ -1,4 +1,4 @@
-// Драйвер упражнения a1403. Этот файл НЕ нужно править — правьте minmax.s.
+// Driver for exercise a1403. You do NOT need to edit this file — edit minmax.s.
 import std::io;
 
 extern fn void minmax(int* a, long n, int* out_min, int* out_max);

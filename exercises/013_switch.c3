@@ -1,45 +1,47 @@
 // =====================================================================
-//  013 · switch: основы
+//  013 · switch: the basics
 // =====================================================================
 //
-//  `switch` похож на сишный, но с важным отличием: после каждого `case`
-//  стоит НЕЯВНЫЙ `break`. Провала (fallthrough) в следующий `case` нет:
+//  `switch` looks like the C one, but with an important difference:
+//  every `case` ends with an IMPLICIT `break`. There is no fallthrough
+//  into the next `case`:
 //
 //      switch (x)
 //      {
 //          case 1:
-//              io::printn("one");      // и всё, дальше не идём
+//              io::printn("one");      // and that's it, we don't go further
 //          case 2:
 //              io::printn("two");
 //          default:
 //              io::printn("other");
 //      }
 //
-//  В C забытый `break` — одна из самых частых ошибок. Здесь его не
-//  нужно писать вовсе (хотя `break` внутри case и разрешён — он просто
-//  выходит из switch досрочно).
+//  In C a forgotten `break` is one of the most common bugs. Here you
+//  don't need to write it at all (although `break` inside a case is
+//  allowed — it simply leaves the switch early).
 //
-//  НЕСКОЛЬКО МЕТОК НА ОДНУ ВЕТКУ
-//  ПУСТОЙ `case` (без инструкций) проваливается в следующий. Так
-//  несколько значений объединяются в одну ветку:
+//  SEVERAL LABELS FOR ONE BRANCH
+//  An EMPTY `case` (with no statements) falls through into the next one.
+//  That's how several values are merged into one branch:
 //
 //      case 'a':
 //      case 'e':
 //      case 'i':
-//          vowels++;               // для 'a', 'e' и 'i'
+//          vowels++;               // for 'a', 'e' and 'i'
 //
-//  Обратная сторона: если вы хотите, чтобы какой-то case НИЧЕГО не
-//  делал, оставить его пустым нельзя — он провалится дальше! Напишите
-//  в нём хотя бы `break;`.
+//  The flip side: if you want some case to do NOTHING, you can't just
+//  leave it empty — it would fall through! Put at least a `break;`
+//  in it.
 //
-//  Перечислить значения через запятую (`case 1, 2:`) нельзя.
+//  Listing values with commas (`case 1, 2:`) is not allowed.
 //
-//  `switch` в C3 работает не только с целыми и символами, но и со
-//  строками (`case "move":`) — сравнивается содержимое.
+//  In C3 `switch` works not only with integers and characters but also
+//  with strings (`case "move":`) — the contents are compared.
 //
-//  ЗАДАЧА: подсчёт букв в фразе. Гласными считаем a, e, i, o, u; букву
-//  'y' вообще не считаем; пробелы считаем отдельно; остальное —
-//  согласные. Исправьте места с `// <-`. Программа должна напечатать:
+//  TASK: count the letters in a phrase. Vowels are a, e, i, o, u; the
+//  letter 'y' is not counted at all; spaces are counted separately;
+//  everything else is a consonant. Fix the places marked `// <-`. The
+//  program should print:
 //
 //      vowels=11 spaces=8 consonants=23
 //      move costs 1
@@ -72,9 +74,9 @@ fn void main()
     {
         switch (text[i])
         {
-            case 'a':                       // <- добавьте остальные гласные
+            case 'a':                       // <- add the other vowels
                 vowels++;
-            case 'y':                       // <- 'y' не должна ни во что попадать
+            case 'y':                       // <- 'y' shouldn't end up anywhere
             case ' ':
                 spaces++;
             default:

@@ -1,3 +1,3 @@
-1. Обычный `continue` переходит к следующему `x`. Чтобы перейти к следующей строке,
-   укажите метку внешнего цикла: `continue ROWS;`.
-2. Метка ставится между `for` и скобкой: `for SEARCH: (int y = 0; ...)`.
+1. A plain `continue` moves on to the next `x`. To move on to the next row,
+   name the outer loop's label: `continue ROWS;`.
+2. The label goes between `for` and the parenthesis: `for SEARCH: (int y = 0; ...)`.

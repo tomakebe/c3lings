@@ -1,47 +1,48 @@
 // =====================================================================
-//  009 · Операторы и приоритеты
+//  009 · Operators and precedence
 // =====================================================================
 //
-//  Арифметика как в C: `+ - * / %`, инкременты `++ --`, составные
-//  присваивания `+= -= *= ...`. Битовые: `& | ^ ~ << >>`. Логические:
-//  `&& || !`. Оператора возведения в степень нет (`2 ** 3` — это
-//  «2 умножить на разыменование 3», ошибка).
+//  Arithmetic is the same as in C: `+ - * / %`, increments `++ --`,
+//  compound assignments `+= -= *= ...`. Bitwise: `& | ^ ~ << >>`.
+//  Logical: `&& || !`. There's no exponentiation operator (`2 ** 3` is
+//  "2 times the dereference of 3", an error).
 //
-//  ПРИОРИТЕТЫ ОТЛИЧАЮТСЯ ОТ C! От высшего к низшему (упрощённо):
+//  PRECEDENCE DIFFERS FROM C! From highest to lowest (simplified):
 //
-//      1. постфиксные: () [] . ++ --
-//      2. префиксные: - ~ ! * &
+//      1. postfix: () [] . ++ --
+//      2. prefix: - ~ ! * &
 //      3. * / %
 //      4. << >>
-//      5. & | ^           (все три — ОДИН уровень)
+//      5. & | ^           (all three are ONE level)
 //      6. ?: ??
 //      7. + -
-//      8. == != < > <= >=  (все — один уровень)
+//      8. == != < > <= >=  (all one level)
 //      9. &&
 //     10. ||
-//     11. ? :  (тернарный)
+//     11. ? :  (ternary)
 //     12. = += -= ...
 //
-//  Что из этого следует:
-//  * `a & b == c` в C означает `a & (b == c)` (знаменитая ловушка),
-//    а в C3 — `(a & b) == c`, как и хочется.
-//  * Сдвиги и битовые операции связывают СИЛЬНЕЕ сложения:
-//    `1 + 2 << 3` в C3 — это `1 + (2 << 3)` == 17, а в C — 24.
-//  * Смешивать операторы одного «объединённого» уровня без скобок
-//    НЕЛЬЗЯ: `a | b & c` или `a < b == c` — ошибка "You need to add
-//    explicit parentheses". Никто не помнит, как в C различаются
-//    приоритеты `|`, `^` и `&`, поэтому C3 просто требует скобки.
+//  What follows from this:
+//  * `a & b == c` in C means `a & (b == c)` (a famous trap),
+//    while in C3 it's `(a & b) == c`, just as you'd want.
+//  * Shifts and bitwise operators bind TIGHTER than addition:
+//    `1 + 2 << 3` in C3 is `1 + (2 << 3)` == 17, while in C it's 24.
+//  * Mixing operators of the same "merged" level without parentheses is
+//    NOT ALLOWED: `a | b & c` or `a < b == c` is an error "You need to add
+//    explicit parentheses". Nobody remembers how the precedences of `|`,
+//    `^` and `&` differ in C, so C3 simply requires parentheses.
 //
-//  ОСТАТОК `%` берёт знак делимого: `-7 % 3 == -1`, `7 % -3 == 1`.
+//  The REMAINDER `%` takes the sign of the dividend: `-7 % 3 == -1`,
+//  `7 % -3 == 1`.
 //
-//  ПЕРЕПОЛНЕНИЕ
-//  В C переполнение знакового целого — неопределённое поведение. В C3
-//  оно ОПРЕДЕЛЕНО: значения «заворачиваются» по модулю 2^N (дополнительный
-//  код). `int::max + 1 == int::min`. Деление на ноль и сдвиг на
-//  слишком большое число бит в отладочной сборке аварийно завершают
-//  программу с понятным сообщением.
+//  OVERFLOW
+//  In C signed integer overflow is undefined behavior. In C3 it's
+//  DEFINED: values "wrap around" modulo 2^N (two's complement).
+//  `int::max + 1 == int::min`. Division by zero and shifting by too
+//  many bits abort the program with a clear message in a debug build.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked with `// <-`. The program should
+//  print:
 //
 //      mixed: 3
 //      shifted: 24
@@ -64,11 +65,11 @@ fn void main()
     io::printfn("shifted: %d", shifted);
 
     int flags = 0b1010;
-    bool has_flag = flags & 0b0010 == 0b0010;   // в C3 это работает как надо
+    bool has_flag = flags & 0b0010 == 0b0010;   // in C3 this works as intended
     io::printfn("has flag: %s", has_flag);
 
     ichar small = 127;
-    small++;                            // переполнение определено
+    small++;                            // overflow is well-defined
     assert(small == -128);
     io::printfn("wrapped: %d", small);
 

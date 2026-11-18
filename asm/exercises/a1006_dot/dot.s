@@ -1,35 +1,36 @@
 # =====================================================================
-#  a1006 · Скалярное произведение на AVX2: несколько аккумуляторов
+#  a1006 · Dot product with AVX2: multiple accumulators
 # =====================================================================
 #
-#  Финал главы: функция целиком.
+#  The chapter finale: a complete function.
 #
-#      float dot_f32(float* a, float* b, long n)   = сумма a[i] * b[i]
+#      float dot_f32(float* a, float* b, long n)   = sum of a[i] * b[i]
 #
-#  Требования:
-#    * основной цикл — по 16 элементов за итерацию, ДВА аккумулятора ymm
-#      (ymm0 и ymm1) с vfmadd231ps. Почему два: у FMA задержка ~4 такта,
-#      а запускать их процессор может 2 за такт. С одним аккумулятором
-#      каждая итерация ждёт предыдущую (цепочка зависимостей), с двумя —
-#      две цепочки идут параллельно. Подробно — в главе 14;
-#    * затем, если осталось >= 8, — ещё один шаг по 8;
-#    * сложить аккумуляторы, свернуть ymm -> xmm:
-#          vextractf128 xmm2, ymm0, 1      # старшие 128 бит
+#  Requirements:
+#    * the main loop handles 16 elements per iteration, with TWO ymm
+#      accumulators (ymm0 and ymm1) using vfmadd231ps. Why two: FMA has a
+#      latency of ~4 cycles, but the processor can start 2 per cycle. With
+#      one accumulator each iteration waits for the previous one (a
+#      dependency chain); with two, two chains run in parallel. Details in
+#      chapter 14;
+#    * then, if >= 8 remain, one more step of 8;
+#    * add the accumulators together, fold ymm -> xmm:
+#          vextractf128 xmm2, ymm0, 1      # upper 128 bits
 #          vaddps xmm0, xmm0, xmm2
-#      и горизонтальная сумма 4 float, как в a1002 (vmovhlps/vshufps/vaddss);
-#    * скалярный хвост (vfmadd231ss);
-#    * vzeroupper перед ret.
+#      and do the horizontal sum of 4 floats as in a1002 (vmovhlps/vshufps/vaddss);
+#    * a scalar tail (vfmadd231ss);
+#    * vzeroupper before ret.
 #
-#  В тестах значения — небольшие целые, поэтому любой порядок суммирования
-#  даёт точно тот же результат.
+#  The test values are small integers, so any summation order gives
+#  exactly the same result.
 #
-#  ЗАДАЧА: напишите dot_f32(a /*rdi*/, b /*rsi*/, n /*rdx*/).
+#  TASK: write dot_f32(a /*rdi*/, b /*rsi*/, n /*rdx*/).
 #
     .intel_syntax noprefix
     .text
     .globl dot_f32
 dot_f32:
-    # TODO: целиком
+    # TODO: the whole thing
     vxorps xmm0, xmm0, xmm0
     ret
 

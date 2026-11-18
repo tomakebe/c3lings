@@ -1,5 +1,5 @@
 // =====================================================================
-//  026 · Перечисления (enum)
+//  026 · Enumerations (enum)
 // =====================================================================
 //
 //      enum Direction
@@ -10,36 +10,37 @@
 //          WEST,
 //      }
 //
-//  Значения пишутся ЗАГЛАВНЫМИ. Полное имя — `Direction.NORTH`, но там,
-//  где тип понятен из контекста (присваивание, аргумент функции,
-//  `case`), имя типа можно опустить: `Direction d = NORTH;`.
+//  Values are written in CAPITALS. The full name is `Direction.NORTH`,
+//  but wherever the type is clear from context (assignment, function
+//  argument, `case`), you can omit the type name:
+//  `Direction d = NORTH;`.
 //
-//  ОТЛИЧИЯ ОТ C
-//  * enum в C3 — это настоящий отдельный тип, а не набор int-констант.
-//    Неявно в число и обратно он не превращается.
-//  * Значения всегда идут подряд: 0, 1, 2, ... Задать `NORTH = 5` нельзя
-//    (для произвольных значений есть `constset` — упражнение 047).
-//    Номер значения называется ORDINAL.
-//  * `%s` печатает ИМЯ значения: "NORTH".
+//  DIFFERENCES FROM C
+//  * An enum in C3 is a real, distinct type, not a bunch of int
+//    constants. It doesn't implicitly convert to a number or back.
+//  * Values are always consecutive: 0, 1, 2, ... You can't write
+//    `NORTH = 5` (for arbitrary values there's `constset` — exercise
+//    047). The number of a value is called its ORDINAL.
+//  * `%s` prints the value's NAME: "NORTH".
 //
-//  СВОЙСТВА
-//      d.ordinal                   номер значения (int)
-//      Direction::from_ordinal(i)  значение по номеру (с проверкой
-//                                  границ в отладочной сборке)
-//      Direction::len              количество значений (sz)
-//      Direction::values           все значения (можно обойти foreach)
-//      Direction::names            их имена в виде строк
-//  Свойства ТИПА пишутся через `::`, свойства ЗНАЧЕНИЯ — через точку.
-//  Также работает приведение: `(int)d`, `(Direction)2`.
+//  PROPERTIES
+//      d.ordinal                   the value's number (int)
+//      Direction::from_ordinal(i)  the value with that number (bounds
+//                                  checked in debug builds)
+//      Direction::len              the number of values (sz)
+//      Direction::values           all the values (you can foreach them)
+//      Direction::names            their names as strings
+//  Properties of a TYPE use `::`, properties of a VALUE use a dot.
+//  Casts work too: `(int)d`, `(Direction)2`.
 //
-//  SWITCH ПО ENUM ДОЛЖЕН БЫТЬ ПОЛНЫМ
-//  Если в `switch` по enum нет `default`, компилятор требует, чтобы были
-//  перечислены ВСЕ значения: "Enum value WEST was not handled in the
-//  switch". Добавили в enum новое значение — компилятор покажет все
-//  места, которые нужно обновить. Поэтому `default` для enum лучше не
-//  писать без необходимости.
+//  A SWITCH ON AN ENUM MUST BE EXHAUSTIVE
+//  If a `switch` on an enum has no `default`, the compiler requires ALL
+//  values to be listed: "Enum value WEST was not handled in the
+//  switch". Add a new value to the enum and the compiler will point out
+//  every place that needs updating. That's why it's better not to
+//  write `default` for enums unless you really need it.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      NORTH (0) -> ^
 //      EAST (1) -> >
@@ -60,7 +61,7 @@ enum Direction
 
 fn String arrow(Direction d)
 {
-    switch (d)                                        // <- не все значения обработаны
+    switch (d)                                        // <- not all values are handled
     {
         case NORTH: return "^";
         case EAST:  return ">";
@@ -71,12 +72,12 @@ fn String arrow(Direction d)
 fn Direction turn_right(Direction d)
 {
     int next = (d.ordinal + 1) % (int)Direction::len;
-    return ???;                                       // <- значение по номеру next
+    return ???;                                       // <- the value with ordinal next
 }
 
 fn void main()
 {
-    foreach (d : Direction.values)                    // <- свойство типа пишется иначе
+    foreach (d : Direction.values)                    // <- a type property is written differently
     {
         io::printfn("%s (%d) -> %s", d, d.ordinal, arrow(d));
     }

@@ -1,33 +1,34 @@
 # =====================================================================
-#  a1204 · Печать числа без libc
+#  a1204 · Printing a number without libc
 # =====================================================================
 #
-#  Функция целиком: перевести 64-битное беззнаковое число в десятичную
-#  строку и вывести её с '\n' одним вызовом write. Никакого printf.
+#  The whole function: convert a 64-bit unsigned number into a decimal
+#  string and output it with '\n' in a single write call. No printf.
 #
-#  Схема:
-#    * буфер — на стеке: sub rsp, 32 (хватит на 20 цифр + '\n');
-#    * заполняем его С КОНЦА: сначала '\n', затем цифры, начиная с младшей:
-#          цифра = x % 10, x = x / 10, пока x != 0
-#      (do-while: для x = 0 должна получиться одна цифра '0');
-#    * div: беззнаковое деление rdx:rax на операнд — не забудьте
-#      обнулить rdx перед каждым `div` (xor edx, edx)! Остаток — в rdx.
-#      (Компилятор заменил бы деление на 10 умножением на магическое
-#      число — см. главу 11; можно и так, если хочется.)
-#    * '0' + цифра = ASCII-код цифры (48 + d);
-#    * write(1, начало_цифр, длина) и вернуть результат write.
+#  Plan:
+#    * the buffer is on the stack: sub rsp, 32 (enough for 20 digits + '\n');
+#    * fill it FROM THE END: first '\n', then the digits, least significant
+#      first:
+#          digit = x % 10, x = x / 10, while x != 0
+#      (do-while: for x = 0 we must get a single digit '0');
+#    * div: unsigned division of rdx:rax by the operand — don't forget to
+#      zero rdx before every `div` (xor edx, edx)! The remainder is in rdx.
+#      (A compiler would replace division by 10 with multiplication by a
+#      magic number — see chapter 11; you can do that too if you like.)
+#    * '0' + digit = the ASCII code of the digit (48 + d);
+#    * write(1, start_of_digits, length) and return the result of write.
 #
-#  Функция-лист (никого не вызывает), поэтому выравнивание стека не
-#  важно, но rsp нужно вернуть на место перед ret.
-#  И ещё раз: syscall портит rcx и r11.
+#  This is a leaf function (it calls nothing), so stack alignment doesn't
+#  matter, but rsp must be restored before ret.
+#  And once again: syscall clobbers rcx and r11.
 #
-#  ЗАДАЧА: напишите print_u64(x /*rdi*/) -> число записанных байтов.
+#  TASK: write print_u64(x /*rdi*/) -> number of bytes written.
 #
     .intel_syntax noprefix
     .text
     .globl print_u64
 print_u64:
-    # TODO: целиком
+    # TODO: the whole thing
     xor eax, eax
     ret
 

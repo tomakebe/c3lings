@@ -1,4 +1,4 @@
-1. Поля занимают биты до 15, а у `char` только биты 0..7. Нужен 16-битный несущий тип.
-2. Диапазон `a..b` включительный: `5..9` — это 5 бит (максимум 31), а зелёному нужно 6 бит (до 63).
-   Значит, биты 5..10.
-3. `visible` — бит 0 (значение 1), `solid` — бит 2 (значение 4). Сложите.
+1. The fields use bits up to 15, but a `char` only has bits 0..7. You need a 16-bit backing type.
+2. The range `a..b` is inclusive: `5..9` is 5 bits (max 31), but green needs 6 bits (up to 63).
+   So, bits 5..10.
+3. `visible` is bit 0 (value 1), `solid` is bit 2 (value 4). Add them up.

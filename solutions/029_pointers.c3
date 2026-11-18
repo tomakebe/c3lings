@@ -1,45 +1,49 @@
 // =====================================================================
-//  029 · Указатели
+//  029 · Pointers
 // =====================================================================
 //
-//  Указатели в C3 почти такие же, как в C:
+//  Pointers in C3 are almost the same as in C:
 //
 //      int x = 5;
-//      int* p = &x;      // & — взять адрес
-//      *p = 7;           // * — разыменовать: теперь x == 7
-//      int* q = null;    // «никуда не указывает» (а не NULL или 0)
+//      int* p = &x;      // & takes an address
+//      *p = 7;           // * dereferences: now x == 7
+//      int* q = null;    // "points nowhere" (not NULL or 0)
 //
-//  `*` пишется у ТИПА: `int* p`. Объявлять несколько указателей в одной
-//  строке (`int* a, b`) не стоит — и без того запутанное в C место.
+//  The `*` goes with the TYPE: `int* p`. Declaring several pointers on
+//  one line (`int* a, b`) is best avoided — that corner of C is
+//  confusing enough already.
 //
-//  ДОСТУП К ПОЛЯМ: ТОЛЬКО ТОЧКА
-//  Оператора `->` нет. Для указателя на структуру поле читается так
-//  же, как у самой структуры:
+//  FIELD ACCESS: DOT ONLY
+//  There's no `->` operator. Through a pointer to a struct, a field is
+//  read just like on the struct itself:
 //
 //      Hero* h = &hero;
 //      h.hp -= 10;       // C: h->hp -= 10;
 //
-//  (Работает на один уровень: для `Hero**` нужно сначала разыменовать.)
+//  (This works for one level: for a `Hero**` you have to dereference
+//  first.)
 //
-//  ЗАЧЕМ УКАЗАТЕЛИ
-//  Аргументы передаются по значению. Чтобы функция могла изменить
-//  переменную вызывающего, ей передают адрес:
+//  WHY POINTERS
+//  Arguments are passed by value. For a function to be able to change
+//  the caller's variable, you pass it the address:
 //
 //      fn void reset(int* value) { *value = 0; }
 //      reset(&score);
 //
-//  АРИФМЕТИКА УКАЗАТЕЛЕЙ
-//  Как в C: `p + 1` — адрес СЛЕДУЮЩЕГО ЭЛЕМЕНТА (сдвиг на `int::size`
-//  байт, а не на 1 байт). `p[i]` — то же, что `*(p + i)`. Разность
-//  двух указателей — число элементов между ними (тип `sz`).
-//  Но в C3 обычно удобнее и безопаснее срезы (020): `p[0:n]` даёт срез
-//  с длиной и проверкой границ.
+//  POINTER ARITHMETIC
+//  Just like in C: `p + 1` is the address of the NEXT ELEMENT (an
+//  offset of `int::size` bytes, not 1 byte). `p[i]` is the same as
+//  `*(p + i)`. The difference of two pointers is the number of elements
+//  between them (of type `sz`).
+//  But in C3 slices (020) are usually more convenient and safer:
+//  `p[0:n]` gives you a slice with a length and bounds checking.
 //
-//  МАССИВ НЕ ПРЕВРАЩАЕТСЯ В УКАЗАТЕЛЬ
-//  Для `int[4] arr` выражение `&arr` имеет тип `int[4]*` (указатель на
-//  весь массив), а не `int*`. Указатель на первый элемент — `&arr[0]`.
+//  AN ARRAY DOES NOT DECAY TO A POINTER
+//  For `int[4] arr`, the expression `&arr` has type `int[4]*` (a
+//  pointer to the whole array), not `int*`. A pointer to the first
+//  element is `&arr[0]`.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      after swap: a=2 b=1
 //      hero hp: 75

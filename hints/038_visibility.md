@@ -1,5 +1,5 @@
-1. `valid_amount` помечена `@local` — её видно только в своей секции, а `withdraw` лежит в другой
-   секции модуля bank. Видимость «в пределах модуля» — это `@private`.
-2. `withdraw` находится в секции `module bank @private;`, где всё приватно по умолчанию.
-   Пометьте её явно атрибутом `@public`.
-3. `bank::ops` — приватная переменная. Для чтения снаружи в модуле уже есть публичная функция.
+1. `valid_amount` is marked `@local` - it's visible only in its own section, while `withdraw` lives in another
+   section of the bank module. "Visible within the module" is `@private`.
+2. `withdraw` is in the `module bank @private;` section, where everything is private by default.
+   Mark it explicitly with the `@public` attribute.
+3. `bank::ops` is a private variable. The module already has a public function for reading it from outside.

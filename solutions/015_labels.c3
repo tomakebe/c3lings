@@ -1,39 +1,40 @@
 // =====================================================================
-//  015 · Метки: break LABEL и continue LABEL
+//  015 · Labels: break LABEL and continue LABEL
 // =====================================================================
 //
-//  Во вложенных циклах `break` и `continue` действуют только на самый
-//  внутренний цикл. В C, чтобы выйти сразу из двух циклов, заводят
-//  флаг или пишут `goto`. В C3 `goto` нет совсем, зато циклу (а также
-//  `switch` и do-блоку) можно дать МЕТКУ и сослаться на неё:
+//  In nested loops `break` and `continue` only affect the innermost
+//  loop. In C, to get out of two loops at once, you set up a flag or
+//  write a `goto`. C3 has no `goto` at all, but you can give a loop (as
+//  well as a `switch` or a do block) a LABEL and refer to it:
 //
 //      for ROWS: (int y = 0; y < h; y++)
 //      {
 //          for (int x = 0; x < w; x++)
 //          {
-//              if (grid[y][x] == target) break ROWS;    // выйти из обоих
-//              if (grid[y][x] < 0) continue ROWS;       // к следующему y
+//              if (grid[y][x] == target) break ROWS;    // leave both loops
+//              if (grid[y][x] < 0) continue ROWS;       // on to the next y
 //          }
 //      }
 //
-//  Обратите внимание, где стоит метка: ПОСЛЕ ключевого слова и ПЕРЕД
-//  скобками, через двоеточие. Не как в C/Java (`ROWS: for (...)`), а
+//  Note where the label goes: AFTER the keyword and BEFORE the
+//  parentheses, followed by a colon. Not like in C/Java (`ROWS: for (...)`),
+//  but
 //
 //      for NAME: (...)
 //      while NAME: (...)
 //      switch NAME: (...)
 //      do NAME: { ... };
 //
-//  Имена меток пишутся ЗАГЛАВНЫМИ буквами (как константы).
+//  Label names are written in UPPERCASE (like constants).
 //
-//  `continue ROWS` — сразу перейти к следующей итерации внешнего
-//  цикла (выполнится его шаг `y++`).
+//  `continue ROWS` jumps straight to the next iteration of the outer
+//  loop (its step `y++` is executed).
 //
-//  ЗАДАЧА:
-//  1. Подсчитайте сумму каждой строки таблицы, но строки, где есть
-//     отрицательное число, целиком пропускайте (не печатайте их).
-//  2. Найдите первую клетку со значением 7 и прекратите поиск полностью.
-//  Исправьте места с `// <-`. Программа должна напечатать:
+//  TASK:
+//  1. Compute the sum of each row of the table, but skip rows that
+//     contain a negative number entirely (don't print them).
+//  2. Find the first cell holding the value 7 and stop searching completely.
+//  Fix the places marked `// <-`. The program should print:
 //
 //      row 0 sum 6
 //      row 2 sum 24

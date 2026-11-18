@@ -1,4 +1,4 @@
-`popcnt rax, rdi` и `tzcnt rax, rdi` — по одной инструкции.
-log2: индекс старшего бита = 63 - lzcnt(x). Посчитайте lzcnt в rcx, положите 63 в rax и вычтите.
-next_pow2: x - 1 удобно взять через `lea rax, [rdi - 1]`; затем lzcnt, затем 64 - n в `cl`, затем `shl` единицы.
-Хитрость: сдвиг берётся по модулю 64, поэтому `neg ecx` уже даёт нужный счётчик 64 - n.
+`popcnt rax, rdi` and `tzcnt rax, rdi` — one instruction each.
+log2: the index of the highest bit = 63 - lzcnt(x). Compute lzcnt into rcx, put 63 into rax and subtract.
+next_pow2: x - 1 is conveniently computed with `lea rax, [rdi - 1]`; then lzcnt, then 64 - n into `cl`, then `shl` a one.
+Trick: the shift count is taken modulo 64, so `neg ecx` already gives the needed count 64 - n.

@@ -1,4 +1,4 @@
-// Драйвер упражнения a1201. Этот файл НЕ нужно править — правьте write.s.
+// Driver for exercise a1201. You do NOT need to edit this file — edit write.s.
 import std::io;
 
 extern fn long sys_write(CInt fd, char* buf, long len);
@@ -7,9 +7,9 @@ extern fn long write_cstr(char* s);
 fn void main()
 {
     io::printn("[c3] before");
-    // printn/printfn сбрасывают буфер сами, но io::print — нет. Перед прямым
-    // системным вызовом ВСЕГДА сбрасывайте буфер stdout, иначе порядок вывода
-    // перемешается.
+    // printn/printfn flush the buffer themselves, but io::print does not. Before
+    // a direct system call ALWAYS flush the stdout buffer, otherwise the output
+    // order gets mixed up.
     (void)io::stdout().flush();
     String msg = "[asm] hello from syscall\n";
     long r = sys_write(1, msg.ptr, msg.len);

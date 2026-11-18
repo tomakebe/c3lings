@@ -1,3 +1,3 @@
-trylock: `mov eax, 1; xchg dword ptr [rdi], eax` — в eax старое значение (0 = было свободно). Верните его инверсию: `xor eax, 1`.
-lock: попытка xchg; если не вышло — крутитесь `pause; cmp dword ptr [rdi], 0; jne` и затем снова к xchg.
-unlock: одна обычная запись нуля — на x86 это уже release.
+trylock: `mov eax, 1; xchg dword ptr [rdi], eax` — eax holds the old value (0 = it was free). Return its inverse: `xor eax, 1`.
+lock: try xchg; if it fails, spin with `pause; cmp dword ptr [rdi], 0; jne` and then go back to xchg.
+unlock: a single plain store of zero — on x86 that is already release.

@@ -1,332 +1,332 @@
-# 00 · Введение в архитектуру игровых движков
+# 00 · Introduction to Game Engine Architecture
 
-Первый трек научил вас языку. Этот трек учит другому: **как спроектировать и написать
-игровой движок** — не «как пользоваться Unity», а как устроен тот слой кода, на котором
-стоят Unity, Unreal, Godot, id Tech, Frostbite, Source и сотни внутренних движков студий.
+The first track taught you a language. This track teaches something else: **how to design and write
+a game engine** — not "how to use Unity", but how the layer of code that Unity, Unreal, Godot,
+id Tech, Frostbite, Source and hundreds of in-house studio engines stand on is actually built.
 
-Цель трека амбициозная: к последней главе вы должны уметь самостоятельно принимать
-архитектурные решения уровня senior/lead engine programmer — понимать, *почему* движки
-устроены так, как устроены, какие у каждого решения альтернативы и цена, и уметь написать
-каждую подсистему с нуля на C3.
+The goal of the track is ambitious: by the last chapter you should be able to make
+architectural decisions at the level of a senior/lead engine programmer on your own — to understand *why* engines
+are built the way they are, what alternatives and costs every decision carries, and to be able to write
+each subsystem from scratch in C3.
 
-Эта глава — карта местности. Упражнений в ней нет, но её стоит прочитать целиком:
-дальше мы будем постоянно ссылаться на термины и схемы отсюда.
+This chapter is a map of the terrain. It has no exercises, but it is worth reading in full:
+later chapters will constantly refer back to the terms and diagrams introduced here.
 
 ---
 
-## 1. Что такое игровой движок
+## 1. What is a game engine
 
-Самое честное определение: **движок — это всё, что в коде игры не является конкретной
-игрой.** Если вы выкинете из исходников уровни, персонажей, правила, диалоги и баланс,
-останется движок: цикл кадра, память, математика, рендеринг, физика, звук, ввод,
-загрузка ресурсов, сериализация, сеть, инструменты.
+The most honest definition: **the engine is everything in a game's code that is not the specific
+game.** If you strip the levels, characters, rules, dialogue and balancing out of the sources,
+what remains is the engine: the frame loop, memory, math, rendering, physics, audio, input,
+resource loading, serialization, networking, tools.
 
-Джейсон Грегори в «Game Engine Architecture» предлагает критерий *data-driven*: движок —
-это программа, поведение которой в основном определяется данными (ассетами, конфигами,
-скриптами), а не кодом. Pac-Man 1980 года — не движок: призраки, лабиринт и правила зашиты
-в код. Quake (1996) — движок: новая игра делается заменой карт, моделей и QuakeC-скриптов,
-поэтому на нём и выросли Half-Life, моды и целая индустрия лицензирования.
+Jason Gregory, in "Game Engine Architecture", proposes a *data-driven* criterion: an engine is
+a program whose behavior is determined mainly by data (assets, configs,
+scripts) rather than by code. Pac-Man (1980) is not an engine: the ghosts, the maze and the rules are hardwired
+into the code. Quake (1996) is an engine: a new game is made by replacing maps, models and QuakeC scripts,
+which is why Half-Life, mods and an entire licensing industry grew out of it.
 
-Граница всегда размыта. Есть спектр:
+The boundary is always blurry. There is a spectrum:
 
 ```
-  не переиспользуется                                          переиспользуется
+  not reusable                                                      reusable
   <------------------------------------------------------------------------->
-  Pac-Man   "движок одной    внутренний движок   жанровый движок   универсальный
-  (1980)     игры"           студии (id Tech,    (RPG Maker,       движок (Unity,
+  Pac-Man   "single-game     in-house studio     genre engine      general-purpose
+  (1980)     engine"         engine (id Tech,    (RPG Maker,       engine (Unity,
              (Celeste)       Decima, Northlight) GameMaker)        Unreal, Godot)
 ```
 
-Чем правее, тем больше движок обязан быть общим, и тем дороже каждое решение: Unreal не
-может предполагать, что в игре 50 объектов или что она двумерная. Внутренний движок студии
-может (и должен!) пользоваться знанием своей игры. Одна из главных мыслей этого трека:
-**универсальность — не бесплатна**. Хороший движок решает *конкретную* задачу,
-и знание этой задачи — главный источник производительности (Майк Актон: «the purpose of all
-programs is to transform data»; движок, который не знает, какие у него данные, не может
-трансформировать их эффективно).
+The further right, the more general the engine has to be, and the more expensive every decision becomes: Unreal cannot
+assume that a game has 50 objects or that it is 2D. An in-house studio engine
+can (and should!) exploit knowledge of its game. One of the central ideas of this track:
+**generality is not free**. A good engine solves a *specific* problem,
+and knowledge of that problem is the main source of performance (Mike Acton: "the purpose of all
+programs is to transform data"; an engine that does not know what its data is cannot
+transform it efficiently).
 
-## 2. Runtime и tools
+## 2. Runtime and tools
 
-Движок — это два больших продукта, которые часто путают:
+An engine is two large products that are often confused:
 
-* **Runtime** — то, что запускается у игрока: цикл кадра, рендер, физика, звук, геймплей.
-  Требования: скорость, предсказуемость, малый объём памяти, работа на консолях и телефонах.
-* **Tools** — то, чем пользуются разработчики: редактор уровней, импорт ассетов,
-  компиляция шейдеров, упаковка, профайлер, отладочные консоли. Требования: удобство,
-  гибкость, надёжность, скорость итерации. Здесь можно тратить гигабайты памяти и
-  пользоваться «тяжёлыми» библиотеками.
+* **Runtime** — what runs on the player's machine: the frame loop, rendering, physics, audio, gameplay.
+  Requirements: speed, predictability, a small memory footprint, running on consoles and phones.
+* **Tools** — what developers use: the level editor, asset import,
+  shader compilation, packaging, the profiler, debug consoles. Requirements: convenience,
+  flexibility, robustness, iteration speed. Here you can spend gigabytes of memory and
+  use "heavy" libraries.
 
-Между ними стоит **пайплайн ассетов** (asset pipeline / asset conditioning): исходные
-файлы (`.psd`, `.fbx`, `.wav`, `.blend`) превращаются в *runtime-форматы*, оптимизированные
-под конкретную платформу: текстуры сжимаются в BCn/ASTC, меши переупорядочиваются под
-кэш вершин, всё упаковывается в архивы, которые можно читать одним `read` и использовать
-почти без парсинга (load-in-place).
+Between them sits the **asset pipeline** (asset conditioning): source
+files (`.psd`, `.fbx`, `.wav`, `.blend`) are turned into *runtime formats* optimized
+for a specific platform: textures are compressed to BCn/ASTC, meshes are reordered for the
+vertex cache, and everything is packed into archives that can be read with a single `read` and used
+with almost no parsing (load-in-place).
 
 ```
-  Художник/дизайнер          TOOLS (ПК разработчика)                 RUNTIME (игрок)
+  Artist/designer            TOOLS (developer PC)                    RUNTIME (player)
   ┌───────────────┐   ┌────────────────────────────────────┐   ┌────────────────────┐
-  │ .fbx .png .wav│──>│ импорт -> обработка -> упаковка     │──>│ загрузка пакетов   │
-  │ уровни, конфиг│   │ (сжатие, LOD, шейдеры, валидация)   │   │ без парсинга,      │
-  └───────────────┘   │ редактор = тот же runtime + UI      │   │ быстрые форматы    │
+  │ .fbx .png .wav│──>│ import -> processing -> packaging   │──>│ package loading    │
+  │ levels, config│   │ (compression, LOD, shaders, valid.) │   │ without parsing,   │
+  └───────────────┘   │ editor = same runtime + UI          │   │ fast formats       │
                       └────────────────────────────────────┘   └────────────────────┘
 ```
 
-Обратите внимание на строку «редактор = тот же runtime + UI». В Unreal и Unity редактор
-*содержит* runtime: вы нажимаете Play, и игра запускается внутри редактора. В Bitsquid/
-Stingray и в Our Machinery редактор был отдельным процессом, общающимся с runtime по сети
-— это делает runtime тоньше и позволяет «живое» редактирование на консоли. Оба подхода
-имеют право на жизнь; мы вернёмся к этому в главе 19.
+Note the line "editor = same runtime + UI". In Unreal and Unity the editor
+*contains* the runtime: you press Play and the game launches inside the editor. In Bitsquid/
+Stingray and in Our Machinery the editor was a separate process talking to the runtime over the network
+— this keeps the runtime thinner and enables "live" editing on a console. Both approaches
+are legitimate; we will return to this in chapter 19.
 
-Старая мудрость: **tools важнее runtime**. Игра делается людьми, и скорость, с которой
-дизайнер может поменять число и увидеть результат (iteration time), в итоге определяет
-качество игры сильнее, чем лишние 0.3 мс в рендере. Поэтому в треке будут главы про
-hot reload, сериализацию, редактор и undo/redo — это не «второстепенное», это ядро
-профессии.
+Old wisdom: **tools matter more than the runtime**. Games are made by people, and the speed at which
+a designer can change a number and see the result (iteration time) ultimately determines
+the quality of the game more than an extra 0.3 ms in the renderer. That is why the track has chapters on
+hot reload, serialization, the editor and undo/redo — these are not "secondary", they are the core
+of the profession.
 
-## 3. Слои движка
+## 3. Engine layers
 
-Движок принято рисовать как стопку слоёв, где каждый слой зависит только от нижних.
-Это упрощённая схема по мотивам Грегори (рис. 1.16 в 3-м издании):
+An engine is customarily drawn as a stack of layers, where each layer depends only on the ones below it.
+This is a simplified diagram based on Gregory (fig. 1.16 in the 3rd edition):
 
 ```
  ┌──────────────────────────────────────────────────────────────────────────┐
- │                    ИГРА (gameplay-код, скрипты, данные)                  │  гл. 14, 20
+ │                    GAME (gameplay code, scripts, data)                   │  ch. 14, 20
  ├──────────────────────────────────────────────────────────────────────────┤
- │ Gameplay foundation: мир, сущности/ECS, события, скриптинг, триггеры     │  гл. 05, 06, 14
+ │ Gameplay foundation: world, entities/ECS, events, scripting, triggers    │  ch. 05, 06, 14
  ├─────────────┬─────────────┬──────────────┬──────────────┬────────────────┤
- │ Рендеринг   │ Физика,     │ Анимация     │ Аудио        │ Сеть           │  гл. 09, 11,
- │             │ коллизии    │              │              │                │      16, 18
+ │ Rendering   │ Physics,    │ Animation    │ Audio        │ Networking     │  ch. 09, 11,
+ │             │ collisions  │              │              │                │      16, 18
  ├─────────────┴─────────────┴──────────────┴──────────────┴────────────────┤
- │ Сцена и пространственные структуры, ввод, ресурсы и ассеты               │  гл. 07, 08, 10
+ │ Scene and spatial structures, input, resources and assets                │  ch. 07, 08, 10
  ├──────────────────────────────────────────────────────────────────────────┤
- │ Core: цикл кадра, память, контейнеры, математика, строки, рефлексия,     │  гл. 01–04,
- │       сериализация, job system, профилирование, логирование, конфиги     │      12, 13, 15
+ │ Core: frame loop, memory, containers, math, strings, reflection,         │  ch. 01–04,
+ │       serialization, job system, profiling, logging, configs             │      12, 13, 15
  ├──────────────────────────────────────────────────────────────────────────┤
- │ Platform layer (PAL): окно, файлы, потоки, время, графический API, ввод  │
+ │ Platform layer (PAL): window, files, threads, time, graphics API, input  │
  ├──────────────────────────────────────────────────────────────────────────┤
- │ ОС, драйверы, железо (CPU, GPU, память, диски, контроллеры)              │
+ │ OS, drivers, hardware (CPU, GPU, memory, disks, controllers)             │
  └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Несколько важных мыслей об этой картинке.
+A few important points about this picture.
 
-**Platform layer.** Весь платформо-зависимый код (Win32, POSIX, консольные SDK, Vulkan/
-D3D12/Metal) спрятан за тонким слоем. Handmade Hero Кейси Муратори построен как раз вокруг
-этой идеи: игра — это функция `game_update_and_render(memory, input, output)`, а
-платформа лишь вызывает её, давая память, ввод и буфер для картинки. Такой интерфейс
-сразу даёт тестируемость (можно подать записанный ввод), hot reload (игру можно
-перезагрузить как DLL) и портируемость.
+**Platform layer.** All platform-dependent code (Win32, POSIX, console SDKs, Vulkan/
+D3D12/Metal) is hidden behind a thin layer. Casey Muratori's Handmade Hero is built precisely around
+this idea: the game is a function `game_update_and_render(memory, input, output)`, and
+the platform merely calls it, supplying memory, input and a buffer for the image. Such an interface
+immediately gives you testability (you can feed in recorded input), hot reload (the game can be
+reloaded as a DLL) and portability.
 
-**Core** — фундамент, который используется всеми. Именно с него начинается трек: если
-аллокаторы, контейнеры и математика сделаны плохо, ничего выше не спасёт. В Unreal это
-модуль `Core` (TArray, FString, FMemory, FMath), в Godot — `core/` (Vector, HashMap,
-Variant, Object), в Bitsquid — `foundation` (знаменитая минималистичная библиотека с
-`Array<T>`, `Hash<T>` и `Allocator`).
+**Core** is the foundation everything else uses. This is where the track begins: if
+allocators, containers and math are done poorly, nothing above can save you. In Unreal this is
+the `Core` module (TArray, FString, FMemory, FMath), in Godot it is `core/` (Vector, HashMap,
+Variant, Object), in Bitsquid it is `foundation` (the famous minimalist library with
+`Array<T>`, `Hash<T>` and `Allocator`).
 
-**Зависимости только вниз.** Если физика начинает вызывать рендер напрямую, а рендер —
-геймплей, движок превращается в клубок, где ничего нельзя ни протестировать отдельно,
-ни распараллелить. Общение «вверх» и «вбок» идёт через события (гл. 06), колбэки,
-данные в общих структурах или через явный «клей» на уровне игры. Our Machinery довела
-эту идею до предела: каждая подсистема — плагин с C-интерфейсом (таблицей функций),
-и ни одна не знает о другой напрямую (гл. 17).
+**Dependencies point only downward.** If physics starts calling the renderer directly, and the renderer calls
+gameplay, the engine turns into a tangle where nothing can be tested in isolation
+or parallelized. Communication "upward" and "sideways" goes through events (ch. 06), callbacks,
+data in shared structures, or explicit "glue" at the game level. Our Machinery took
+this idea to the extreme: every subsystem is a plugin with a C interface (a function table),
+and none of them knows about another directly (ch. 17).
 
-**Слои — не модули.** Внутри слоя у вас может быть много модулей, и граница проходит не
-по папкам, а по направлению зависимостей. В C3 это естественно выражается модулями
-(`module engine::core::mem;`) и видимостью (`@private`, `@local`).
+**Layers are not modules.** A layer may contain many modules, and the boundary runs not
+along folders but along the direction of dependencies. In C3 this is naturally expressed with modules
+(`module engine::core::mem;`) and visibility (`@private`, `@local`).
 
-## 4. Карта подсистем
+## 4. Subsystem map
 
-Перечислим подсистемы, которые встретятся в треке, одной строкой каждая.
+Here are the subsystems you will meet in this track, one line each.
 
-| Подсистема | Что делает | Ключевые идеи |
+| Subsystem | What it does | Key ideas |
 |---|---|---|
-| Игровой цикл (01) | Ритм кадра, время | fixed timestep, интерполяция, детерминизм |
-| Память (02) | Откуда берутся байты | арены, пулы, кадровые аллокаторы, бюджеты |
-| Контейнеры (03) | Как хранить объекты | handles, slot map, sparse set |
-| Математика (04) | Вектора и преобразования | SIMD, кватернионы, TRS, отсечение |
-| ECS (05) | Модель игрового мира | сущности-id, компоненты-данные, системы |
-| События (06) | Связь подсистем | очереди, двойная буферизация |
-| Ресурсы (07) | Ассеты в памяти | менеджер, refcount, hot reload |
-| Сцена (08) | Иерархия и пространство | dirty flags, BVH, grid |
-| Рендеринг (09) | Картинка | command buffer, sort keys, растеризация |
-| Ввод (10) | Устройства → действия | action mapping, буферизация |
-| Физика (11) | Движение и столкновения | интеграторы, broadphase, контакты |
-| Многопоточность (12) | Все ядра CPU | job system, граф кадра |
-| Сериализация (13) | Сохранение и загрузка | версионирование, рефлексия |
-| Скриптинг (14) | Логика без перекомпиляции | VM, привязки |
-| Профилирование (15) | Почему тормозит | инструментирование, debug draw |
-| Аудио (16) | Звук | микшер, голоса |
-| Hot reload (17) | Код без перезапуска | динамические библиотеки |
-| Сеть (18) | Мультиплеер | lockstep, снапшоты, prediction |
-| Инструменты (19) | Редактор | undo/redo, свойства |
+| Game loop (01) | Frame rhythm, time | fixed timestep, interpolation, determinism |
+| Memory (02) | Where bytes come from | arenas, pools, frame allocators, budgets |
+| Containers (03) | How objects are stored | handles, slot map, sparse set |
+| Math (04) | Vectors and transforms | SIMD, quaternions, TRS, culling |
+| ECS (05) | Game world model | entities as ids, components as data, systems |
+| Events (06) | Subsystem communication | queues, double buffering |
+| Resources (07) | Assets in memory | manager, refcount, hot reload |
+| Scene (08) | Hierarchy and space | dirty flags, BVH, grid |
+| Rendering (09) | The image | command buffer, sort keys, rasterization |
+| Input (10) | Devices → actions | action mapping, buffering |
+| Physics (11) | Motion and collisions | integrators, broadphase, contacts |
+| Multithreading (12) | All CPU cores | job system, frame graph |
+| Serialization (13) | Saving and loading | versioning, reflection |
+| Scripting (14) | Logic without recompiling | VM, bindings |
+| Profiling (15) | Why it's slow | instrumentation, debug draw |
+| Audio (16) | Sound | mixer, voices |
+| Hot reload (17) | Code without restarting | dynamic libraries |
+| Networking (18) | Multiplayer | lockstep, snapshots, prediction |
+| Tools (19) | Editor | undo/redo, properties |
 
-## 5. Поток данных одного кадра
+## 5. Data flow of a single frame
 
-Игра — это цикл, который 30–240 раз в секунду превращает «состояние мира + ввод» в
-«новое состояние мира + картинку + звук». Типичный кадр однопоточного движка:
+A game is a loop that, 30–240 times per second, turns "world state + input" into
+"new world state + image + sound". A typical frame of a single-threaded engine:
 
 ```
   ┌─────────┐   ┌──────────┐   ┌──────────────────────────┐   ┌─────────┐   ┌──────────┐
-  │ ОС:     │   │ Ввод:    │   │ Симуляция (0..N раз      │   │ Подго-  │   │ Рендер:  │
-  │ события │──>│ устройства│──>│ фиксированным шагом):    │──>│ товка   │──>│ команды  │
-  │ окна    │   │ -> actions│   │ геймплей, ИИ, физика,    │   │ кадра:  │   │ GPU,     │
-  └─────────┘   └──────────┘   │ анимация, события        │   │ culling,│   │ present  │
-                               └──────────────────────────┘   │ сортир. │   └──────────┘
+  │ OS:     │   │ Input:   │   │ Simulation (0..N times   │   │ Frame   │   │ Render:  │
+  │ window  │──>│ devices  │──>│ with a fixed step):      │──>│ prep:   │──>│ GPU      │
+  │ events  │   │ -> actions│   │ gameplay, AI, physics,   │   │ culling,│   │ commands,│
+  └─────────┘   └──────────┘   │ animation, events        │   │ sorting │   │ present  │
+                               └──────────────────────────┘   │         │   └──────────┘
                                          │                     └─────────┘
                                          v
-                                  аудио, сеть, стриминг ресурсов (часто в своих потоках)
+                                  audio, networking, resource streaming (often on their own threads)
 ```
 
-В современных движках кадры **перекрываются**: пока GPU рисует кадр N, CPU-поток
-рендера готовит команды для кадра N+1, а игровой поток уже симулирует кадр N+2.
-Так устроены Unreal (Game Thread → Render Thread → RHI Thread), Destiny (Bungie),
-Naughty Dog (знаменитый доклад «Parallelizing the Naughty Dog Engine Using Fibers»).
+In modern engines frames **overlap**: while the GPU draws frame N, the CPU render
+thread prepares commands for frame N+1, and the game thread is already simulating frame N+2.
+This is how Unreal (Game Thread → Render Thread → RHI Thread), Destiny (Bungie) and
+Naughty Dog (the famous talk "Parallelizing the Naughty Dog Engine Using Fibers") work.
 
 ```
- время ──────────────────────────────────────────────────────────>
+ time ────────────────────────────────────────────────────────────>
  Game thread:   [ sim N   ][ sim N+1 ][ sim N+2 ][ sim N+3 ]
  Render thread:            [ rend N  ][ rend N+1][ rend N+2]
  GPU:                                 [ gpu N   ][ gpu N+1 ]
 ```
 
-Из этого следует множество архитектурных требований, к которым мы будем возвращаться:
-данные, которые читает рендер, должны быть **скопированы или двойно буферизованы**
-(гл. 02, 06); память кадра должна жить столько кадров, сколько длится конвейер;
-задержка ввода (input latency) растёт с глубиной конвейера.
+This leads to many architectural requirements we will keep coming back to:
+data read by the renderer must be **copied or double-buffered**
+(ch. 02, 06); frame memory must live for as many frames as the pipeline is deep;
+input latency grows with pipeline depth.
 
-## 6. Принципы, на которых стоит этот трек
+## 6. The principles this track stands on
 
-**Data-oriented design.** Производительность современного CPU определяется памятью:
-промах кэша стоит 100–300 тактов, а одна инструкция — доли такта. Поэтому мы думаем о
-*данных*: как они лежат в памяти, кто их читает, в каком порядке, сколько их.
-Массивы структур однородных данных, обрабатываемые пачками, почти всегда быстрее графа
-объектов с виртуальными методами. Это не догма — это физика железа.
-(Mike Acton, «Data-Oriented Design and C++», CppCon 2014; Richard Fabian, «Data-Oriented Design».)
+**Data-oriented design.** The performance of a modern CPU is dominated by memory:
+a cache miss costs 100–300 cycles, while a single instruction costs a fraction of a cycle. So we think about
+*data*: how it is laid out in memory, who reads it, in what order, how much of it there is.
+Arrays of structs of homogeneous data processed in batches are almost always faster than a graph
+of objects with virtual methods. This is not dogma — it is the physics of the hardware.
+(Mike Acton, "Data-Oriented Design and C++", CppCon 2014; Richard Fabian, "Data-Oriented Design".)
 
-**Простые решения, явные владельцы.** Каждый байт памяти принадлежит конкретной подсистеме
-и конкретному аллокатору; у каждого объекта понятное время жизни (кадр, уровень, игра).
-Вместо `shared_ptr`-паутины — handles и арены.
+**Simple solutions, explicit owners.** Every byte of memory belongs to a specific subsystem
+and a specific allocator; every object has a clear lifetime (frame, level, game).
+Instead of a web of `shared_ptr`s — handles and arenas.
 
-**Явное лучше неявного.** Порядок обновления систем, моменты синхронизации, границы
-кадра — всё это должно быть видно в коде, а не происходить «где-то в деструкторе».
+**Explicit is better than implicit.** The order in which systems update, synchronization points, frame
+boundaries — all of this must be visible in the code, not happen "somewhere in a destructor".
 
-**Измеряйте.** Любое утверждение о производительности проверяется профайлером
-(гл. 15). Интуиция о том, что тормозит, ошибается примерно в половине случаев.
+**Measure.** Every performance claim is verified with a profiler
+(ch. 15). Intuition about what is slow is wrong roughly half the time.
 
-**Детерминизм и воспроизводимость.** Если баг можно воспроизвести по записанному вводу,
-он почти починен. Мы будем стремиться к тому, чтобы симуляция была детерминированной
-везде, где это дёшево (гл. 01, 18).
+**Determinism and reproducibility.** If a bug can be reproduced from recorded input,
+it is almost fixed. We will aim to keep the simulation deterministic
+wherever that is cheap (ch. 01, 18).
 
-## 7. Как устроен этот трек
+## 7. How this track is organized
 
-Каждая глава — это:
+Each chapter consists of:
 
-1. **Теория** в `engine/docs/CC_тема.md`. Читайте её *до* упражнений. Это не справочник
-   по API, а разбор проблемы: какие есть решения, их цена, как это сделано в реальных
-   движках, на какие грабли наступают.
-2. **Упражнения** `engine/exercises/eCCNN_имя.c3`. В них вы реализуете настоящий код
-   движка: аллокаторы, slot map, кватернионы, ECS, планировщик систем… Места для
-   работы помечены `TODO`. Каждая программа сама себя проверяет через `assert` и
-   печатает итоговый отчёт, который раннер сравнивает с эталоном.
-3. Последнее упражнение главы — **интеграционное**: оно собирает идеи главы в одну
-   небольшую, но законченную подсистему.
+1. **Theory** in `engine/docs/CC_topic.md`. Read it *before* the exercises. It is not an API
+   reference but an analysis of the problem: what solutions exist, what they cost, how real
+   engines do it, and which pitfalls people fall into.
+2. **Exercises** `engine/exercises/eCCNN_name.c3`. In them you implement real engine
+   code: allocators, a slot map, quaternions, an ECS, a system scheduler… The places to
+   work on are marked `TODO`. Each program checks itself with `assert` and
+   prints a final report that the runner compares against a reference.
+3. The last exercise of each chapter is an **integration** exercise: it brings the chapter's ideas together into one
+   small but complete subsystem.
 
-Упражнения этого трека крупнее, чем в первом. Обычно вам нужно реализовать несколько
-функций по 5–30 строк. Если застряли — `./c3lings hint e0203`. Если assert упал —
-читайте сообщение: оно говорит, *какое* свойство нарушено.
+Exercises in this track are larger than in the first one. Usually you need to implement several
+functions of 5–30 lines each. If you get stuck — `./c3lings hint e0203`. If an assert fails —
+read the message: it tells you *which* property was violated.
 
-Советы:
+Tips:
 
-* Сначала прочитайте всё упражнение целиком, включая `main` — тесты являются
-  спецификацией.
-* Решайте по одному `TODO`, запуская `./c3lings run eCCNN` после каждого.
-* После решения задайте себе вопросы: что будет при 10⁶ объектов? в нескольких потоках?
-  при нехватке памяти? Вопросы для самопроверки в конце глав — про это.
-* Код из упражнений — ваш. К главе 20 из него сложится собственный мини-движок.
+* First read the whole exercise, including `main` — the tests are the
+  specification.
+* Solve one `TODO` at a time, running `./c3lings run eCCNN` after each.
+* After solving, ask yourself: what happens with 10⁶ objects? With multiple threads?
+  When memory runs out? The self-check questions at the end of each chapter are about exactly this.
+* The code from the exercises is yours. By chapter 20 it will add up to your own mini-engine.
 
-## 8. Чего здесь не будет
+## 8. What you won't find here
 
-Мы не будем писать обёртки над Vulkan или DirectX — это отдельная огромная тема, плохо
-совместимая с форматом «одна программа печатает текст». Рендеринг в главе 09 — это
-архитектура рендерера (command buffers, sort keys, frame graph) и софтверный растеризатор,
-выводящий изображение в файл. Тот же подход — к звуку (WAV-файл) и сети (симуляция
-каналов с потерями в одном процессе). Архитектурные идеи от этого не меняются, а всё
-остаётся детерминированным и проверяемым.
+We will not write wrappers over Vulkan or DirectX — that is a separate, huge topic that fits poorly
+with the "one program prints text" format. Rendering in chapter 09 is
+renderer architecture (command buffers, sort keys, frame graph) and a software rasterizer
+that writes the image to a file. The same approach applies to audio (a WAV file) and networking (simulating
+lossy channels within a single process). The architectural ideas do not change because of this, and everything
+stays deterministic and verifiable.
 
-## 9. Запуск, остановка и порядок подсистем
+## 9. Startup, shutdown and subsystem order
 
-Ещё одна вещь, которую видно только изнутри движка, — **жизненный цикл подсистем**.
-Подсистемы зависят друг от друга: рендеру нужен менеджер ресурсов, ресурсам — файловая
-система и аллокаторы, всем — логирование и профайлер. Значит, инициализировать их надо
-снизу вверх по слоям, а останавливать — в обратном порядке:
+One more thing that is only visible from inside an engine is the **subsystem lifecycle**.
+Subsystems depend on each other: the renderer needs the resource manager, resources need the file
+system and allocators, everyone needs logging and the profiler. So they must be initialized
+bottom-up through the layers and shut down in reverse order:
 
 ```
  startup:   memory -> log -> filesystem -> jobs -> resources -> render -> audio -> world
  shutdown:  world -> audio -> render -> resources -> jobs -> filesystem -> log -> memory
 ```
 
-Грегори (раздел 5.1) обращает внимание на ловушку C++: глобальные объекты-синглтоны
-конструируются в неопределённом порядке, поэтому серьёзные движки не полагаются на
-конструкторы статических объектов, а вызывают явные `startup()`/`shutdown()` в `main`
-в нужном порядке. В C3 то же самое: `@init`-функции удобны для регистрации, но
-порядок старта подсистем лучше писать явно — это документация архитектуры, которую
-видно в одном месте.
+Gregory (section 5.1) points out a C++ trap: global singleton objects
+are constructed in an unspecified order, so serious engines do not rely on
+static object constructors but call explicit `startup()`/`shutdown()` in `main`
+in the right order. The same applies in C3: `@init` functions are handy for registration, but
+the subsystem startup order is better written out explicitly — it is architecture documentation that
+is visible in one place.
 
-Хорошая практика — **симметричность и проверка при остановке**: каждая подсистема при
-`shutdown` проверяет, что все её ресурсы освобождены (аллокатор пуст, handles не
-выданы, потоки остановлены). Утечка, найденная при выходе из уровня в отладочной
-сборке, стоит минуты; та же утечка, найденная через 6 часов игры на консоли, — дни.
+A good practice is **symmetry and verification at shutdown**: each subsystem, on
+`shutdown`, checks that all its resources have been released (the allocator is empty, no handles are
+outstanding, threads are stopped). A leak found on level exit in a debug
+build costs a minute; the same leak found after 6 hours of play on a console costs days.
 
-Наконец, **«горячие» и «холодные» пути** живут по разным правилам. При загрузке уровня
-можно позволить себе хеш-таблицы строк, парсинг и аллокации; в кадре — только заранее
-подготовленные данные, индексы вместо строк, кадровые аллокаторы. Значительная часть
-архитектуры движка — это перенос работы из кадра в загрузку, а из загрузки — в
-пайплайн ассетов («делай работу как можно раньше»). Это правило вы будете встречать
-в каждой главе: хеши строк вычисляются в инструментах (глава 07), раскладка данных
-готовится при упаковке (глава 13), сортировочные ключи — один раз на объект (глава 09).
+Finally, **"hot" and "cold" paths** live by different rules. While loading a level
+you can afford string hash tables, parsing and allocations; within a frame — only pre-
+prepared data, indices instead of strings, frame allocators. A large part of
+engine architecture is moving work out of the frame into loading, and out of loading into
+the asset pipeline ("do the work as early as possible"). You will meet this rule
+in every chapter: string hashes are computed in the tools (chapter 07), data layout
+is prepared during packaging (chapter 13), sort keys are computed once per object (chapter 09).
 
-## 10. Словарик
+## 10. Glossary
 
-* **Кадр (frame)** — одна итерация главного цикла, обычно заканчивается показом картинки.
-* **Тик (tick) / шаг симуляции** — одно обновление мира на фиксированное время `dt`.
-  В кадре может быть 0, 1 или несколько тиков.
-* **Бюджет кадра** — 16.6 мс при 60 Гц, 33.3 мс при 30 Гц, 8.3 мс при 120 Гц. Делится
-  между подсистемами («на физику 2 мс, на ИИ 1.5 мс»). То же для памяти.
-* **Hot path** — код, выполняющийся тысячи раз за кадр; здесь важна каждая инструкция.
-* **Cold path** — загрузка уровня, инициализация: здесь важна простота.
-* **Handle** — непрозрачный идентификатор объекта (индекс + поколение) вместо указателя.
-* **AoS / SoA** — array of structures / structure of arrays: два способа раскладки данных.
-* **Load-in-place** — данные на диске имеют ту же раскладку, что и в памяти.
+* **Frame** — one iteration of the main loop, usually ending with presenting an image.
+* **Tick / simulation step** — one update of the world by a fixed time `dt`.
+  A frame may contain 0, 1 or several ticks.
+* **Frame budget** — 16.6 ms at 60 Hz, 33.3 ms at 30 Hz, 8.3 ms at 120 Hz. It is split
+  among subsystems ("2 ms for physics, 1.5 ms for AI"). The same goes for memory.
+* **Hot path** — code that runs thousands of times per frame; every instruction matters here.
+* **Cold path** — level loading, initialization: simplicity matters here.
+* **Handle** — an opaque object identifier (index + generation) used instead of a pointer.
+* **AoS / SoA** — array of structures / structure of arrays: two ways of laying out data.
+* **Load-in-place** — data on disk has the same layout as in memory.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Почему критерий «data-driven» хорошо отделяет движок от игры? Приведите пример
-   игры, где граница между ними особенно размыта.
-2. Чем отличаются требования к коду runtime и tools? Приведите по два примера решений,
-   уместных в одном и недопустимых в другом.
-3. Почему зависимости между слоями должны идти только вниз? Что сломается, если физика
-   начнёт напрямую вызывать функции рендера?
-4. Нарисуйте поток данных одного кадра вашей любимой игры. Где в нём ввод, где
-   симуляция, где рендер, что может выполняться параллельно?
-5. Конвейер «игровой поток → поток рендера → GPU» увеличивает пропускную способность.
-   Что он ухудшает и какие требования предъявляет к данным?
-6. Почему универсальный движок почти всегда медленнее специализированного на той же задаче?
+1. Why does the "data-driven" criterion separate the engine from the game so well? Give an example
+   of a game where the boundary between them is especially blurry.
+2. How do the requirements for runtime code and tools code differ? Give two examples of decisions
+   that are appropriate in one and unacceptable in the other.
+3. Why must dependencies between layers point only downward? What breaks if physics
+   starts calling rendering functions directly?
+4. Draw the data flow of a single frame of your favorite game. Where is input, where is
+   simulation, where is rendering, and what can run in parallel?
+5. The "game thread → render thread → GPU" pipeline increases throughput.
+   What does it make worse, and what requirements does it impose on data?
+6. Why is a general-purpose engine almost always slower than a specialized one at the same task?
 
-## Что почитать
+## Further reading
 
-* **Jason Gregory, «Game Engine Architecture»** (3rd ed., 2018) — главная книга трека.
-  Главы 1 (обзор и слои), 2 (инструменты), 16 (runtime-архитектура).
-* **Robert Nystrom, «Game Programming Patterns»** — бесплатно на gameprogrammingpatterns.com;
-  особенно «Game Loop», «Update Method», «Component», «Data Locality».
-* **Casey Muratori, Handmade Hero** (handmadehero.org) — движок с нуля в прямом эфире;
-  первые ~30 эпизодов — эталон platform layer.
-* **Bitsquid / Stingray development blog** (bitsquid.blogspot.com) — короткие точные статьи
-  про данные, память, handles, ресурсы.
-* **Our Machinery blog** (архивы) — плагинная архитектура, «the truth», data model.
-* **Mike Acton, «Data-Oriented Design and C++»** (CppCon 2014) и **Richard Fabian, «Data-Oriented Design»**.
-* **Fabien Sanglard, «Game Engine Black Book: Wolfenstein 3D / DOOM»** и его разборы
-  исходников Quake/Doom 3 на fabiensanglard.net.
-* Исходники: **id Software** (Quake, Doom 3 BFG на GitHub), **Godot**, **Bevy**,
-  **sokol** (Андре Вайсфлог) — читать чужие движки так же важно, как писать свой.
+* **Jason Gregory, "Game Engine Architecture"** (3rd ed., 2018) — the main book for this track.
+  Chapters 1 (overview and layers), 2 (tools), 16 (runtime architecture).
+* **Robert Nystrom, "Game Programming Patterns"** — free at gameprogrammingpatterns.com;
+  especially "Game Loop", "Update Method", "Component", "Data Locality".
+* **Casey Muratori, Handmade Hero** (handmadehero.org) — an engine from scratch, streamed live;
+  the first ~30 episodes are the gold standard for a platform layer.
+* **Bitsquid / Stingray development blog** (bitsquid.blogspot.com) — short, precise articles
+  on data, memory, handles, resources.
+* **Our Machinery blog** (archives) — plugin architecture, "the truth", data model.
+* **Mike Acton, "Data-Oriented Design and C++"** (CppCon 2014) and **Richard Fabian, "Data-Oriented Design"**.
+* **Fabien Sanglard, "Game Engine Black Book: Wolfenstein 3D / DOOM"** and his walkthroughs
+  of the Quake/Doom 3 source code on fabiensanglard.net.
+* Source code: **id Software** (Quake, Doom 3 BFG on GitHub), **Godot**, **Bevy**,
+  **sokol** (Andre Weissflog) — reading other people's engines is as important as writing your own.
 
-Дальше — глава 01, игровой цикл: самое сердце движка.
+Next up is chapter 01, the game loop: the very heart of the engine.

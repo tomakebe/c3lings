@@ -1,4 +1,4 @@
-// Драйвер упражнения a1006. Этот файл НЕ нужно править — правьте dot.s.
+// Driver for exercise a1006. You do NOT need to edit this file — edit dot.s.
 import std::io;
 
 extern fn float dot_f32(float* a, float* b, long n);

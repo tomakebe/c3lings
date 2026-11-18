@@ -1,4 +1,4 @@
-1. Замените двойные кавычки на обратные (`` ` ``) — получится raw-строка, в которой
-   `\` не имеет особого смысла. (Вариант с `\\` тоже сработает.)
-2. Компилятор сам подсказывает: у ZString есть метод `.str_view()`.
-3. Символ записывается в одинарных кавычках: `'l'`.
+1. Replace the double quotes with backticks (`` ` ``) — that makes a raw string, in which
+   `\` has no special meaning. (Using `\\` works too.)
+2. The compiler itself gives you a hint: ZString has a `.str_view()` method.
+3. A character is written in single quotes: `'l'`.

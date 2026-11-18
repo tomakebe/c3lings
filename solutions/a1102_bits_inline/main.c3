@@ -1,31 +1,31 @@
 // =====================================================================
-//  a1102 · Inline-ассемблер: битовые инструкции и размеры операндов
+//  a1102 · Inline assembly: bit instructions and operand sizes
 // =====================================================================
 //
-//  Самый частый повод писать inline-ассемблер — инструкция, до которой
-//  язык «не дотягивается» (или вы хотите гарантировать именно её).
-//  В блоке asm доступны popcnt, lzcnt, tzcnt, bswapl/bswapq, pdep, pext,
-//  andn, blsr, bzhi, shlx, rorx и другие.
+//  The most common reason to write inline assembly is an instruction the
+//  language "can't reach" (or one you want to guarantee is used).
+//  In an asm block you have popcnt, lzcnt, tzcnt, bswapl/bswapq, pdep, pext,
+//  andn, blsr, bzhi, shlx, rorx and others.
 //
-//  У части инструкций суффикса нет (popcnt, tzcnt, lzcnt, pdep, pext,
-//  rorx): их размер определяется размером переменных — все операнды
-//  должны быть одного размера:
+//  Some instructions have no suffix (popcnt, tzcnt, lzcnt, pdep, pext,
+//  rorx): their size is determined by the size of the variables — all
+//  operands must be the same size:
 //
-//      ulong r; ulong x;   asm { popcnt r, x; }       // 64-битный popcnt
-//      uint  r; uint  x;   asm { tzcnt r, x; }        // 32-битный tzcnt
+//      ulong r; ulong x;   asm { popcnt r, x; }       // 64-bit popcnt
+//      uint  r; uint  x;   asm { tzcnt r, x; }        // 32-bit tzcnt
 //
-//  Инструкции с суффиксом требуют совпадения: bswapl — uint, bswapq — ulong.
+//  Instructions with a suffix require a match: bswapl — uint, bswapq — ulong.
 //
-//  Константа-маска для pext должна быть в регистре или переменной —
-//  непосредственный операнд pext не принимает. Просто объявите
-//  `uint mask = 0x...;` и передайте переменную.
+//  The mask constant for pext must be in a register or variable — pext
+//  does not accept an immediate operand. Just declare
+//  `uint mask = 0x...;` and pass the variable.
 //
-//  Компилятор сам поймёт, что `r` пишется, а `x` читается, и что флаги
-//  портятся (popcnt меняет ZF). Посмотрите на результат:
-//      c3c compile --emit-asm main.c3     (файлы в asm/linux-x64/)
-//  — между маркерами #APP и #NO_APP будет ваш код, уже в AT&T-синтаксисе.
+//  The compiler will figure out on its own that `r` is written, `x` is
+//  read, and the flags are clobbered (popcnt changes ZF). Look at the result:
+//      c3c compile --emit-asm main.c3     (files in asm/linux-x64/)
+//  — between the #APP and #NO_APP markers is your code, already in AT&T syntax.
 //
-//  ЗАДАЧА: допишите тела четырёх функций (TODO), используя блоки asm.
+//  TASK: fill in the bodies of the four functions (TODO) using asm blocks.
 //
 import std::io;
 
@@ -49,7 +49,7 @@ fn uint byte_swap32(uint x)
     return x;
 }
 
-// Собрать младшие биты всех 8 тетрад в 8-битное число (через pext).
+// Gather the low bits of all 8 nibbles into an 8-bit number (via pext).
 fn uint nibble_lows(uint x)
 {
     uint r;

@@ -1,3 +1,3 @@
-1. Имя метода начинается с имени типа: `fn int Vec2.length_sq(self)`.
-2. С `self` метод работает с копией. Чтобы менять сам объект, нужен `&self`.
-3. Метод вызывается через точку: `v.scale(2);`.
+1. A method name starts with the type name: `fn int Vec2.length_sq(self)`.
+2. With `self` the method works on a copy. To change the object itself you need `&self`.
+3. A method is called with a dot: `v.scale(2);`.

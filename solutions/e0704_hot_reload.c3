@@ -1,49 +1,49 @@
 // =====================================================================
-//  e0704 · Hot reload по времени изменения файлов
+//  e0704 · Hot reload by file modification time
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/07_resources.md (раздел «Hot reload»).
+//  Read engine/docs/07_resources.md first (section "Hot reload").
 //
-//  Художник сохраняет текстуру в Photoshop — и через полсекунды она уже
-//  в запущенной игре. Это экономит часы в день, и любой серьёзный движок
-//  это умеет. Самый простой и переносимый способ узнать об изменении —
-//  периодически (раз в N кадров) опрашивать время модификации файлов:
+//  An artist saves a texture in Photoshop — and half a second later it is
+//  in the running game. This saves hours a day, and every serious engine
+//  can do it. The simplest and most portable way to detect a change is to
+//  periodically (every N frames) poll the files' modification times:
 //
-//      std::io::file::last_modified(path)   -> Time?  (ошибка, если файла нет)
+//      std::io::file::last_modified(path)   -> Time?  (error if the file is missing)
 //
-//  Подписка на события ОС (inotify, ReadDirectoryChangesW, FSEvents)
-//  точнее и дешевле, но три разных API; опрос mtime работает везде.
+//  Subscribing to OS events (inotify, ReadDirectoryChangesW, FSEvents)
+//  is more precise and cheaper, but means three different APIs; mtime polling works everywhere.
 //
-//  Хорошая система hot reload соблюдает три правила:
+//  A good hot reload system follows three rules:
 //
-//  1. Транзакционность. Файл могут сохранить «наполовину» или с ошибкой.
-//     Сначала разбираем новые данные во временную структуру и только при
-//     успехе подменяем старые. При ошибке — сообщение в лог и работа со
-//     СТАРОЙ версией. Игра не должна падать от опечатки в материале.
-//  2. Зависимости. Материал ссылается на шейдер. Перезагрузили шейдер —
-//     надо заново «слинковать» все материалы, которые на него ссылаются,
-//     хотя их файлы не менялись.
-//  3. Исчезновение файла (переименовали, git checkout в процессе) — это
-//     не повод выгружать ресурс. Предупреждаем ОДИН раз и ждём, пока файл
-//     вернётся (с новым mtime).
+//  1. Transactionality. A file may be saved "half-way" or with an error.
+//     First parse the new data into a temporary structure, and only on
+//     success swap out the old one. On error — log a message and keep working with the
+//     OLD version. The game must not crash because of a typo in a material.
+//  2. Dependencies. A material references a shader. Reloaded the shader? Then
+//     all materials referencing it must be "re-linked",
+//     even though their files have not changed.
+//  3. A file disappearing (renamed, git checkout in progress) is
+//     no reason to unload the resource. Warn ONCE and wait for the file
+//     to come back (with a new mtime).
 //
-//  В этом упражнении файлы настоящие — они пишутся в текущий каталог.
-//  Чтобы тест был детерминированным, mtime выставляется явно через
-//  file::set_modified_time (иначе два сохранения в одну секунду имели бы
-//  одинаковое время — это, кстати, реальная проблема опроса mtime).
+//  In this exercise the files are real — they are written to the current directory.
+//  To keep the test deterministic, mtime is set explicitly via
+//  file::set_modified_time (otherwise two saves within one second would have
+//  the same time — which, by the way, is a real problem with mtime polling).
 //
-//  ЗАДАЧА: реализуйте Watcher.poll() (TODO ниже). Для каждого ресурса:
-//    * last_modified не удалось -> если ещё не missing: missing = true,
-//      лог "  WARN <path>: missing, keeping v<N>"; дальше не обрабатывать;
-//    * файл есть: missing = false; если mtime не изменился — пропустить;
-//    * иначе запомнить новый mtime (даже если разбор провалится — иначе
-//      мы будем пытаться перечитать битый файл каждый опрос) и вызвать
-//      self.reload(i): при ошибке лог "  ERROR <path>: keeping v<N>",
-//      при успехе — version++, лог "  reload <path> v<N>", reloads++.
-//    * после прохода по всем файлам — перелинковать (self.link(i)) все
-//      материалы, которые были перезагружены сами или чей шейдер был
-//      перезагружен в этом опросе.
-//  poll возвращает число успешных перезагрузок.
+//  TASK: implement Watcher.poll() (TODO below). For each resource:
+//    * last_modified failed -> if not yet missing: missing = true,
+//      log "  WARN <path>: missing, keeping v<N>"; do not process further;
+//    * the file exists: missing = false; if mtime has not changed — skip;
+//    * otherwise remember the new mtime (even if parsing fails — otherwise
+//      we would try to re-read a broken file on every poll) and call
+//      self.reload(i): on error log "  ERROR <path>: keeping v<N>",
+//      on success — version++, log "  reload <path> v<N>", reloads++.
+//    * after the pass over all files — re-link (self.link(i)) all
+//      materials that were reloaded themselves or whose shader was
+//      reloaded in this poll.
+//  poll returns the number of successful reloads.
 //
 import std::io, std::time, libc;
 
@@ -61,9 +61,9 @@ struct Entry
     // SHADER
     int brightness;
     // MATERIAL
-    int shader;          // индекс шейдера в Watcher.entries
+    int shader;          // shader index in Watcher.entries
     int[3] color;
-    int[3] final_color;  // результат линковки: color * brightness
+    int[3] final_color;  // link result: color * brightness
 }
 
 const int MAX_ENTRIES = 4;
@@ -75,9 +75,9 @@ struct Watcher
 }
 
 // ---------------------------------------------------------------------
-// Разбор (дан готовым). Пишет в *out только при полном успехе.
-// Шейдер:   "brightness <int>"
-// Материал: "shader <path>\ncolor <r> <g> <b>"
+// Parsing (provided). Writes to *out only on full success.
+// Shader:   "brightness <int>"
+// Material: "shader <path>\ncolor <r> <g> <b>"
 // ---------------------------------------------------------------------
 fn void? Watcher.parse(&self, int i, String text, Entry* out) => @pool()
 {
@@ -120,7 +120,7 @@ fn int Watcher.find(&self, String path)
     return -1;
 }
 
-// Читает файл и, если он корректен, подменяет данные ресурса.
+// Reads the file and, if it is valid, replaces the resource data.
 fn void? Watcher.reload(&self, int i) => @pool()
 {
     char[] text = file::load_temp(self.entries[i].path)!;
@@ -187,7 +187,7 @@ fn int Watcher.poll(&self)
 }
 
 // ---------------------------------------------------------------------
-// Тест: «художник» правит файлы, игра опрашивает.
+// Test: the "artist" edits files, the game polls.
 // ---------------------------------------------------------------------
 const String SHADER_FILE = "e0704_base.shader";
 const String HERO_FILE = "e0704_hero.mat";
@@ -244,7 +244,7 @@ fn void main()
     file::delete(SHADER_FILE);
     assert(w.poll() == 0);
     assert(w.entries[0].missing && w.entries[0].brightness == 3, "keep the old data when the file is gone");
-    assert(w.poll() == 0);   // предупреждение только один раз
+    assert(w.poll() == 0);   // warning only once
 
     io::printn("poll 8 (shader restored):");
     edit(SHADER_FILE, "brightness 1\n", 5000);

@@ -1,2 +1,2 @@
-Возвращаемое значение функции — это то, что лежит в `eax`/`rax` в момент `ret`.
-Сейчас туда кладётся 0. Поменяйте непосредственный операнд (immediate) в `mov`.
+A function's return value is whatever is in `eax`/`rax` at the moment of `ret`.
+Right now 0 is put there. Change the immediate operand in the `mov`.

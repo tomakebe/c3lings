@@ -1,5 +1,5 @@
-Порядок в `f32_to_s16`: сначала clamp в [-1, 1], потом умножение на 32767, потом округление.
-Округление к ближайшему для положительных — `+ 0.5f` и отбросить дробь приведением `(short)`,
-для отрицательных — `- 0.5f` (приведение к целому отбрасывает дробь «к нулю»).
-В `peak_s16` считайте модуль в `int`: `-(int)s`, а не `-s` — у short нет места для +32768.
+Order in `f32_to_s16`: first clamp to [-1, 1], then multiply by 32767, then round.
+Round-to-nearest for positive values is `+ 0.5f` and dropping the fraction with a `(short)` cast;
+for negative values it's `- 0.5f` (casting to an integer truncates the fraction "toward zero").
+In `peak_s16` compute the absolute value in `int`: `-(int)s`, not `-s` - a short has no room for +32768.
 `interleave`: `out[2*i] = left[i]`, `out[2*i+1] = right[i]`.

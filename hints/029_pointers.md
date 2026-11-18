@@ -1,3 +1,3 @@
-1. Поле через указатель читается точкой: `target.hp`.
-2. `swap` принимает `int*`. Передайте адреса: `swap(&a, &b)`.
-3. `first` указывает на элемент 0, а 30 — элемент с индексом 2. `first + 2`.
+1. A field is read through a pointer with a dot: `target.hp`.
+2. `swap` takes `int*`. Pass the addresses: `swap(&a, &b)`.
+3. `first` points to element 0, and 30 is the element at index 2. `first + 2`.

@@ -1,4 +1,4 @@
-Разворот: поле 0 результата берёт элемент 3, поле 1 — 2, ... В imm поле 0 — младшие 2 бита: 0b00_01_10_11.
-Маска pshufb для BGRA: в каждой четвёрке байтов поменять местами 0-й и 2-й: 2,1,0,3, 6,5,4,7, ...
-Цикл: `movdqu xmm0, [rdi + rax*4]; pshufb xmm0, xmm1; movdqu [rdi + rax*4], xmm0`, шаг 4 пикселя, пока rax < count - 3.
-Хвост: загрузите пиксель в edx, `bswap edx` развернёт все 4 байта, а `ror edx, 8` вернёт альфу на место.
+Reversal: result lane 0 takes element 3, lane 1 takes 2, ... In imm, lane 0 is the low 2 bits: 0b00_01_10_11.
+pshufb mask for BGRA: in each group of four bytes, swap bytes 0 and 2: 2,1,0,3, 6,5,4,7, ...
+Loop: `movdqu xmm0, [rdi + rax*4]; pshufb xmm0, xmm1; movdqu [rdi + rax*4], xmm0`, step 4 pixels, while rax < count - 3.
+Tail: load a pixel into edx, `bswap edx` reverses all 4 bytes, and `ror edx, 8` puts alpha back in place.

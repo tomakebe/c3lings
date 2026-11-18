@@ -1,35 +1,35 @@
 # =====================================================================
-#  a1402 · Цепочки зависимостей и несколько аккумуляторов
+#  a1402 · Dependency chains and multiple accumulators
 # =====================================================================
 #
-#  Простейшая сумма:
+#  The simplest sum:
 #      1: add rax, [rdi + rcx*8]
 #         inc rcx
 #         cmp rcx, rsi
 #         jl 1b
-#  Каждый add ждёт результата предыдущего — это ЦЕПОЧКА ЗАВИСИМОСТЕЙ.
-#  Её скорость ограничена ЗАДЕРЖКОЙ (latency) add: 1 такт на элемент.
-#  Хотя процессор может выполнять 3-4 add за такт (ПРОПУСКНАЯ способность,
-#  throughput) и 2-3 загрузки за такт.
+#  Each add waits for the result of the previous one — this is a
+#  DEPENDENCY CHAIN. Its speed is limited by the LATENCY of add: 1 cycle
+#  per element. Even though the processor can execute 3-4 adds per cycle
+#  (THROUGHPUT) and 2-3 loads per cycle.
 #
-#  Решение — несколько независимых аккумуляторов:
+#  The fix is several independent accumulators:
 #      s0 += a[i]; s1 += a[i+1]; s2 += a[i+2]; s3 += a[i+3];
-#  Четыре цепочки идут параллельно; в конце s0+s1+s2+s3, затем хвост.
-#  Заодно развёртка цикла уменьшает накладные расходы (inc/cmp/jl на 4
-#  элемента вместо одного).
+#  Four chains run in parallel; at the end s0+s1+s2+s3, then the tail.
+#  As a bonus, unrolling the loop reduces overhead (inc/cmp/jl per 4
+#  elements instead of one).
 #
-#  Для целых порядок сложения не важен (переполнение заворачивается
-#  одинаково). Для float — важен (глава 10), поэтому компилятор не делает
-#  этого сам без fast-math. С плавающей точкой выигрыш ещё больше:
-#  задержка addsd ~3-4 такта, а запускать можно 2 за такт => до 8
-#  аккумуляторов.
+#  For integers the order of addition doesn't matter (overflow wraps the
+#  same way). For floats it does (chapter 10), so the compiler won't do
+#  this on its own without fast-math. With floating point the gain is
+#  even larger: addsd latency is ~3-4 cycles and 2 can issue per cycle
+#  => up to 8 accumulators.
 #
-#  Правило: время цикла >= max(длина самой длинной цепочки зависимостей
-#  на итерацию * её задержка, число мкоп / ширина конвейера, нагрузка на
-#  самый занятый порт). Это и есть «анализ узкого места» (см. uiCA, llvm-mca).
+#  Rule: loop time >= max(length of the longest dependency chain per
+#  iteration * its latency, number of µops / pipeline width, load on the
+#  busiest port). This is "bottleneck analysis" (see uiCA, llvm-mca).
 #
-#  ЗАДАЧА: допишите sum_i64(a, n) — 4 аккумулятора (rax, r8, r9, r10),
-#  развёртка на 4, затем сложение аккумуляторов и хвост.
+#  TASK: complete sum_i64(a, n) — 4 accumulators (rax, r8, r9, r10),
+#  unrolled by 4, then add up the accumulators and handle the tail.
 #
     .intel_syntax noprefix
     .text
@@ -45,12 +45,12 @@ sum_i64:
 1:
     add rax, [rdi + rcx*8]
     add r8,  [rdi + rcx*8 + 8]
-    # TODO: ещё два элемента в r9 и r10
+    # TODO: two more elements into r9 and r10
     add rcx, 4
 2:
     cmp rcx, rdx
     jl 1b
-    # TODO: сложить аккумуляторы и обработать хвост
+    # TODO: add up the accumulators and handle the tail
     ret
 
     .section .note.GNU-stack,"",@progbits

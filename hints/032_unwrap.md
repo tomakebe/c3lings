@@ -1,5 +1,5 @@
-1. В `parse_score` после `if (catch err = v) { ... }` компилятор всё ещё считает `v` типом `int?`,
-   потому что из блока можно «провалиться» дальше. Верните пойманную ошибку: `return err~;`.
-2. Какую ошибку возвращает `"abc".to_int()`? Ошибки строк лежат в модуле `string`
-   (см. `excuse` в `.c3c/c3/lib/std/core/string.c3`), из другого модуля их пишут с префиксом: `string::...`.
-3. Форма «выполнить, только если результат есть» — это `if (try имя = выражение)`.
+1. In `parse_score`, after `if (catch err = v) { ... }` the compiler still treats `v` as `int?`,
+   because the block can "fall through" further down. Return the caught error: `return err~;`.
+2. Which error does `"abc".to_int()` return? String errors live in the `string` module
+   (see `excuse` in `.c3c/c3/lib/std/core/string.c3`); from another module they're written with a prefix: `string::...`.
+3. The "run only if there is a result" form is `if (try name = expression)`.

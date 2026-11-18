@@ -1,42 +1,44 @@
 // =====================================================================
-//  020 · Срезы (slices)
+//  020 · Slices
 // =====================================================================
 //
-//  Срез `int[]` — это «окно» в чужой массив: пара (указатель, длина).
-//  Он не владеет данными и не копирует их. В C для этого передают два
-//  аргумента — `int* data, size_t len` — и вечно путают длину. В C3
-//  длина всегда едет вместе с указателем: `s.len`.
+//  A slice `int[]` is a "window" into someone else's array: a
+//  (pointer, length) pair. It doesn't own the data and doesn't copy it.
+//  In C you'd pass two arguments for this — `int* data, size_t len` —
+//  and constantly mix up the length. In C3 the length always travels
+//  together with the pointer: `s.len`.
 //
-//  ВЗЯТИЕ СРЕЗА (обратите внимание на два разных синтаксиса!):
+//  TAKING A SLICE (note the two different syntaxes!):
 //
-//      arr[1..3]    элементы с 1 по 3 ВКЛЮЧИТЕЛЬНО (3 штуки)
-//      arr[1:3]     начиная с 1, ДЛИНОЙ 3 (то же самое)
-//      arr[2..]     от 2 до конца
-//      arr[..2]     от начала по 2 включительно
-//      arr[..]      весь массив
+//      arr[1..3]    elements 1 through 3 INCLUSIVE (3 of them)
+//      arr[1:3]     starting at 1, LENGTH 3 (the same thing)
+//      arr[2..]     from 2 to the end
+//      arr[..2]     from the start up to 2 inclusive
+//      arr[..]      the whole array
 //
-//  ИНДЕКС С КОНЦА: `^n` значит «len - n».
-//      arr[^1]      последний элемент
-//      arr[^3..]    три последних элемента
+//  INDEXING FROM THE END: `^n` means "len - n".
+//      arr[^1]      the last element
+//      arr[^3..]    the last three elements
 //
-//  Срезы работают и с массивами, и со срезами, и с указателями:
-//  `int* p` → `p[0:4]` — срез из 4 элементов, начиная с p. Так из
-//  «сишного» указателя получают безопасный срез с длиной.
+//  Slicing works on arrays, on slices and on pointers:
+//  `int* p` → `p[0:4]` is a slice of 4 elements starting at p. That's
+//  how you turn a "C-style" pointer into a safe slice with a length.
 //
-//  СРЕЗ — ЭТО ВИД, А НЕ КОПИЯ
-//  Запись через срез меняет исходный массив:
+//  A SLICE IS A VIEW, NOT A COPY
+//  Writing through a slice changes the original array:
 //
 //      int[] mid = arr[1..2];
-//      mid[0] = 99;           // arr[1] теперь 99
+//      mid[0] = 99;           // arr[1] is now 99
 //
-//  ПЕРЕДАЧА МАССИВА В ФУНКЦИЮ, ПРИНИМАЮЩУЮ СРЕЗ
-//  Функция `fn int sum(int[] values)` работает с массивом любой длины.
-//  Но массив (значение!) сам в срез не превращается — нужно явно
-//  сказать, что вы даёте окно на него: `sum(&arr)` или `sum(arr[..])`.
-//  Иначе ошибка "Conversions from arrays ... to slices are only
-//  permitted on constant arrays".
+//  PASSING AN ARRAY TO A FUNCTION THAT TAKES A SLICE
+//  The function `fn int sum(int[] values)` works with an array of any
+//  length. But an array (a value!) doesn't turn into a slice on its
+//  own — you have to say explicitly that you're handing over a window
+//  onto it: `sum(&arr)` or `sum(arr[..])`. Otherwise you get the error
+//  "Conversions from arrays ... to slices are only permitted on
+//  constant arrays".
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      sum of all: 210
 //      middle: [30, 40, 50]
@@ -57,13 +59,13 @@ fn void main()
 {
     int[6] numbers = { 10, 20, 30, 40, 50, 60 };
 
-    io::printfn("sum of all: %d", sum(numbers));      // <- массив в срез сам не превращается
+    io::printfn("sum of all: %d", sum(numbers));      // <- an array doesn't become a slice on its own
 
-    int[] middle = numbers[???];                       // <- элементы 30, 40, 50
+    int[] middle = numbers[???];                       // <- the elements 30, 40, 50
     assert(middle.len == 3);
     io::printfn("middle: %s", middle);
 
-    io::printfn("last: %d", numbers[???]);             // <- последний, через ^
+    io::printfn("last: %d", numbers[???]);             // <- the last one, using ^
 
     for (int i = 0; i < middle.len; i++) middle[i] = 0;
     io::printfn("after zeroing middle: %s", numbers);

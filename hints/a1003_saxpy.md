@@ -1,4 +1,4 @@
-Начните с `vbroadcastss ymm1, xmm0` — a во всех 8 полях.
-Основной цикл по 8: `vmovups ymm2, [rdx + rax*4]`, `vfmadd231ps ymm2, ymm1, [rsi + rax*4]`, `vmovups [rdx + rax*4], ymm2`. Условие продолжения: rax < n - 7.
-Хвост — то же самое скалярно с `vmovss` и `vfmadd231ss` (xmm0 по-прежнему содержит a).
-Перед `ret` — `vzeroupper`.
+Start with `vbroadcastss ymm1, xmm0` — a in all 8 lanes.
+Main loop by 8: `vmovups ymm2, [rdx + rax*4]`, `vfmadd231ps ymm2, ymm1, [rsi + rax*4]`, `vmovups [rdx + rax*4], ymm2`. Continue condition: rax < n - 7.
+The tail is the same thing in scalar form with `vmovss` and `vfmadd231ss` (xmm0 still holds a).
+Before `ret` — `vzeroupper`.

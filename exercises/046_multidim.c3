@@ -1,14 +1,14 @@
 // =====================================================================
-//  046 · Многомерные массивы
+//  046 · Multidimensional arrays
 // =====================================================================
 //
-//  В C3 тип читается СЛЕВА НАПРАВО: `int[4]` — «int'ы, 4 штуки».
-//  Добавим ещё измерение: `int[4][3]` — «(int'ы по 4 штуки), 3 штуки»,
-//  то есть 3 строки по 4 элемента. Это ОБРАТНЫЙ порядок по сравнению
-//  с C!
+//  In C3 a type reads LEFT TO RIGHT: `int[4]` is "ints, 4 of them".
+//  Add another dimension: `int[4][3]` is "(ints, 4 of them), 3 of
+//  them", i.e. 3 rows of 4 elements. That's the OPPOSITE order
+//  compared to C!
 //
-//      // C:   int a[3][4];   — 3 строки по 4
-//      // C3:  int[4][3] a;   — тоже 3 строки по 4
+//      // C:   int a[3][4];   — 3 rows of 4
+//      // C3:  int[4][3] a;   — also 3 rows of 4
 //
 //      int[4][3] a = {
 //          { 1, 2, 3, 4 },     // a[0]
@@ -16,36 +16,39 @@
 //          { 9, 10, 11, 12 },  // a[2]
 //      };
 //
-//  А вот ИНДЕКСАЦИЯ — как в C: сначала внешний индекс (строка), потом
-//  внутренний (столбец): `a[2][0] == 9`. Получается, что при объявлении
-//  размеры записаны «изнутри наружу», а при обращении — «снаружи
-//  внутрь». Это логично: `a[2]` — это `int[4]`, а `a[2][0]` — `int`.
+//  INDEXING, on the other hand, works like in C: the outer index (the
+//  row) first, then the inner one (the column): `a[2][0] == 9`. So in
+//  a declaration the sizes are written "inside out", and in an access
+//  "outside in". It makes sense: `a[2]` is an `int[4]`, and `a[2][0]`
+//  is an `int`.
 //
-//      a.len       // 3 — число строк
-//      a[0].len    // 4 — длина строки
+//      a.len       // 3 — the number of rows
+//      a[0].len    // 4 — the length of a row
 //
-//  Как и одномерные, многомерные массивы — значения: копируются
-//  целиком, лежат в памяти одним куском (строка за строкой), размер
-//  `int[4][3]::size == 48`. Для передачи в функцию без копирования
-//  используйте указатель (`Grid*`) или срез строк `int[4][]`.
+//  Just like one-dimensional arrays, multidimensional ones are values:
+//  they're copied in full and laid out in memory as one chunk (row
+//  after row), with size `int[4][3]::size == 48`. To pass one to a
+//  function without copying, use a pointer (`Grid*`) or a slice of
+//  rows `int[4][]`.
 //
-//  `foreach` по двумерному массиву перебирает строки; вложенный
-//  `foreach` — элементы строки. Чтобы менять элементы, берите их по
-//  ссылке `&`: `foreach (&row : grid) foreach (&cell : row) *cell = 0;`
+//  `foreach` over a 2D array walks the rows; a nested `foreach` walks
+//  the elements of a row. To modify elements, take them by reference
+//  with `&`: `foreach (&row : grid) foreach (&cell : row) *cell = 0;`
 //
-//  Бывают и «рваные» массивы: `int[][3]` — три среза разной длины.
+//  There are also "jagged" arrays: `int[][3]` is three slices of
+//  different lengths.
 //
-//  В safe-сборке выход за границы ловится: константный индекс —
-//  ошибка компиляции, вычисленный — паника во время выполнения.
+//  In a safe build, out-of-bounds access is caught: a constant index is
+//  a compile error, a computed one is a runtime panic.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`.
+//  TASK: fix the three spots marked with `// <-`.
 //
 import std::io;
 
 const WIDTH = 6;
 const HEIGHT = 3;
 
-alias Map = char[HEIGHT][WIDTH]; // <- HEIGHT строк по WIDTH символов
+alias Map = char[HEIGHT][WIDTH]; // <- HEIGHT rows of WIDTH characters
 
 fn void draw(Map* map)
 {
@@ -55,7 +58,7 @@ fn void draw(Map* map)
 fn int column_sum(int[4][3] m, int col)
 {
     int sum;
-    for (int r = 0; r < m.len; r++) sum += m[col][r]; // <- строка, потом столбец
+    for (int r = 0; r < m.len; r++) sum += m[col][r]; // <- row, then column
     return sum;
 }
 
@@ -63,7 +66,7 @@ fn void main()
 {
     Map map;
     foreach (&row : map) foreach (&cell : row) *cell = '.';
-    map[0][5] = '#';   // строка 0, столбец 5
+    map[0][5] = '#';   // row 0, column 5
     map[2][1] = '@';
     draw(&map);
     io::printfn("rows=%d cols=%d bytes=%d", map.len, map[0].len, Map::size);
@@ -73,7 +76,7 @@ fn void main()
         { 5, 6, 7, 8 },
         { 9, 10, 11, 12 },
     };
-    assert(m[1][2] == ???); // <- какой элемент лежит в строке 1, столбце 2?
+    assert(m[1][2] == ???); // <- which element sits in row 1, column 2?
     io::printfn("column 3 sum = %d", column_sum(m, 3));
     assert(column_sum(m, 3) == 24);
 }

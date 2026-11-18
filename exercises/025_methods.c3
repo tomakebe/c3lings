@@ -1,42 +1,43 @@
 // =====================================================================
-//  025 · Методы
+//  025 · Methods
 // =====================================================================
 //
-//  В C3 нет классов, но к любому типу можно добавить МЕТОДЫ — функции,
-//  имя которых начинается с имени типа и точки:
+//  C3 has no classes, but you can add METHODS to any type — functions
+//  whose name starts with the type name and a dot:
 //
 //      fn int Vec2.length_sq(self)
 //      {
 //          return self.x * self.x + self.y * self.y;
 //      }
 //
-//  Первый параметр с именем `self` — объект, у которого вызван метод.
-//  Тип у него писать не нужно. Вызов — через точку:
+//  The first parameter, named `self`, is the object the method is
+//  called on. You don't need to write its type. Call it with a dot:
 //
 //      Vec2 v = { 3, 4 };
 //      int l = v.length_sq();         // 25
 //
-//  Это просто удобная запись обычного вызова функции. То же самое можно
-//  написать явно: `Vec2.length_sq(v)`.
+//  This is just a convenient way to write an ordinary function call.
+//  You can write the same thing explicitly: `Vec2.length_sq(v)`.
 //
-//  `self` ИЛИ `&self`
-//  * `self` — метод получает КОПИЮ объекта. Изменения внутри метода
-//    пропадут (компилятор не предупредит!). Подходит для «читающих»
-//    методов.
-//  * `&self` — метод получает УКАЗАТЕЛЬ на объект и может его менять.
-//    Поля всё равно доступны через точку (`self.x += 1`): в C3 точка
-//    работает и для указателей, оператора `->` нет.
+//  `self` OR `&self`
+//  * `self` — the method gets a COPY of the object. Changes made inside
+//    the method are lost (and the compiler won't warn you!). Good for
+//    "read-only" methods.
+//  * `&self` — the method gets a POINTER to the object and can modify
+//    it. Fields are still accessed with a dot (`self.x += 1`): in C3
+//    the dot works for pointers too, there's no `->` operator.
 //
 //      fn void Vec2.scale(&self, int k) { self.x *= k; self.y *= k; }
 //
-//  При вызове `v.scale(2)` адрес `&v` берётся автоматически. При явном
-//  вызове его нужно передать самому: `Vec2.scale(&v, 2)`.
+//  When you call `v.scale(2)`, the address `&v` is taken automatically.
+//  With an explicit call you have to pass it yourself:
+//  `Vec2.scale(&v, 2)`.
 //
-//  Методы можно добавлять и к чужим типам (даже встроенным, например к
-//  `int` или `String`) — так устроены все строковые методы из
-//  предыдущего упражнения.
+//  You can add methods to other people's types too (even built-in
+//  ones, like `int` or `String`) — that's how all the string methods
+//  from the previous exercise work.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      length_sq: 25
 //      scaled: (6, 8)
@@ -51,7 +52,7 @@ struct Vec2
     int y;
 }
 
-fn int length_sq(self)                             // <- метод какого типа?
+fn int length_sq(self)                             // <- a method of which type?
 {
     return self.x * self.x + self.y * self.y;
 }
@@ -67,12 +68,12 @@ struct Counter
     int value;
 }
 
-fn void Counter.increment(self)                    // <- изменения теряются
+fn void Counter.increment(self)                    // <- the changes get lost
 {
     self.value++;
 }
 
-// Метод встроенного типа int.
+// A method on the built-in type int.
 fn bool int.divisible_by(self, int d) => self % d == 0;
 
 fn void main()
@@ -80,13 +81,13 @@ fn void main()
     Vec2 v = { 3, 4 };
     io::printfn("length_sq: %d", v.length_sq());
 
-    ???;                                           // <- увеличьте v вдвое методом scale
+    ???;                                           // <- double v using the scale method
     io::printfn("scaled: (%d, %d)", v.x, v.y);
 
     Counter c;
     c.increment();
     c.increment();
-    Counter.increment(&c);                         // явный вызов, то же самое
+    Counter.increment(&c);                         // explicit call, same thing
     assert(c.value == 3);
     io::printfn("counter: %d", c.value);
 

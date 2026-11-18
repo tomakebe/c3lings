@@ -1,4 +1,4 @@
-1. `int a, b = 4;` запрещено — объявите `apples` и `pears` двумя отдельными строками.
-2. `var` без `@safeinfer` работает только в макросах. Просто укажите тип `int`.
-3. Строка `int score = ...` внутри блока объявляет НОВУЮ переменную (это затенение,
-   и оно запрещено). Уберите тип, чтобы получилось присваивание внешней `score`.
+1. `int a, b = 4;` is forbidden — declare `apples` and `pears` on two separate lines.
+2. `var` without `@safeinfer` only works in macros. Just write the type `int`.
+3. The line `int score = ...` inside the block declares a NEW variable (that's shadowing,
+   and it's forbidden). Remove the type so it becomes an assignment to the outer `score`.

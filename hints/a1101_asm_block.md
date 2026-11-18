@@ -1,3 +1,3 @@
-В блоке `asm { }` приёмник — ПЕРВЫЙ операнд, как в Intel-синтаксисе: `addl r, b` значит r += b.
-Для 64-битных переменных — суффикс q: `subq r, b`.
-Прибавить единицу: `incl r;`.
+In an `asm { }` block the destination is the FIRST operand, as in Intel syntax: `addl r, b` means r += b.
+For 64-bit variables use the q suffix: `subq r, b`.
+To add one: `incl r;`.

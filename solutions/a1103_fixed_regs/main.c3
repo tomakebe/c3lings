@@ -1,19 +1,19 @@
 // =====================================================================
-//  a1103 · Inline-ассемблер: фиксированные регистры (mul, div, rdtsc)
+//  a1103 · Inline assembly: fixed registers (mul, div, rdtsc)
 // =====================================================================
 //
-//  Некоторые инструкции работают с конкретными регистрами:
+//  Some instructions work with specific registers:
 //
-//      mulq src    — rdx:rax = rax * src  (беззнаковое 64x64 -> 128 бит)
+//      mulq src    — rdx:rax = rax * src  (unsigned 64x64 -> 128 bits)
 //      divq src    — rax = rdx:rax / src, rdx = rdx:rax % src
-//                    (если частное не влезает в 64 бита — исключение #DE,
-//                     процесс получит SIGFPE)
-//      rdtsc       — edx:eax = счётчик тактов
+//                    (if the quotient doesn't fit in 64 bits — a #DE
+//                     exception, the process gets SIGFPE)
+//      rdtsc       — edx:eax = cycle counter
 //      cpuid       — eax/ebx/ecx/edx
 //
-//  В блоке asm к регистрам обращаются через $: $rax, $rdx. Компилятор
-//  знает, что mulq портит rax и rdx, и сохранит/не будет использовать
-//  их для ваших переменных.
+//  In an asm block registers are referred to with $: $rax, $rdx. The
+//  compiler knows that mulq clobbers rax and rdx, and will save them /
+//  avoid using them for your variables.
 //
 //      ulong hi;
 //      asm
@@ -23,17 +23,17 @@
 //          movq hi, $rdx;
 //      }
 //
-//  Это стандартный трюк для «умножить и поделить без переполнения»:
-//  a * b / c, где a * b не помещается в 64 бита, но результат помещается.
-//  В C3 для этого есть тип uint128, но посмотреть, во что он
-//  компилируется, всё равно полезно.
+//  This is the standard trick for "multiply and divide without overflow":
+//  a * b / c, where a * b doesn't fit in 64 bits but the result does.
+//  C3 has the uint128 type for this, but it's still useful to see what it
+//  compiles to.
 //
-//  ЗАДАЧА:
-//      mulhi(a, b)        — старшие 64 бита 128-битного произведения
-//      muldiv(a, b, c)    — (a * b) / c с 128-битным промежуточным результатом
-//      rdtsc_now()        — значение счётчика тактов: (rdx << 32) | rax
-//                           (печатать его мы не будем — оно каждый раз
-//                           разное, — только проверим, что он растёт)
+//  TASK:
+//      mulhi(a, b)        — the high 64 bits of the 128-bit product
+//      muldiv(a, b, c)    — (a * b) / c with a 128-bit intermediate result
+//      rdtsc_now()        — the cycle counter value: (rdx << 32) | rax
+//                           (we won't print it — it differs every time —
+//                           we'll only check that it grows)
 //
 import std::io;
 
@@ -83,7 +83,7 @@ fn void main()
     io::printfn("mulhi(2^63, 6)       = %d", mulhi(1UL << 63, 6));
     io::printfn("mulhi(max, max)      = 0x%X", mulhi(ulong::max, ulong::max));
 
-    // 10^12 * 10^12 переполняет 64 бита, но после деления на 10^9 — нет.
+    // 10^12 * 10^12 overflows 64 bits, but after dividing by 10^9 it doesn't.
     ulong t = 1_000_000_000_000;
     assert(muldiv(t, t, 1_000_000_000) == 1_000_000_000_000_000);
     assert(muldiv(ulong::max, 3, 5) == (ulong)((uint128)ulong::max * 3 / 5));

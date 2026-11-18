@@ -1,3 +1,3 @@
-1. Поля анонимного union доступны напрямую: `s.radius`.
-2. И `float`, и `uint` занимают 4 байта, а union — размер самого большого поля.
-3. Используйте именованную инициализацию плоскими именами: `.w = 2, .h = 5`.
+1. The fields of an anonymous union are accessible directly: `s.radius`.
+2. Both `float` and `uint` take 4 bytes, and a union is the size of its largest field.
+3. Use named initialization with the flat names: `.w = 2, .h = 5`.

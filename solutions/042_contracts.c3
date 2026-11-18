@@ -1,68 +1,69 @@
 // =====================================================================
-//  042 · Контракты `@require` / `@ensure`, doc-комментарии `<* *>`
+//  042 · Contracts `@require` / `@ensure`, doc comments `<* *>`
 // =====================================================================
 //
-//  Optional — для ожидаемых неудач (файла нет, строка не число).
-//  А что делать с ОШИБКАМИ ПРОГРАММИСТА — отрицательный размер
-//  массива, null там, где его быть не может? В C3 для этого контракты.
+//  Optionals are for expected failures (the file isn't there, the
+//  string isn't a number). But what about PROGRAMMER ERRORS — a
+//  negative array size, a null where there must never be one? For
+//  those, C3 has contracts.
 //
-//  Контракты пишутся в doc-комментарии `<* ... *>` прямо перед
-//  функцией (обычный `/* */` или `//` для этого НЕ годится):
+//  Contracts are written in a doc comment `<* ... *>` right before the
+//  function (a regular `/* */` or `//` will NOT do):
 //
 //      <*
-//       Целочисленный квадратный корень.
-//       @param n : "неотрицательное число"
+//       Integer square root.
+//       @param n : "a non-negative number"
 //       @require n >= 0 : "square root of a negative number"
 //       @ensure return * return <= n
-//       @return "наибольшее r, такое что r*r <= n"
+//       @return "the largest r such that r*r <= n"
 //      *>
 //      fn int isqrt(int n) { ... }
 //
-//  * `@require усл` — ПРЕДусловие: что обязан обеспечить вызывающий.
-//    Можно перечислять через запятую, после `:` — сообщение.
-//  * `@ensure усл` — ПОСТусловие: что обещает функция. Внутри
-//    доступен результат под именем `return`.
-//  * `@param [in] p` / `[out]` / `[inout]` — для указателей: функция
-//    только читает / только пишет / и то и другое. Компилятор
-//    проверяет: запись в `[in]` и чтение из `[out]` — ошибка компиляции.
-//  * `@return`, `@param name : "..."` — просто документация.
-//  * `@return? NOT_FOUND` — какие ошибки может вернуть Optional.
+//  * `@require cond` — a PREcondition: what the caller must guarantee.
+//    You can list several separated by commas; a message goes after `:`.
+//  * `@ensure cond` — a POSTcondition: what the function promises. The
+//    result is available inside it under the name `return`.
+//  * `@param [in] p` / `[out]` / `[inout]` — for pointers: the function
+//    only reads / only writes / does both. The compiler checks this:
+//    writing to an `[in]` or reading from an `[out]` is a compile error.
+//  * `@return`, `@param name : "..."` — just documentation.
+//  * `@return? NOT_FOUND` — which errors an Optional may return.
 //
-//  Что с ними делает компилятор:
-//  * в отладочной (safe) сборке, которая используется по умолчанию,
-//    контракты превращаются в проверки: нарушение => паника с
-//    понятным сообщением и местом вызова;
-//  * если нарушение видно уже при компиляции (аргумент — константа),
-//    это ОШИБКА КОМПИЛЯЦИИ;
-//  * в релизной сборке проверки убираются, а компилятор вправе
-//    ИСПОЛЬЗОВАТЬ контракты для оптимизации. Поэтому нарушение
-//    контракта в релизе — неопределённое поведение, а не «ошибка».
+//  What the compiler does with them:
+//  * in a debug (safe) build, which is the default, contracts turn
+//    into checks: a violation => a panic with a clear message and the
+//    call site;
+//  * if the violation is visible already at compile time (the argument
+//    is a constant), it's a COMPILE ERROR;
+//  * in a release build the checks are removed, and the compiler is
+//    allowed to USE the contracts for optimization. That's why breaking
+//    a contract in release is undefined behavior, not "an error".
 //
-//  Контракты — это одновременно документация, которая не устаревает,
-//  и бесплатные assert'ы на границах функций.
+//  Contracts are documentation that never goes stale, and free asserts
+//  at function boundaries, all at once.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`. Контракты при этом
-//  не трогайте — они правильные, неправ код.
+//  TASK: fix the three spots marked with `// <-`. Don't touch the
+//  contracts — they're correct, the code is wrong.
 //
 import std::io;
 
 <*
- Целочисленный квадратный корень (с округлением вниз).
+ Integer square root (rounded down).
  @require n >= 0 : "square root of a negative number"
  @ensure return * return <= n, (return + 1) * (return + 1) > n
 *>
 fn int isqrt(int n)
 {
     int r = 0;
-    while ((r + 1) * (r + 1) <= n) r++; // <- постусловие нарушается
+    while ((r + 1) * (r + 1) <= n) r++; // <- the postcondition is violated
     return r;
 }
 
-// <- проверьте направления [in]/[out] в контракте ниже
+// <- check the [in]/[out] directions in the contract below
 <*
- Копирует count чисел из src в dst.
- @param [out] dst : "куда пишем"
- @param [in] src : "откуда читаем"
+ Copies count numbers from src to dst.
+ @param [out] dst : "where we write to"
+ @param [in] src : "where we read from"
  @require count >= 0
 *>
 fn void copy_ints(int* dst, int* src, int count)
@@ -75,7 +76,7 @@ const int DY = 8;
 
 fn void main()
 {
-    int dist = isqrt(DX * DX + DY * DY); // <- длина гипотенузы — теорема Пифагора
+    int dist = isqrt(DX * DX + DY * DY); // <- the hypotenuse length — the Pythagorean theorem
     io::printfn("distance = %d", dist);
 
     int[5] roots;

@@ -1,28 +1,29 @@
 // =====================================================================
-//  001 · Привет, C3!
+//  001 · Hello, C3!
 // =====================================================================
 //
-//  Добро пожаловать в c3lings! Каждое упражнение — маленькая программа,
-//  которая сломана. Ваша задача — починить её так, чтобы она
-//  скомпилировалась и напечатала ожидаемый результат.
+//  Welcome to c3lings! Each exercise is a small program that is
+//  broken. Your job is to fix it so that it compiles and prints the
+//  expected result.
 //
-//  Программа на C3 начинается с функции `main`:
+//  A C3 program starts with the `main` function:
 //
 //      fn void main()
 //      {
 //          ...
 //      }
 //
-//  `fn` — ключевое слово для объявления функции, `void` — тип
-//  возвращаемого значения (ничего не возвращаем).
+//  `fn` is the keyword for declaring a function, and `void` is the
+//  return type (we don't return anything).
 //
-//  Чтобы печатать, импортируем модуль стандартной библиотеки `std::io`.
-//  Функции из других модулей вызываются с префиксом последнего
-//  компонента имени модуля: `io::printn(...)` — напечатать и перевести строку.
+//  To print things, we import the standard library module `std::io`.
+//  Functions from other modules are called with the last component of
+//  the module name as a prefix: `io::printn(...)` prints a line and
+//  then a newline.
 //
-//  Как и в C, каждая инструкция заканчивается точкой с запятой.
+//  Just like in C, every statement ends with a semicolon.
 //
-//  ЗАДАЧА: программа должна напечатать
+//  TASK: the program should print
 //      Hello, C3!
 //
 import std::io;

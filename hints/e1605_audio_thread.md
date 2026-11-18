@@ -1,5 +1,5 @@
-push: `t = tail.load(RELAXED)`, `h = head.load(ACQUIRE)`; если `t - h == (uint)QCAP` — полно, `false`.
-Иначе записать `buf[t % QCAP] = c` и только ПОТОМ `tail.store(t + 1, RELEASE)`.
-pop — зеркально: свой `head` с RELAXED, чужой `tail` с ACQUIRE, пусто при `h == t`,
-прочитать ячейку и ПОТОМ `head.store(h + 1, RELEASE)`.
-Вычитание `t - h` на uint корректно даже после переполнения счётчиков.
+push: `t = tail.load(RELAXED)`, `h = head.load(ACQUIRE)`; if `t - h == (uint)QCAP` - full, `false`.
+Otherwise write `buf[t % QCAP] = c` and only THEN `tail.store(t + 1, RELEASE)`.
+pop is the mirror image: your own `head` with RELAXED, the other side's `tail` with ACQUIRE, empty when `h == t`,
+read the cell and THEN `head.store(h + 1, RELEASE)`.
+The subtraction `t - h` on uint is correct even after the counters wrap around.

@@ -1,38 +1,38 @@
 // =====================================================================
-//  012 · Цикл for
+//  012 · The for loop
 // =====================================================================
 //
-//  `for` устроен как в C:
+//  `for` works just like in C:
 //
-//      for (инициализация; условие; шаг)
+//      for (initialization; condition; step)
 //      {
 //          ...
 //      }
 //
 //      for (int i = 0; i < 5; i++) io::printn(i);   // 0 1 2 3 4
 //
-//  Переменная, объявленная в инициализации, видна только внутри цикла.
-//  Любую из трёх частей можно опустить: `for (;;)` — бесконечный цикл
-//  (выход через `break`).
+//  A variable declared in the initialization is visible only inside the
+//  loop. Any of the three parts can be left out: `for (;;)` is an
+//  infinite loop (you get out with `break`).
 //
-//  НЕСКОЛЬКО ПЕРЕМЕННЫХ
-//  В C пишут `for (int i = 0, j = 10; ...)`. В C3 так нельзя: каждая
-//  переменная в заголовке цикла объявляется со СВОИМ типом:
+//  SEVERAL VARIABLES
+//  In C you write `for (int i = 0, j = 10; ...)`. In C3 that doesn't
+//  work: each variable in the loop header is declared with ITS OWN type:
 //
 //      for (int i = 0, int j = 10; i < j; i++, j--) { ... }
 //
-//  В шаге через запятую можно перечислить несколько выражений
-//  (`i++, j--`).
+//  In the step part you can list several expressions separated by
+//  commas (`i++, j--`).
 //
-//  ГРАНИЦЫ
-//  Самая частая ошибка с `for` — «плюс-минус один» (off-by-one): `<`
-//  вместо `<=` или наоборот. `for (int i = 1; i < 10; i++)` проходит
-//  числа 1..9, а не 1..10.
+//  BOUNDS
+//  The most common mistake with `for` is the off-by-one error: `<`
+//  instead of `<=` or the other way around. `for (int i = 1; i < 10; i++)`
+//  walks through the numbers 1..9, not 1..10.
 //
-//  (Для обхода массивов в C3 есть более удобный `foreach` — до него
-//  мы дойдём в упражнении 021.)
+//  (For iterating over arrays C3 has the more convenient `foreach` —
+//  we'll get to it in exercise 021.)
 //
-//  ЗАДАЧА: исправьте два места с `// <-`. Программа должна напечатать:
+//  TASK: fix the two places marked `// <-`. The program should print:
 //
 //      sum of squares 1..10 = 385
 //      pairs: (0,6) (1,5) (2,4)
@@ -43,7 +43,7 @@ import std::io;
 fn void main()
 {
     int sum = 0;
-    for (int i = 1; i < 10; i++)                // <- должны войти числа от 1 до 10
+    for (int i = 1; i < 10; i++)                // <- the numbers 1 through 10 should be included
     {
         sum += i * i;
     }
@@ -51,7 +51,7 @@ fn void main()
     io::printfn("sum of squares 1..10 = %d", sum);
 
     io::print("pairs:");
-    for (int lo = 0, hi = 6; lo < hi; lo++, hi--)   // <- у каждой переменной свой тип
+    for (int lo = 0, hi = 6; lo < hi; lo++, hi--)   // <- every variable gets its own type
     {
         io::printf(" (%d,%d)", lo, hi);
     }

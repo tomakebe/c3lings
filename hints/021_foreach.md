@@ -1,4 +1,4 @@
-1. `h` — копия элемента. Возьмите элемент по ссылке: `foreach (&h : hp)`,
-   а внутри изменяйте `*h`.
-2. Индекс объявляется перед значением через запятую: `foreach (i, name : names)`.
-3. Для обхода с конца есть `foreach_r`.
+1. `h` is a copy of the element. Take the element by reference: `foreach (&h : hp)`,
+   and modify `*h` inside the loop.
+2. The index is declared before the value, separated by a comma: `foreach (i, name : names)`.
+3. To iterate from the end there is `foreach_r`.

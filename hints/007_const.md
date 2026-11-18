@@ -1,4 +1,4 @@
-1. Имена констант в C3 обязаны быть заглавными: `MAX_HP` (так оно и используется ниже).
-2. Массив объявлен как `int[SLOT_COUNT]`, а такой константы нет — есть только
-   обычная переменная `slot_count`. Превратите её в константу с нужным именем
-   (константы можно объявлять и внутри функции).
+1. Constant names in C3 must be uppercase: `MAX_HP` (which is how it's used below).
+2. The array is declared as `int[SLOT_COUNT]`, but there's no such constant — there's only
+   a regular variable `slot_count`. Turn it into a constant with the right name
+   (constants can be declared inside a function too).

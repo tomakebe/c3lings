@@ -1,60 +1,60 @@
 // =====================================================================
-//  002 · Комментарии и печать
+//  002 · Comments and printing
 // =====================================================================
 //
-//  КОММЕНТАРИИ
-//  -----------
-//  В C3 три вида комментариев:
+//  COMMENTS
+//  --------
+//  C3 has three kinds of comments:
 //
-//      // до конца строки
-//      /* блочный комментарий */
-//      <* документирующий комментарий (doc-контракт) *>
+//      // to the end of the line
+//      /* block comment */
+//      <* documentation comment (doc contract) *>
 //
-//  Важное отличие от C: блочные комментарии ВКЛАДЫВАЮТСЯ.
+//  An important difference from C: block comments NEST.
 //
-//      /* внешний /* внутренний */ всё ещё комментарий */
+//      /* outer /* inner */ still a comment */
 //
-//  В C первая же `*/` закрыла бы комментарий, и остаток превратился бы
-//  в мусор. В C3 можно спокойно «закомментировать» кусок кода, внутри
-//  которого уже есть /* ... */.
+//  In C the very first `*/` would close the comment, and the rest would
+//  turn into garbage. In C3 you can safely "comment out" a chunk of code
+//  that already contains /* ... */.
 //
-//  `<* ... *>` — не просто комментарий: это документация с контрактами
-//  (`@param`, `@require`, ...). Мы вернёмся к ним в упражнении 042.
+//  `<* ... *>` is not just a comment: it's documentation with contracts
+//  (`@param`, `@require`, ...). We'll come back to them in exercise 042.
 //
-//  ПЕЧАТЬ
-//  ------
-//  Модуль `std::io` даёт несколько функций:
+//  PRINTING
+//  --------
+//  The `std::io` module gives you several functions:
 //
-//      io::print(x)          — напечатать x без перевода строки
-//      io::printn(x)         — напечатать x и перевести строку
-//      io::printn()          — просто перевести строку
-//      io::printf(fmt, ...)  — форматированная печать без перевода строки
-//      io::printfn(fmt, ...) — форматированная печать + перевод строки
+//      io::print(x)          — print x without a newline
+//      io::printn(x)         — print x followed by a newline
+//      io::printn()          — just print a newline
+//      io::printf(fmt, ...)  — formatted print without a newline
+//      io::printfn(fmt, ...) — formatted print + newline
 //
-//  `print`/`printn` умеют печатать значения любых простых типов:
+//  `print`/`printn` can print values of any simple type:
 //  `io::printn(42)`, `io::printn(true)`, `io::printn("text")`.
 //
-//  Форматная строка похожа на printf из C:
+//  The format string looks like printf from C:
 //
-//      %d   целое число              42
-//      %s   «как есть» — работает почти для чего угодно (строки, числа,
-//           bool, массивы)
-//      %x   целое в шестнадцатеричном виде (%X — заглавными буквами)
-//      %b   целое в двоичном виде (в C такого нет!)
-//      %o   в восьмеричном виде
-//      %c   символ
-//      %f   число с плавающей точкой; %.2f — два знака после точки
-//      %5d  ширина поля 5 (выравнивание вправо), %-5d — влево,
-//           %05d — дополнить нулями
-//      %%   сам символ процента
+//      %d   integer                  42
+//      %s   "as is" — works for almost anything (strings, numbers,
+//           bool, arrays)
+//      %x   integer in hexadecimal (%X — uppercase letters)
+//      %b   integer in binary (C doesn't have this!)
+//      %o   in octal
+//      %c   character
+//      %f   floating-point number; %.2f — two digits after the point
+//      %5d  field width 5 (right-aligned), %-5d — left-aligned,
+//           %05d — pad with zeros
+//      %%   the percent sign itself
 //
-//  В отличие от C, где ошибка в printf — это неопределённое поведение,
-//  компилятор C3 ПРОВЕРЯЕТ форматную строку, если она известна во время
-//  компиляции: если спецификаторов меньше или больше, чем аргументов,
-//  вы получите ошибку "Too many/Too few arguments".
+//  Unlike C, where a mistake in printf is undefined behavior, the C3
+//  compiler CHECKS the format string if it's known at compile time:
+//  if there are fewer or more specifiers than arguments, you'll get
+//  a "Too many/Too few arguments" error.
 //
-//  ЗАДАЧА: замените каждое `???` в форматных строках правильным
-//  спецификатором, чтобы программа напечатала ровно:
+//  TASK: replace each `???` in the format strings with the correct
+//  specifier so that the program prints exactly:
 //
 //      Hello, comments!
 //      Answer: 42
@@ -69,19 +69,19 @@ import std::io;
 
 fn void main()
 {
-    /* Этот код закомментирован целиком.
-       /* В C эта вложенная пара сломала бы комментарий, а в C3 — нет. */
+    /* This code is commented out entirely.
+       /* In C this nested pair would break the comment, but not in C3. */
        io::printn("You should not see this");
     */
 
-    io::print("Hello, ");          // без перевода строки
-    io::printn("comments!");      // с переводом строки
+    io::print("Hello, ");          // no newline
+    io::printn("comments!");      // with a newline
 
     io::printfn("Answer: %d", 42);
     io::printfn("Name: %s", "C3");
     io::printfn("Hex: %x", 255);
     io::printfn("Binary: %b", 5);
     io::printfn("Pi: %.2f", 3.14159);
-    io::printfn("[%4d]", 7);       // ширина поля 4, выравнивание вправо
+    io::printfn("[%4d]", 7);       // field width 4, right-aligned
     io::printfn("Progress: 100%%");
 }

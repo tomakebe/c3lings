@@ -1,5 +1,5 @@
-`find`: линейный поиск по `self.slots[0..count)`, сравнение `self.slots[i].name() == name`.
-`get`: найдите слот или создайте (`self.create(name, major)`); если `s.major != major` — null,
-иначе `&s.data`. `set`: найдите или создайте слот, обновите major/minor, скопируйте байты:
-`s.data[:size] = ((char*)api)[:size];` и `implemented = true`.
-`remove`: обнулите данные (`s.data[..] = 0;`) и `implemented = false`, но слот не удаляйте.
+`find`: a linear search over `self.slots[0..count)`, comparing `self.slots[i].name() == name`.
+`get`: find the slot or create it (`self.create(name, major)`); if `s.major != major` - null,
+otherwise `&s.data`. `set`: find or create the slot, update major/minor, copy the bytes:
+`s.data[:size] = ((char*)api)[:size];` and `implemented = true`.
+`remove`: zero the data (`s.data[..] = 0;`) and `implemented = false`, but don't delete the slot.

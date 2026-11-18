@@ -1,30 +1,31 @@
 # =====================================================================
-#  a1502 · Исполняемая память: mmap + копирование + mprotect
+#  a1502 · Executable memory: mmap + copy + mprotect
 # =====================================================================
 #
-#  Чтобы выполнить сгенерированный код, его нужно положить в память с
-#  правом ИСПОЛНЕНИЯ. Обычная память (стек, куча, данные) его не имеет —
-#  прыжок туда даст SIGSEGV (бит NX в таблице страниц). Схема W^X:
+#  To run generated code, it has to be placed in memory with EXECUTE
+#  permission. Ordinary memory (stack, heap, data) does not have it —
+#  jumping there causes SIGSEGV (the NX bit in the page table). The W^X scheme:
 #
 #    1. mmap(NULL, len, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0)
-#    2. скопировать байты кода (rep movsb: rdi = куда, rsi = откуда, rcx = сколько)
+#    2. copy the code bytes (rep movsb: rdi = destination, rsi = source, rcx = count)
 #    3. mprotect(p, len, PROT_READ|PROT_EXEC)     (5 = 1|4)
-#    4. вызвать как функцию через указатель
+#    4. call it as a function through a pointer
 #
-#  Вспомните главу 12: mmap = 9 (4-й аргумент в r10!), mprotect = 10,
-#  munmap = 11; ошибка — rax в [-4095, -1].
+#  Recall chapter 12: mmap = 9 (the 4th argument goes in r10!), mprotect = 10,
+#  munmap = 11; an error is rax in [-4095, -1].
 #
-#  На x86 после записи кода не нужно сбрасывать кеш инструкций (процессор
-#  сам следит за самомодифицирующимся кодом). На ARM — нужно
-#  (__builtin___clear_cache). Это ещё одна деталь, которую JIT-движки
-#  прячут в одну функцию.
+#  On x86 there is no need to flush the instruction cache after writing code
+#  (the processor itself watches for self-modifying code). On ARM you must
+#  (__builtin___clear_cache). This is one more detail that JIT engines hide
+#  inside a single function.
 #
-#  Эта функция будет нужна в следующих упражнениях — там она уже готова.
+#  This function will be needed in the following exercises — it is already
+#  provided there.
 #
-#  ЗАДАЧА:
-#      jit_make(code, len) — вернуть указатель на исполняемую копию кода
-#                            или null (len == 0 или ошибка ядра)
-#      jit_free(p, len)    — munmap, вернуть результат ядра
+#  TASK:
+#      jit_make(code, len) — return a pointer to an executable copy of the code
+#                            or null (len == 0 or a kernel error)
+#      jit_free(p, len)    — munmap, return the kernel's result
 #
     .intel_syntax noprefix
     .text

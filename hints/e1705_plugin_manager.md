@@ -1,5 +1,5 @@
-Кан: заведите `bool[MAX_PLUGINS] done`. Пока не все добавлены: найдите наименьший i,
-у которого `!done[i] && indegree[i] == 0`. Не нашли — `return DEPENDENCY_CYCLE~;`.
-Нашли — `done[i] = true`, `order[count++] = i`, и для всех q с `dep_of[i][q]` уменьшите `indegree[q]`.
-`dependents_closure`: `out[root] = true`, затем повторяйте проход по всем плагинам, пока
-что-то меняется: плагин попадает в множество, если хоть одна его зависимость уже там.
+Kahn: set up `bool[MAX_PLUGINS] done`. While not everything has been added: find the smallest i
+with `!done[i] && indegree[i] == 0`. Not found - `return DEPENDENCY_CYCLE~;`.
+Found - `done[i] = true`, `order[count++] = i`, and for every q with `dep_of[i][q]` decrement `indegree[q]`.
+`dependents_closure`: `out[root] = true`, then keep repeating a pass over all plugins while
+something changes: a plugin joins the set if at least one of its dependencies is already in it.

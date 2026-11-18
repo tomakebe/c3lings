@@ -1,40 +1,41 @@
 // =====================================================================
-//  008 · Преобразования типов
+//  008 · Type conversions
 // =====================================================================
 //
-//  В C числа неявно преобразуются почти как угодно, и это источник
-//  множества тихих ошибок. C3 разрешает неявно только БЕЗОПАСНОЕ:
+//  In C numbers implicitly convert into almost anything, and that's a
+//  source of lots of silent bugs. C3 only allows SAFE conversions
+//  implicitly:
 //
-//  РАЗРЕШЕНО неявно (расширение, без потери информации):
+//  ALLOWED implicitly (widening, no information loss):
 //      int  -> long          ichar -> int
 //      int  -> double        float -> double
 //
-//  ЗАПРЕЩЕНО неявно (нужно явное приведение `(тип)x`):
-//      long  -> int          сужение: может не влезть
-//      double -> int         отбрасывается дробная часть
-//      double -> float       теряется точность
-//      int  <-> uint         смена знаковости: -1 превратится в 4294967295
+//  FORBIDDEN implicitly (needs an explicit cast `(type)x`):
+//      long  -> int          narrowing: might not fit
+//      double -> int         the fractional part is dropped
+//      double -> float       precision is lost
+//      int  <-> uint         signedness change: -1 would become 4294967295
 //
-//  Явное приведение — это ваше обещание компилятору «я знаю, что делаю»:
-//      (int)9.99      == 9       (дробная часть отбрасывается)
-//      (char)300      == 44      (берутся младшие 8 бит: 300 - 256)
+//  An explicit cast is your promise to the compiler: "I know what I'm doing":
+//      (int)9.99      == 9       (the fractional part is dropped)
+//      (char)300      == 44      (the low 8 bits are taken: 300 - 256)
 //      (uint)-1       == 4294967295
 //
-//  НЕОДНОЗНАЧНОЕ РАСШИРЕНИЕ
-//  Пусть `a` и `b` — int. Что значит `long total = a + b;`?
-//  В C: сначала a + b в int (может переполниться!), потом расширение.
-//  В C3 это ОШИБКА, потому что расширить можно двумя способами:
-//      (long)(a + b)     — сложить в int, потом расширить
-//      (long)a + b       — расширить, потом сложить в long
-//  Если a + b не помещается в int, результаты будут разными. Нужно
-//  явно выбрать, что вы имели в виду. (Простое `long x = a;` разрешено:
-//  тут вариант только один.)
+//  AMBIGUOUS WIDENING
+//  Let `a` and `b` be int. What does `long total = a + b;` mean?
+//  In C: first a + b in int (may overflow!), then widening.
+//  In C3 this is an ERROR, because the widening can be done two ways:
+//      (long)(a + b)     — add in int, then widen
+//      (long)a + b       — widen, then add in long
+//  If a + b doesn't fit into int, the results differ. You have to
+//  explicitly choose what you meant. (A plain `long x = a;` is allowed:
+//  there's only one option there.)
 //
-//  Литералы — особый случай: `char c = 200;` можно, потому что
-//  компилятор видит, что 200 помещается в char. А `char c = 300;` — нет.
+//  Literals are a special case: `char c = 200;` is allowed, because the
+//  compiler can see that 200 fits into a char. But `char c = 300;` isn't.
 //
-//  ЗАДАЧА: исправьте три ошибки компиляции (`// <-`). Программа должна
-//  напечатать:
+//  TASK: fix the three compile errors (`// <-`). The program should
+//  print:
 //
 //      total: 4000000000
 //      count: 5
@@ -47,20 +48,20 @@ fn void main()
 {
     int a = 2_000_000_000;
     int b = 2_000_000_000;
-    long total = a + b;                // <- сумма не помещается в int!
+    long total = a + b;                // <- the sum doesn't fit into int!
     assert(total == 4_000_000_000);
     io::printfn("total: %d", total);
 
     int n = 5;
-    uint count = n;                    // <- int -> uint только явно
+    uint count = n;                    // <- int -> uint only explicitly
     io::printfn("count: %d", count);
 
     double price = 9.99;
-    int whole = price;                 // <- double -> int только явно
+    int whole = price;                 // <- double -> int only explicitly
     assert(whole == 9);
     io::printfn("whole: %d", whole);
 
     int big = 300;
-    char low = (char)big;              // а здесь приведение уже написано
+    char low = (char)big;              // here the cast is already written
     io::printfn("low byte of 300: %d", low);
 }

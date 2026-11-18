@@ -1,4 +1,4 @@
-// Драйвер упражнения a1005. Этот файл НЕ нужно править — правьте shuffle.s.
+// Driver for exercise a1005. You do NOT need to edit this file — edit shuffle.s.
 import std::io;
 
 extern fn void reverse4(int* v);

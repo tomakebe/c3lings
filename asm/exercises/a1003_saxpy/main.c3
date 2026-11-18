@@ -1,4 +1,4 @@
-// Драйвер упражнения a1003. Этот файл НЕ нужно править — правьте saxpy.s.
+// Driver for exercise a1003. You do NOT need to edit this file — edit saxpy.s.
 import std::io;
 
 extern fn void saxpy(long n, float a, float* x, float* y);

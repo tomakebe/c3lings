@@ -1,4 +1,4 @@
-1. Чтобы компилятор сам посчитал размер, вместо числа напишите `*`: `int[*]`.
-2. `doubled` получает КОПИЮ массива и возвращает новый массив. Присвойте результат:
+1. To have the compiler count the size itself, write `*` instead of a number: `int[*]`.
+2. `doubled` receives a COPY of the array and returns a new array. Assign the result:
    `scores = doubled(scores);`.
-3. `backup` скопирован до удвоения и с тех пор не менялся.
+3. `backup` was copied before the doubling and hasn't changed since.

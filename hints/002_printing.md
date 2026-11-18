@@ -1,5 +1,5 @@
-Каждое `???` — это ровно один спецификатор формата.
-Целое — `%d`, строка — `%s`, шестнадцатеричное — `%x`, двоичное — `%b`.
-Для числа с плавающей точкой с двумя знаками после точки — `%.2f`.
-Ширина поля задаётся числом между `%` и буквой: `%4d`.
-Чтобы напечатать сам знак процента, его нужно удвоить.
+Each `???` is exactly one format specifier.
+Integer — `%d`, string — `%s`, hexadecimal — `%x`, binary — `%b`.
+For a floating-point number with two digits after the point — `%.2f`.
+The field width is given by a number between `%` and the letter: `%4d`.
+To print the percent sign itself, you need to double it.

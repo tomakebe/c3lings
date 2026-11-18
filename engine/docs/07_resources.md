@@ -1,61 +1,67 @@
-# Глава 07. Ресурсы и ассеты
+# Chapter 07. Resources and Assets
 
-> Упражнения главы: `e0701_path_hash` … `e0706_pak_archive`.
-> Перед ними нужны главы 02 (аллокаторы) и 03 (хендлы, slot map).
+> Chapter exercises: `e0701_path_hash` … `e0706_pak_archive`.
+> Prerequisites: chapters 02 (allocators) and 03 (handles, slot map).
 
-Код игры — это, скорее всего, несколько мегабайт. Всё остальное — текстуры, меши,
-анимации, звуки, шейдеры, уровни, локализация — это **данные**, и их на два-три порядка больше.
-Современная AAA-игра весит 100+ ГБ, из которых код — доли процента. Подсистема, которая отвечает
-за то, чтобы нужные данные оказались в памяти (и в видеопамяти) в нужный момент, в нужном формате
-и ровно в одном экземпляре, называется **менеджером ресурсов** (resource manager, asset system,
-content system — у каждого движка своё имя). Это одна из самых «тяжёлых» по архитектуре частей
-движка: она касается файловой системы, потоков, памяти, инструментов, сборки и редактора.
+A game's code is probably a few megabytes. Everything else — textures, meshes, animations,
+sounds, shaders, levels, localization — is **data**, and there is two to three orders of
+magnitude more of it. A modern AAA game weighs 100+ GB, of which code is a fraction of a percent.
+The subsystem responsible for getting the right data into memory (and into video memory) at the
+right moment, in the right format and in exactly one copy is called the **resource manager**
+(resource manager, asset system, content system — every engine has its own name for it). It is
+one of the architecturally "heaviest" parts of an engine: it touches the file system, threads,
+memory, tools, the build and the editor.
 
-Термины. **Ассет** (asset) — единица контента, как её видит художник/дизайнер: «текстура героя»,
-«уровень 3». **Ресурс** (resource) — представление ассета в рантайме: объект в памяти с данными.
-Часто слова используют как синонимы; мы будем говорить «ассет» про исходник и про сущность в
-пайплайне, «ресурс» — про загруженный объект.
+Terminology. An **asset** is a unit of content as an artist/designer sees it: "the hero texture",
+"level 3". A **resource** is the runtime representation of an asset: an in-memory object holding
+data. The words are often used interchangeably; we will say "asset" for the source and for the
+entity in the pipeline, and "resource" for the loaded object.
 
-## 1. Какие задачи решает менеджер ресурсов
+## 1. What problems a resource manager solves
 
-1. **Единственность.** Сто деревьев с одной текстурой — одна загрузка и один объект в памяти.
-2. **Идентификация.** Как назвать ресурс так, чтобы это было дёшево сравнивать, хранить и
-   сериализовать в другие ассеты.
-3. **Время жизни.** Когда ресурс можно выгрузить? Кто им владеет?
-4. **Асинхронность.** Чтение с диска — миллисекунды (HDD — десятки миллисекунд на seek). Кадр — 16 мс.
-   Блокирующая загрузка = фриз. Нужна загрузка в фоне, а значит — состояния «ещё не готово».
-5. **Зависимости.** Материал ссылается на шейдер и текстуры, уровень — на тысячи ассетов.
-6. **Формат.** Исходники (PSD, FBX, WAV) не пригодны для рантайма. Нужен офлайн-пайплайн, который
-   превращает их в формат, удобный конкретной платформе.
-7. **Упаковка и распространение.** Архивы, сжатие, патчи, DLC, моды.
-8. **Итерация.** Hot reload: художник сохранил — игра подхватила.
+1. **Uniqueness.** A hundred trees sharing one texture means one load and one object in memory.
+2. **Identity.** How to name a resource so that it is cheap to compare, store and serialize into
+   other assets.
+3. **Lifetime.** When can a resource be unloaded? Who owns it?
+4. **Asynchrony.** A disk read takes milliseconds (on an HDD, tens of milliseconds per seek). A
+   frame is 16 ms. Blocking load = freeze. You need background loading, which means "not ready
+   yet" states.
+5. **Dependencies.** A material references a shader and textures; a level references thousands of
+   assets.
+6. **Format.** Source files (PSD, FBX, WAV) are not fit for runtime. You need an offline pipeline
+   that turns them into a format convenient for a specific platform.
+7. **Packaging and distribution.** Archives, compression, patches, DLC, mods.
+8. **Iteration.** Hot reload: the artist hits save — the game picks it up.
 
-Пункты 1–5 — рантайм, 6–7 — инструменты и сборка, 8 — мост между ними. Хорошая архитектура
-чётко разделяет их: **рантайм не знает про исходные форматы**. Он загружает только «приготовленные»
-(cooked) данные. Это правило — главное отличие игрового движка от «программы, которая читает PNG».
+Items 1–5 are runtime, 6–7 are tools and build, 8 is the bridge between them. A good
+architecture separates them cleanly: **the runtime knows nothing about source formats**. It loads
+only "cooked" data. This rule is the main difference between a game engine and "a program that
+reads PNGs".
 
 ```
-  Художник           Инструменты (офлайн)                  Рантайм (игра)
+  Artist             Tools (offline)                       Runtime (game)
  +---------+     +---------------------------+      +-----------------------------+
  | hero.psd| --> | importer -> cooker(PC)    | -->  | pak/bundle -> resource mgr  |
  | hero.fbx|     |          -> cooker(PS5)   |      |   handles, refcount, states |
- | jump.wav|     |  кэш по хешу исходника    |      |   streaming, hot reload     |
+ | jump.wav|     |  cache keyed by src hash  |      |   streaming, hot reload     |
  +---------+     +---------------------------+      +-----------------------------+
                   DDC (derived data cache)
 ```
 
-## 2. Идентификация ресурса
+## 2. Resource identity
 
-Самое очевидное — строка пути: `"textures/hero.png"`. Удобно человеку, но в рантайме плохо:
+The most obvious choice is a path string: `"textures/hero.png"`. Convenient for humans, but bad at
+runtime:
 
-* сравнение — `memcmp` переменной длины, а ключ хеш-таблицы — указатель плюс длина;
-* строки надо где-то хранить и кому-то владеть ими;
-* в сериализованных ассетах (материал ссылается на текстуру) строка раздувает данные.
+* comparison is a variable-length `memcmp`, and a hash table key is a pointer plus a length;
+* the strings have to be stored somewhere and owned by someone;
+* in serialized assets (a material referencing a texture) the string bloats the data.
 
-Поэтому почти все движки переводят путь в **число** — хеш. Bitsquid/Stingray использовал
-64-битный murmur-хеш пути и отдельно — хеш типа ресурса: пара `(type_hash, name_hash)`
-идентифицирует ресурс. id Tech и многие другие делают так же с CRC32/FNV. В нашем курсе — FNV-1a
-64 бит: он крошечный, без таблиц, а значит его легко посчитать и во время компиляции:
+That is why almost every engine turns the path into a **number** — a hash. Bitsquid/Stingray used
+a 64-bit murmur hash of the path plus a separate hash of the resource type: the pair
+`(type_hash, name_hash)` identifies a resource. id Tech and many others do the same with
+CRC32/FNV. In this course we use 64-bit FNV-1a: it is tiny and table-free, which means it is easy
+to compute at compile time too:
 
 ```c3
 macro ulong @rid(String $path) @const
@@ -69,112 +75,117 @@ macro ulong @rid(String $path) @const
 ...
 switch (event_resource)
 {
-    case @rid("sounds/jump.wav"): ...   // константа, вычисленная компилятором
+    case @rid("sounds/jump.wav"): ...   // a constant computed by the compiler
 }
 ```
 
-Альтернатива — **GUID**: случайный 128-битный идентификатор, который присваивается ассету при
-импорте и хранится рядом с ним (Unity: `.meta`-файлы с `guid:`; Unreal ссылается на ассеты по
-пути пакета, но внутри использует GUID для многих сущностей; Godot 4 — `uid://` поверх путей).
+The alternative is a **GUID**: a random 128-bit identifier assigned to an asset on import and
+stored alongside it (Unity: `.meta` files with `guid:`; Unreal references assets by package path
+but uses GUIDs internally for many entities; Godot 4: `uid://` on top of paths).
 
-| | Хеш пути | GUID |
+| | Path hash | GUID |
 |---|---|---|
-| Получение | детерминированно из пути | генерируется при создании |
-| Переименование/перемещение | id меняется, все ссылки надо чинить | id стабилен |
-| Нужна ли база соответствий | нет (путь — сам себе id) | да (`.meta`, реестр) |
-| Можно ли посчитать в коде | да, даже в compile time | нет |
-| Риск коллизий | есть (теоретический для 64 бит) | практически нет |
+| How it is obtained | deterministically from the path | generated on creation |
+| Rename/move | id changes, all references must be fixed | id is stable |
+| Needs a mapping database | no (the path is its own id) | yes (`.meta`, registry) |
+| Computable in code | yes, even at compile time | no |
+| Collision risk | exists (theoretical for 64 bits) | practically none |
 
-Практичный компромисс многих движков: в **редакторе и пайплайне** ассеты адресуются GUID'ами
-(переименование не ломает ссылки), а при готовке ссылки превращаются в компактные рантайм-id
-(хеш, индекс в таблице пакета). Рантайму уже неважно, как ассет назывался у художника.
+A practical compromise used by many engines: in the **editor and pipeline**, assets are
+addressed by GUIDs (renames don't break references), and during cooking references are turned
+into compact runtime ids (a hash, an index into the package table). The runtime no longer cares
+what the artist called the asset.
 
-### Каноникализация
+### Canonicalization
 
-Хешировать путь «как есть» нельзя: `Textures\Hero.PNG`, `./textures//hero.png` и
-`textures/old/../hero.png` — один и тот же файл (на Windows, где FS регистронезависима), но три
-разных хеша. Итог — тройная загрузка и тройной расход памяти, а при hot reload обновится
-только одна из копий. Перед хешированием путь приводят к **каноническому виду**:
+You cannot hash a path "as is": `Textures\Hero.PNG`, `./textures//hero.png` and
+`textures/old/../hero.png` are the same file (on Windows, where the FS is case-insensitive), but
+three different hashes. The result is a triple load and triple memory use, and on hot reload only
+one of the copies gets updated. Before hashing, the path is brought to **canonical form**:
 
-* разделитель `\` → `/`;
-* нижний регистр (или запрет верхнего регистра в именах ассетов на уровне инструментов —
-  так проще и надёжнее: Linux-сборка с регистрозависимой FS не сломается);
-* удаление пустых сегментов и `.`, обработка `..`;
-* путь относительно корня контента (никаких `C:\Projects\Game\content\…`).
+* separator `\` → `/`;
+* lowercase (or forbid uppercase in asset names at the tools level — simpler and more robust:
+  a Linux build on a case-sensitive FS won't break);
+* remove empty segments and `.`, resolve `..`;
+* path relative to the content root (no `C:\Projects\Game\content\…`).
 
-Каноникализацию делают **один раз**: на границе, где путь приходит из внешнего мира
-(конфиг, консоль, скрипт). Внутри движка ходят только id.
+Canonicalization is done **once**: at the boundary where a path enters from the outside world
+(config, console, script). Inside the engine only ids travel around.
 
-### Коллизии
+### Collisions
 
-Вероятность коллизии для n случайных значений в пространстве размера N оценивается
-«парадоксом дней рождения»: p ≈ n² / 2N. Для 32-битного хеша и 100 000 ассетов
-p ≈ 10¹⁰ / 8.6·10⁹ > 1 — коллизия практически гарантирована! Для 64 бит та же оценка даёт
-~3·10⁻¹⁰ — можно жить. Именно поэтому 32-битные хеши путей — плохая идея для крупных проектов
-(в упражнении e0701 вы увидите коллизии уже на 1000 путей при 16-битном хеше).
+The probability of a collision for n random values in a space of size N is estimated by the
+"birthday paradox": p ≈ n² / 2N. For a 32-bit hash and 100,000 assets,
+p ≈ 10¹⁰ / 8.6·10⁹ > 1 — a collision is practically guaranteed! For 64 bits the same estimate
+gives ~3·10⁻¹⁰ — livable. This is exactly why 32-bit path hashes are a bad idea for large
+projects (in exercise e0701 you will see collisions with just 1000 paths and a 16-bit hash).
 
-Но «маловероятно» ≠ «невозможно», и узнать о коллизии нужно **в инструментах**, а не по
-мистическому багу «у героя текстура дерева». Решение: при сборке (и в debug-рантайме) держать
-реестр `id → канонический путь` и проверять каждое добавление. Совпал id при другом пути —
-ошибка сборки, ассет переименовывают. Строки путей в релизе не нужны вообще — их можно
-вынести в отдельный debug-файл для логов и профайлера.
+But "unlikely" ≠ "impossible", and you want to learn about a collision **in the tools**, not
+through a mysterious bug where "the hero has a tree texture". Solution: during the build (and in
+the debug runtime) keep an `id → canonical path` registry and check every insertion. Same id with
+a different path — build error, the asset gets renamed. Path strings are not needed in release at
+all — they can be moved into a separate debug file for logs and the profiler.
 
-## 3. Хендлы вместо указателей
+## 3. Handles instead of pointers
 
-Что получает игровой код в ответ на «дай текстуру hero»? Варианты:
+What does game code get back when it asks for "the hero texture"? Options:
 
-1. **Сырой указатель** `Texture*`. Быстро, но: ресурс выгрузили — висячий указатель;
-   hot reload заменил объект — у всех старая версия; дефрагментация памяти невозможна.
-2. **Умный указатель с подсчётом ссылок** (`std::shared_ptr`, `TSharedPtr`, `Ref<T>` в Godot).
-   Решает время жизни, но атомарные инкременты/декременты на каждом копировании, указатель
-   на контрольный блок, и всё ещё нельзя перемещать объект.
-3. **Хендл** `{ index, generation }` — индекс в таблице менеджера плюс поколение (глава 03).
-   Ресурс можно перезагрузить на месте, переместить, выгрузить; устаревший хендл
-   обнаруживается сравнением поколений, а не крашем.
+1. **Raw pointer** `Texture*`. Fast, but: the resource gets unloaded — dangling pointer; hot reload
+   replaces the object — everyone keeps the old version; memory defragmentation is impossible.
+2. **Reference-counted smart pointer** (`std::shared_ptr`, `TSharedPtr`, `Ref<T>` in Godot).
+   Solves lifetime, but costs atomic increments/decrements on every copy and a pointer to a
+   control block, and the object still can't be moved.
+3. **Handle** `{ index, generation }` — an index into the manager's table plus a generation
+   (chapter 03). The resource can be reloaded in place, moved, unloaded; a stale handle is
+   detected by comparing generations rather than by a crash.
 
 ```
   Handle{index=0, gen=3} ---> slots[0] { gen=3, refcount=2, data=* } ---> Texture
   Handle{index=0, gen=2} ---> slots[0] { gen=3 ... }   gen != 2  => STALE
 ```
 
-Хендл — 8 байт (часто упаковывают в 32 бита: 20 бит индекс + 12 поколение), тривиально
-копируется и сериализуется. Разыменование — одна проверка и одна индексация. Именно так устроены
-ресурсы в Bitsquid, в большинстве рендер-бэкендов (хендлы буферов/текстур в bgfx, sokol_gfx),
-в Our Machinery. Для hot reload это принципиально: таблица — единственное место, где лежит
-указатель на данные, и подмена данных в слоте мгновенно видна всем владельцам хендлов.
+A handle is 8 bytes (often packed into 32 bits: 20-bit index + 12-bit generation), trivially
+copied and serialized. Dereferencing is one check and one index operation. This is how resources
+work in Bitsquid, in most render backends (buffer/texture handles in bgfx, sokol_gfx), and in Our
+Machinery. For hot reload this is essential: the table is the only place that holds the pointer
+to the data, and swapping the data in a slot is instantly visible to every handle owner.
 
-Разыменование хендла лучше делать «поздно и коротко»: получили `Texture*` в начале функции,
-использовали, забыли. Не храните результат `get()` между кадрами — в этом и смысл хендла.
+Dereference a handle "late and briefly": get a `Texture*` at the start of a function, use it,
+forget it. Do not keep the result of `get()` across frames — that is the whole point of a handle.
 
-## 4. Время жизни: подсчёт ссылок
+## 4. Lifetime: reference counting
 
-Кто решает, что ресурс больше не нужен? Классические стратегии:
+Who decides that a resource is no longer needed? The classic strategies:
 
-* **Подсчёт ссылок.** `acquire` +1, `release` −1, на нуле — кандидат на выгрузку. Просто и
-  локально. Ловушки: забытый `release` = утечка; лишний `release` = выгрузка из-под ног (поэтому
-  менеджер должен ловить «over-release» хотя бы в debug-сборке); циклы ссылок (редки для ассетов —
-  граф зависимостей обычно ацикличен, — но возможны в скриптовых данных).
-* **Владение группами** (Bitsquid «resource packages», Unity AssetBundles, Unreal «chunks»).
-  Загружается и выгружается не ресурс, а **пакет** — набор ресурсов уровня/зоны. Внутри пакета
-  ресурсы живут, пока жив пакет. Подсчёт ссылок ведётся на уровне пакетов
-  (ресурс может входить в несколько). Детерминированно, легко бюджетировать память.
-* **Сборка мусора/сканирование** (Unreal UObject GC, `Resources.UnloadUnusedAssets()` в Unity):
-  периодический обход графа достижимости. Удобно для геймплей-кода, но дорого и с паузами.
+* **Reference counting.** `acquire` +1, `release` −1, at zero it becomes a candidate for
+  unloading. Simple and local. Pitfalls: a forgotten `release` = leak; an extra `release` =
+  unloading out from under someone (so the manager should catch "over-release" at least in debug
+  builds); reference cycles (rare for assets — the dependency graph is usually acyclic — but
+  possible in script data).
+* **Group ownership** (Bitsquid "resource packages", Unity AssetBundles, Unreal "chunks"). What
+  gets loaded and unloaded is not a resource but a **package** — the set of resources for a
+  level/zone. Resources inside a package live as long as the package does. Reference counting
+  happens at the package level (a resource may belong to several). Deterministic, easy to budget
+  memory.
+* **Garbage collection/scanning** (Unreal UObject GC, `Resources.UnloadUnusedAssets()` in Unity):
+  a periodic reachability-graph traversal. Convenient for gameplay code, but expensive and with
+  pauses.
 
-### Не выгружайте сразу
+### Don't unload immediately
 
-Типичная сцена — смена уровня: «отпустить всё от уровня 1, запросить всё для уровня 2».
-Если ресурс выгружается в момент, когда счётчик дошёл до нуля, общие для уровней ассеты (UI,
-персонаж, общие текстуры) будут выгружены и тут же загружены снова — **thrashing**. Правильно:
-ресурсы с нулевым счётчиком остаются в памяти до явного `collect()` (раз в кадр, после загрузки
-нового уровня или по давлению на бюджет памяти — LRU-кэш «неиспользуемых»). `acquire` ресурса
-с нулём ссылок просто «воскрешает» его. Это и проверяет упражнение e0702.
+A typical scenario is a level change: "release everything from level 1, request everything for
+level 2". If a resource is unloaded the moment its counter hits zero, assets shared between levels
+(UI, the player character, common textures) will be unloaded and immediately loaded again —
+**thrashing**. The right way: resources with a zero count stay in memory until an explicit
+`collect()` (once per frame, after the new level has loaded, or under memory-budget pressure — an
+LRU cache of "unused" ones). An `acquire` of a resource with zero references simply "resurrects"
+it. This is exactly what exercise e0702 checks.
 
 ```c3
 fn Handle? TextureManager.acquire(&self, String path)
 {
     ResourceId id = path_id(path);
-    if (try index = self.by_id.get(id))      // уже загружен (может быть, с refcount 0)
+    if (try index = self.by_id.get(id))      // already loaded (possibly with refcount 0)
     {
         self.slots[index].refcount++;
         return { index, self.slots[index].generation };
@@ -183,63 +194,63 @@ fn Handle? TextureManager.acquire(&self, String path)
 }
 ```
 
-### Многопоточность
+### Multithreading
 
-В реальном движке `acquire` зовут из разных потоков, а загрузка завершается в фоне. Счётчики
-делают атомарными, таблицу id→слот защищают мьютексом или шардированными блокировками, а
-выгрузку переносят в одну точку кадра (главный поток), когда GPU гарантированно больше не
-использует данные — с задержкой в N кадров (N = число кадров «в полёте» у GPU). Эта
-**отложенная выгрузка** нужна и без потоков: нельзя освобождать текстуру, которую GPU рисует
-в кадре, отправленном два кадра назад.
+In a real engine `acquire` is called from different threads, and loading completes in the
+background. Counters are made atomic, the id→slot table is protected by a mutex or sharded locks,
+and unloading is moved to a single point in the frame (the main thread), when the GPU is
+guaranteed to no longer use the data — with a delay of N frames (N = the number of frames "in
+flight" on the GPU). This **deferred unloading** is needed even without threads: you can't free a
+texture the GPU is drawing in a frame submitted two frames ago.
 
-## 5. Состояния загрузки
+## 5. Loading states
 
-Раз загрузка не мгновенна, у ресурса есть жизненный цикл:
+Since loading is not instantaneous, a resource has a lifecycle:
 
 ```
- UNLOADED --request--> QUEUED --свободен IO--> LOADING --байты прочитаны--+
+ UNLOADED --request--> QUEUED --IO free--> LOADING --bytes read-----------+
                                                                            |
-                       FAILED <------- файла нет / битые данные -----------+
+                       FAILED <------- file missing / corrupt data --------+
                          ^                                                 |
-                         +---- зависимость FAILED ---- WAITING_DEPS <------+
+                         +---- dependency FAILED ----- WAITING_DEPS <------+
                                                             |
-                                              все зависимости LOADED
+                                              all dependencies LOADED
                                                             v
                                                          LOADED
 ```
 
-Иногда добавляют ещё стадии: `PROCESSING` (распаковка, построение структур на worker-потоке),
-`UPLOADING` (копирование в видеопамять через upload-очередь/staging-буфер), `UNLOADING`.
-Важно, что состояние **видно снаружи**: игровой код может спросить `is_loaded(h)` и, пока
-ресурс не готов, рисовать заглушку (LOD с низким разрешением, серый материал) или не
-рисовать вовсе. Хендл выдаётся **сразу** при запросе — до того, как данные загружены.
+Sometimes more stages are added: `PROCESSING` (decompression, building structures on a worker
+thread), `UPLOADING` (copying into video memory via an upload queue/staging buffer), `UNLOADING`.
+What matters is that the state is **visible from outside**: game code can ask `is_loaded(h)` and,
+while the resource is not ready, draw a placeholder (a low-resolution LOD, a gray material) or not
+draw at all. The handle is returned **immediately** on request — before the data is loaded.
 
-Почему `WAITING_DEPS` отдельное состояние: байты материала могут прийти раньше, чем байты его
-текстур. Материал нельзя объявить готовым, пока не готовы его зависимости, иначе рендер увидит
-материал со ссылкой на незагруженную текстуру. Зависимости запрашиваются **до** самого ассета:
-обход графа в глубину (с защитой от повторов — общие зависимости встречаются часто), и это
-естественно ставит листья в очередь раньше корней.
+Why `WAITING_DEPS` is a separate state: a material's bytes may arrive before the bytes of its
+textures. A material cannot be declared ready until its dependencies are ready, otherwise the
+renderer will see a material referencing an unloaded texture. Dependencies are requested
+**before** the asset itself: a depth-first graph traversal (with duplicate protection — shared
+dependencies are common), and this naturally queues leaves before roots.
 
-### Ошибки
+### Errors
 
-Ошибка загрузки — нормальная ситуация (особенно в разработке): файл забыли закоммитить, формат
-устарел. Два подхода:
+A load failure is a normal situation (especially during development): someone forgot to commit
+a file, the format is outdated. Two approaches:
 
-* **Распространить** FAILED вверх по зависимостям — строгий режим, хорош для CI и сборок.
-* **Подставить заглушку** (fallback): ярко-розовая шахматная текстура, «ERROR»-меш (Source
-  engine — знаменитый красный ERROR и фиолетово-чёрная шахматка). Игра продолжает работать,
-  проблема видна глазами. Почти все движки делают так в редакторе.
+* **Propagate** FAILED up through the dependencies — strict mode, good for CI and builds.
+* **Substitute a fallback**: a bright pink checkerboard texture, an "ERROR" mesh (Source
+  engine — the famous red ERROR and the purple-black checkerboard). The game keeps running, the
+  problem is visible to the eye. Almost every engine does this in the editor.
 
-## 6. Асинхронная загрузка
+## 6. Asynchronous loading
 
-Синхронная загрузка в главном потоке допустима только на загрузочном экране. Всё остальное —
-асинхронно. Типичная архитектура:
+Synchronous loading on the main thread is acceptable only on a loading screen. Everything else is
+asynchronous. A typical architecture:
 
 ```
  main thread                 IO thread(s)                worker jobs           render thread
  -----------                 ------------                -----------           -------------
  request(h) --> queue -----> read(file, offset, size)
-                              (ограничение: N в полёте)
+                              (limit: N in flight)
                                      |  bytes
                                      +--------------> decompress, parse,
                                                       fixup pointers
@@ -249,253 +260,264 @@ fn Handle? TextureManager.acquire(&self, String path)
    state = LOADED, callbacks, dependents
 ```
 
-Ключевые решения:
+Key decisions:
 
-* **Сколько чтений одновременно.** Для HDD — одно-два (seek'и убивают throughput, лучше
-  упорядочить запросы по смещению в архиве). Для NVMe — десятки (очередь глубокая, отсюда
-  DirectStorage/`io_uring`, которые отдают устройству много мелких запросов разом). На консолях
-  прошлого поколения с оптическими дисками — строго последовательно, а данные уровня раскладывали
-  на диске подряд, иногда **дублируя** ассеты, чтобы не прыгать головкой.
-* **Приоритеты.** То, что рядом с камерой, важнее того, что за километр. Стриминговая система
-  (open world) постоянно пересчитывает приоритеты и даже отменяет запросы.
-* **Бюджеты.** Ограничение на число завершений, обрабатываемых за кадр, иначе кадр, в котором
-  «приехало» 200 ассетов, займёт 100 мс. Финализация (создание GPU-объектов, регистрация) —
-  с лимитом по времени или количеству.
-* **Обратная связь.** Колбэки «загружено» опасны (в каком потоке они вызовутся? а если
-  подписчика уже нет? — см. главу 06 про время жизни слушателей). Надёжнее опрос состояния
-  по хендлу или события в очереди, обрабатываемой в известной точке кадра.
+* **How many reads at once.** For an HDD — one or two (seeks kill throughput; better to sort
+  requests by offset in the archive). For NVMe — dozens (the queue is deep, hence
+  DirectStorage/`io_uring`, which hand the device many small requests at once). On
+  previous-generation consoles with optical discs — strictly sequential, and level data was laid
+  out contiguously on the disc, sometimes **duplicating** assets to avoid moving the read head.
+* **Priorities.** What's near the camera matters more than what's a kilometer away. A streaming
+  system (open world) constantly recomputes priorities and even cancels requests.
+* **Budgets.** A limit on the number of completions processed per frame, otherwise the frame in
+  which 200 assets "arrived" will take 100 ms. Finalization (creating GPU objects, registration)
+  is limited by time or count.
+* **Feedback.** "Loaded" callbacks are dangerous (which thread are they called on? what if the
+  subscriber is already gone? — see chapter 06 on listener lifetime). Polling state by handle, or
+  events in a queue processed at a known point in the frame, is more robust.
 
-В упражнении e0703 потоки заменены тиками: у каждого ассета есть «стоимость чтения» в тиках, а
-бюджет — `max_in_flight`. Логика состояний та же, что в настоящем стримере, но поведение
-детерминировано, и его можно проверить точным выводом. Это общий приём: **отделите логику
-планирования от механики потоков**, и вы сможете тестировать первую без вторых.
+In exercise e0703 threads are replaced with ticks: each asset has a "read cost" in ticks, and the
+budget is `max_in_flight`. The state logic is the same as in a real streamer, but the behavior is
+deterministic and can be checked against exact output. This is a general technique: **separate
+the scheduling logic from the threading mechanics**, and you can test the former without the
+latter.
 
 ## 7. Hot reload
 
-Время итерации — главная метрика продуктивности команды. Если чтобы увидеть исправленную
-текстуру, надо перезапустить игру и дойти до нужного места (2–5 минут), художник сделает 20
-итераций за день вместо 200. Поэтому hot reload ассетов есть во всех серьёзных движках.
+Iteration time is the main metric of team productivity. If seeing a fixed texture requires
+restarting the game and getting back to the right spot (2–5 minutes), an artist will do 20
+iterations a day instead of 200. That is why every serious engine has asset hot reload.
 
-**Как узнать, что файл изменился:**
+**How to find out that a file changed:**
 
-* **Опрос mtime** (`stat`): раз в N кадров пройти по загруженным ресурсам и сравнить время
-  модификации. Переносимо, просто, но стоимость растёт с числом файлов (делают в отдельном потоке
-  или по частям) и разрешение mtime бывает 1–2 секунды (FAT — 2 с), так что два сохранения в одну
-  секунду неразличимы. Иногда дополнительно сравнивают размер или хеш содержимого.
-* **Уведомления ОС**: `inotify` (Linux), `ReadDirectoryChangesW` (Windows), `FSEvents` (macOS).
-  Мгновенно и дёшево, но три API, особенности с сетевыми дисками и переполнение очереди событий.
-* **Через инструменты**: редактор/asset-сервер сам знает, что пересобрал ассет, и посылает
-  игре сообщение по сокету (Bitsquid «reload» по сети на devkit, Unreal Live Coding/Live Link).
-  Это единственный вариант для консолей и телефонов, где файлы лежат не на машине разработчика.
+* **Polling mtime** (`stat`): every N frames walk the loaded resources and compare modification
+  times. Portable and simple, but the cost grows with the number of files (it is done on a
+  separate thread or in slices), and mtime resolution can be 1–2 seconds (FAT — 2 s), so two saves
+  within one second are indistinguishable. Sometimes size or a content hash is compared as well.
+* **OS notifications**: `inotify` (Linux), `ReadDirectoryChangesW` (Windows), `FSEvents` (macOS).
+  Instant and cheap, but three APIs, quirks with network drives, and event-queue overflow.
+* **Via the tools**: the editor/asset server knows itself that it rebuilt an asset and sends the
+  game a message over a socket (Bitsquid "reload" over the network to a devkit, Unreal Live
+  Coding/Live Link). This is the only option for consoles and phones, where the files don't live
+  on the developer's machine.
 
-**Что делать после обнаружения:**
+**What to do after detection:**
 
-1. **Перечитать транзакционно.** Файл мог быть сохранён частично (редактор пишет его прямо
-   сейчас), содержать ошибку или устаревший формат. Разбираем во временный объект; при успехе
-   атомарно подменяем данные в слоте (хендлы остались те же!), при ошибке — лог и старая версия.
-   Ни в коем случае не падать: hot reload — инструмент разработки, его ошибки не должны
-   убивать сессию.
-2. **Обновить зависимых.** Шейдер перекомпилирован → все материалы с ним должны пересоздать
-   pipeline state. Нужен обратный граф «кто от меня зависит». Перелинковку делают **после**
-   перезагрузки всех изменившихся файлов этого опроса — иначе материал, обработанный раньше
-   шейдера, слинкуется со старой версией.
-3. **Пережить исчезновение файла.** `git checkout`, переименование, сохранение через временный
-   файл и rename — файл может временно отсутствовать. Это не повод выгружать ресурс: предупредить
-   один раз и ждать.
-4. **Учесть состояние, построенное поверх ресурса.** Если игровой код закешировал размер текстуры
-   или данные из конфига — после перезагрузки кеш устарел. Решения: не кешировать (всегда через
-   хендл), номер версии ресурса, событие «resource reloaded».
+1. **Reload transactionally.** The file may be partially saved (the editor is writing it right
+   now), contain an error, or be in an outdated format. Parse into a temporary object; on success
+   atomically swap the data in the slot (the handles stay the same!), on error — log and keep the
+   old version. Never crash: hot reload is a development tool, and its errors must not kill the
+   session.
+2. **Update dependents.** A shader is recompiled → every material using it must recreate its
+   pipeline state. You need a reverse graph of "who depends on me". Relinking is done **after**
+   reloading all files changed in this poll — otherwise a material processed before its shader
+   will link against the old version.
+3. **Survive a file disappearing.** `git checkout`, a rename, saving via a temp file and rename —
+   the file may be temporarily missing. That is no reason to unload the resource: warn once and
+   wait.
+4. **Account for state built on top of the resource.** If game code cached a texture's size or
+   data from a config, the cache is stale after reload. Solutions: don't cache (always go through
+   the handle), a resource version number, a "resource reloaded" event.
 
-Важная тонкость: hot reload работает на **исходниках или готовых данных**? В схеме с офлайн-
-пайплайном изменился `hero.psd` → инструмент пересобирает `hero.tex` → рантайм замечает
-изменение `hero.tex`. Рантайм по-прежнему не умеет читать PSD.
+An important subtlety: does hot reload work on **sources or cooked data**? In a setup with an
+offline pipeline, `hero.psd` changes → the tool rebuilds `hero.tex` → the runtime notices the
+change to `hero.tex`. The runtime still can't read PSD.
 
-## 8. Пайплайн ассетов: source → cooked
+## 8. The asset pipeline: source → cooked
 
 ```
   source             import                 intermediate             cook (per platform)          runtime
-  hero.fbx  --->  парсинг FBX SDK,   --->   движковый формат   --->   оптимизация вершин,  --->   hero.mesh
-  hero.psd        нормализация осей,        (меш/текстура без         сжатие текстур BCn/ASTC,    (готов к
-                  единиц, ...               привязки к платформе)     раскладка под GPU, LOD      in-place
-                                                                                                   загрузке)
+  hero.fbx  --->  parse via FBX SDK, --->   engine format      --->   vertex optimization, --->   hero.mesh
+  hero.psd        normalize axes,           (mesh/texture not         BCn/ASTC texture            (ready for
+                  units, ...                tied to a platform)       compression, GPU layout,    in-place
+                                                                      LODs                        loading)
 ```
 
-* **Импорт** переводит чужой формат в свой «промежуточный». Делается один раз при добавлении
-  ассета, результат часто хранится в репозитории (Unreal `.uasset` — это импортированный ассет).
-* **Готовка** (cooking, Unreal-терминология; «compile» у Bitsquid/Stingray, «build» у многих)
-  делает данные оптимальными для конкретной платформы: формат сжатия текстур (BC7 на ПК, ASTC на
-  мобилках), порядок вершин под кеш вершинного шейдера, endianness (во времена PS3/Xbox 360 —
-  big-endian!), выравнивание, удаление редакторских данных.
-* **Кэш производных данных** (Unreal DDC, Unity Library/, Bitsquid data cache): результат готовки
-  зависит от (содержимое исходника, версия cooker'а, параметры, платформа). Хеш этой четвёрки —
-  ключ кэша. Повторная сборка без изменений — мгновенна; на командах используют общий сетевой
-  кэш, чтобы каждый ассет готовился один раз на всю студию. Поэтому в заголовке готового формата
-  есть **версия**: поменяли формат — подняли версию — кэш и старые файлы автоматически
-  инвалидируются, а рантайм отвергает устаревшие данные вместо того, чтобы прочитать мусор.
+* **Import** converts a foreign format into your own "intermediate" one. It is done once when the
+  asset is added, and the result is often stored in the repository (an Unreal `.uasset` is an
+  imported asset).
+* **Cooking** (Unreal terminology; "compile" in Bitsquid/Stingray, "build" in many others) makes
+  the data optimal for a specific platform: texture compression format (BC7 on PC, ASTC on
+  mobile), vertex order for the vertex-shader cache, endianness (in the PS3/Xbox 360 era —
+  big-endian!), alignment, stripping editor-only data.
+* **Derived data cache** (Unreal DDC, Unity Library/, Bitsquid data cache): the cooking result
+  depends on (source contents, cooker version, parameters, platform). The hash of this quadruple
+  is the cache key. A rebuild with no changes is instant; teams use a shared network cache so that
+  each asset is cooked once for the whole studio. That is why the cooked format header contains a
+  **version**: change the format — bump the version — and the cache and old files are
+  automatically invalidated, and the runtime rejects stale data instead of reading garbage.
 
-### Формат готовых данных
+### The cooked data format
 
-Цель — **загрузка почти без работы**. Идеал: прочитать блок байтов в память и использовать его
-как есть («in-place loading», «load-in-place»): заголовок, затем массивы фиксированного
-формата, ссылки — в виде смещений, которые после загрузки либо превращаются в указатели одним
-проходом («pointer fixup»), либо так и используются как смещения (relative pointers). Так
-устроены форматы Bitsquid, многие консольные движки, flatbuffers-подобные схемы.
+The goal is **loading with almost no work**. The ideal: read a block of bytes into memory and use
+it as is ("in-place loading", "load-in-place"): a header, then fixed-format arrays, references as
+offsets which after loading are either turned into pointers in a single pass ("pointer fixup") or
+used as offsets directly (relative pointers). This is how the Bitsquid formats, many console
+engines and flatbuffers-like schemes work.
 
 ```
-  offset  size  поле
-  0       4     magic 'MSH1'           - это вообще наш файл?
-  4       2     version                - тот ли формат?
+  offset  size  field
+  0       4     magic 'MSH1'           - is this our file at all?
+  4       2     version                - is it the right format?
   6       2     flags
   8       4     vertex_count
   12      4     index_count
-  16      4     payload_size           - не обрезан ли файл?
-  20      4     checksum(payload)      - не повреждён ли?
+  16      4     payload_size           - is the file truncated?
+  20      4     checksum(payload)      - is it corrupted?
   24      ...   float[vertex_count*3], ushort[index_count], pad
 ```
 
-Правила хорошего бинарного формата:
+Rules of a good binary format:
 
-* **Явный порядок байт и явная раскладка.** Пишите поля побайтово, а не `fwrite(&header,
-  sizeof header)`: раскладка структуры зависит от компилятора (padding), а порядок байт — от
-  платформы. Если читаете in-place — выбирайте раскладку так, чтобы она совпадала с нативной на
-  целевых платформах, и проверяйте это `$assert`'ами размеров и смещений.
-* **Выравнивание.** Заголовок кратен 4/16 — тогда массивы после него выровнены, и их можно
-  читать как `float[]` без копирования (а SIMD-загрузки и DMA вообще требуют 16 байт).
-* **Magic + версия + размер + контрольная сумма.** Дешёвые проверки в рантайме ловят реальные
-  проблемы: не тот файл, устаревший формат, обрезанная загрузка, битый диск.
-* **Дорогая валидация — офлайн.** Индексы в пределах, лимиты, согласованность — при готовке.
-  Рантайм доверяет данным (в релизе), иначе загрузка снова превращается в парсинг. Исключение —
-  данные из недоверенных источников (моды, пользовательский контент, сеть): их проверяют всегда.
+* **Explicit byte order and explicit layout.** Write fields byte by byte, not `fwrite(&header,
+  sizeof header)`: struct layout depends on the compiler (padding), and byte order on the
+  platform. If you read in place, choose the layout so that it matches the native one on the
+  target platforms, and verify it with `$assert`s on sizes and offsets.
+* **Alignment.** The header is a multiple of 4/16 — then the arrays after it are aligned and can
+  be read as `float[]` without copying (and SIMD loads and DMA outright require 16 bytes).
+* **Magic + version + size + checksum.** Cheap runtime checks catch real problems: the wrong file,
+  an outdated format, a truncated download, a bad disk.
+* **Expensive validation happens offline.** Indices in range, limits, consistency — during
+  cooking. The runtime trusts the data (in release), otherwise loading turns back into parsing.
+  The exception is data from untrusted sources (mods, user content, the network): it is always
+  validated.
 
-Упражнение e0705 — маленький cooker и loader для меша именно в таком формате.
+Exercise e0705 is a small cooker and loader for a mesh in exactly this format.
 
-## 9. Упакованные архивы
+## 9. Packed archives
 
-Тысячи отдельных файлов на диске в релизе — плохо:
+Thousands of separate files on disk in a release build are bad:
 
-* каждый `open()` — системный вызов, проверка прав, на консолях — проверка подписи;
-  на Windows открытие файла удивительно дорого (антивирусы!);
-* файловая система теряет место на мелких файлах (кластер 4 КБ);
-* нельзя управлять **раскладкой** на диске (что лежит рядом с чем);
-* патчи и моды неудобны.
+* every `open()` is a system call, a permission check, and on consoles a signature check;
+  on Windows opening a file is surprisingly expensive (antivirus!);
+* the file system wastes space on small files (4 KB clusters);
+* you can't control the **layout** on disk (what sits next to what);
+* patches and mods are awkward.
 
-Поэтому ассеты кладут в архивы: `.pak` (Quake, Unreal), `.wad` (Doom), `.bundle` (Unity),
-`.arc`, `.big` и т. д. Типичная структура:
+So assets go into archives: `.pak` (Quake, Unreal), `.wad` (Doom), `.bundle` (Unity),
+`.arc`, `.big`, etc. A typical structure:
 
 ```
  +------------------+  0
  | header           |  magic, version, count, toc_offset
  +------------------+
  | blob 0 (aligned) |
- | blob 1 (aligned) |  данные; часто каждый блок сжат отдельно (LZ4/Oodle/zstd),
- | ...              |  чтобы можно было читать произвольный ресурс
+ | blob 1 (aligned) |  data; often each blob is compressed separately (LZ4/Oodle/zstd),
+ | ...              |  so that any resource can be read independently
  +------------------+  toc_offset
  | TOC              |  { id, offset, size, [compressed_size, flags] } x count,
- +------------------+  отсортировано по id -> бинарный поиск
+ +------------------+  sorted by id -> binary search
 ```
 
-TOC (table of contents) часто кладут **в конец**: при сборке размеры блоков известны только
-после записи, а в начале остаётся место под заголовок, который дописывается последним. Имён в
-TOC нет — только хеши; поиск — бинарный по отсортированному массиву (или идеальное хеширование).
-Сам архив отображают в память (`mmap`) или держат открытый дескриптор и читают по смещениям.
+The TOC (table of contents) is often placed **at the end**: during the build the blob sizes are
+known only after writing, and space is left at the start for the header, which is written last.
+The TOC has no names — only hashes; lookup is a binary search over a sorted array (or perfect
+hashing). The archive itself is memory-mapped (`mmap`), or an open descriptor is kept and read at
+offsets.
 
-**Монтирование и приоритеты.** Движок монтирует несколько архивов в единое виртуальное
-пространство: `base.pak`, `patch_01.pak`, `dlc_forest.pak`, моды. Поиск идёт от последнего
-смонтированного к первому — патч «перекрывает» файлы базы. Так id Software распространяла
-патчи и так работают моды в бесчисленных играх: Quake ищет `pak1.pak` раньше `pak0.pak`,
-Unreal-патчи — это `*_P.pak` с более высоким приоритетом. В разработке «архивом» может быть
-просто каталог на диске — интерфейс тот же (VFS — virtual file system).
+**Mounting and priorities.** The engine mounts several archives into a single virtual namespace:
+`base.pak`, `patch_01.pak`, `dlc_forest.pak`, mods. Lookup goes from the last mounted to the
+first — a patch "overrides" files from the base. This is how id Software shipped patches and how
+mods work in countless games: Quake searches `pak1.pak` before `pak0.pak`, Unreal patches are
+`*_P.pak` files with higher priority. During development an "archive" can simply be a directory
+on disk — same interface (VFS — virtual file system).
 
-**Раскладка.** При сборке архива порядок блоков можно выбирать: ресурсы одного уровня подряд, в
-порядке, в котором они запрашиваются при загрузке (порядок можно записать при прогоне игры —
-«file order log»). Это превращает загрузку уровня в одно длинное последовательное чтение.
+**Layout.** When building an archive you can choose the order of the blobs: one level's resources
+contiguously, in the order they are requested during loading (the order can be recorded during a
+playthrough — a "file order log"). This turns loading a level into one long sequential read.
 
-Упражнение e0706 собирает всё вместе: инструмент строит два архива (база и патч) с выровненными
-блоками и отсортированным TOC, рантайм монтирует их, ищет ресурсы бинарным поиском без
-копирования, а менеджер с хендлами и счётчиками ссылок кеширует результаты.
+Exercise e0706 brings it all together: a tool builds two archives (base and patch) with aligned
+blobs and a sorted TOC, the runtime mounts them and finds resources by binary search without
+copying, and a manager with handles and reference counts caches the results.
 
-## 10. Как это сделано в реальных движках
+## 10. How real engines do it
 
-* **Bitsquid / Stingray.** Данные компилируются офлайн в платформенные бинарные форматы.
-  Ресурс идентифицируется парой `(type, name)` 64-битных murmur-хешей. Загрузка — пакетами
-  (`resource package`), пакет загружается асинхронно и «выставляется» (flush) в одной точке
-  кадра. Формат данных рассчитан на in-place загрузку. Hot reload — по сети с devkit'а.
-  Блог bitsquid.blogspot.com — лучшая открытая документация по такой архитектуре.
-* **Unreal Engine.** Ассеты — `UObject`'ы в пакетах `.uasset`/`.umap`, ссылки — пути пакетов
-  (`/Game/Characters/Hero`), «мягкие» (`TSoftObjectPtr`, загружаются по требованию) и «жёсткие»
-  (тянут зависимость при загрузке). Cooking под платформу, DDC, `.pak`/IoStore (`.utoc/.ucas`)
-  контейнеры, асинхронная загрузка через `FStreamableManager`, время жизни — сборщик мусора
-  UObject'ов. Asset Registry — база метаданных ассетов без их загрузки.
-* **Unity.** GUID в `.meta`-файлах, импорт в `Library/`, рантайм-загрузка через
-  `Resources`, AssetBundles и Addressables (адрес → bundle → ассет, подсчёт ссылок на bundle'ы).
-* **Godot.** `ResourceLoader` с кешем по пути, `Ref<Resource>` с подсчётом ссылок,
-  `ResourceLoader.load_threaded_request` для фоновой загрузки, импорт в `.godot/imported/`,
-  `.pck`-архивы, `uid://` для стабильных ссылок.
-* **id Tech.** `.pk3/.pk4` (zip) и далее собственные контейнеры, `idResource`-менеджеры
-  по типам, известная ставка на мегатекстуры/virtual texturing для стриминга.
+* **Bitsquid / Stingray.** Data is compiled offline into platform-specific binary formats. A
+  resource is identified by a `(type, name)` pair of 64-bit murmur hashes. Loading is by packages
+  (`resource package`); a package is loaded asynchronously and "flushed" at a single point in the
+  frame. The data format is designed for in-place loading. Hot reload goes over the network from
+  the devkit. The blog bitsquid.blogspot.com is the best public documentation of this kind of
+  architecture.
+* **Unreal Engine.** Assets are `UObject`s in `.uasset`/`.umap` packages; references are package
+  paths (`/Game/Characters/Hero`), "soft" (`TSoftObjectPtr`, loaded on demand) and "hard" (pull
+  in the dependency at load time). Per-platform cooking, DDC, `.pak`/IoStore (`.utoc/.ucas`)
+  containers, async loading via `FStreamableManager`, lifetime via the UObject garbage collector.
+  The Asset Registry is a database of asset metadata available without loading the assets.
+* **Unity.** GUIDs in `.meta` files, import into `Library/`, runtime loading via `Resources`,
+  AssetBundles and Addressables (address → bundle → asset, reference counting on bundles).
+* **Godot.** `ResourceLoader` with a path-keyed cache, `Ref<Resource>` with reference counting,
+  `ResourceLoader.load_threaded_request` for background loading, import into `.godot/imported/`,
+  `.pck` archives, `uid://` for stable references.
+* **id Tech.** `.pk3/.pk4` (zip) and later custom containers, per-type `idResource` managers, the
+  well-known bet on megatextures/virtual texturing for streaming.
 
-## 11. Производительность и память
+## 11. Performance and memory
 
-* Таблица ресурсов — плотный массив слотов (данные «холодных» полей отдельно), lookup
-  `id → slot` — хеш-таблица с открытой адресацией на 64-битных ключах.
-* Хешируйте пути один раз. Код вида `get_texture("ui/button.tex")` в цикле — антипаттерн
-  (хеш каждую итерацию); compile-time `@rid` решает это бесплатно для литералов.
-* Бюджеты памяти по категориям (текстуры, меши, аудио) — менеджер ресурсов главный их
-  исполнитель: знает размеры, может отказать или вытеснить неиспользуемое (см. главу 02).
-* Фрагментация: большие ресурсы с разным временем жизни фрагментируют кучу. Решения —
-  аллокаторы по пакетам/уровням (линейные арены, освобождаемые целиком), перемещаемые
-  ресурсы (возможны благодаря хендлам), пул фиксированных блоков для стриминга (virtual
-  texturing — страницы одного размера).
-* Чтение: крупными блоками, выровненными по сектору, по возрастанию смещений; распаковка
-  на worker-потоках; на GPU — через upload-очереди и staging-буферы (глава 09).
+* The resource table is a dense array of slots ("cold" field data kept separately); the
+  `id → slot` lookup is an open-addressing hash table on 64-bit keys.
+* Hash paths once. Code like `get_texture("ui/button.tex")` in a loop is an antipattern (a hash
+  every iteration); compile-time `@rid` solves this for free for literals.
+* Memory budgets by category (textures, meshes, audio) — the resource manager is their main
+  enforcer: it knows the sizes and can refuse or evict unused data (see chapter 02).
+* Fragmentation: large resources with different lifetimes fragment the heap. Solutions —
+  per-package/per-level allocators (linear arenas freed as a whole), relocatable resources
+  (possible thanks to handles), a pool of fixed-size blocks for streaming (virtual texturing —
+  pages of the same size).
+* Reads: large sector-aligned blocks, in ascending offset order; decompression on worker threads;
+  on the GPU — via upload queues and staging buffers (chapter 09).
 
-## 12. Типичные ошибки
+## 12. Common mistakes
 
-* Хеширование неканонического пути → дубликаты ресурсов, частично работающий hot reload.
-* 32-битные хеши в большом проекте и отсутствие проверки коллизий.
-* Синхронная загрузка «на всякий случай» в геймплей-коде → микрофризы, которые находят только
-  на медленном диске у игрока.
-* Хранение указателя, полученного из хендла, между кадрами.
-* Немедленная выгрузка на нуле ссылок → thrashing при смене уровня.
-* Выгрузка ресурса, который ещё использует GPU в кадрах «в полёте».
-* Колбэки завершения загрузки, вызываемые из IO-потока и трогающие игровое состояние.
-* Hot reload, который падает на синтаксической ошибке в файле, или перечитывает битый файл
-  каждый опрос, засоряя лог.
-* `fwrite` структуры целиком как «бинарный формат» — сломается при смене компилятора, флагов
-  или платформы.
-* Отсутствие версии в формате → после изменения cooker'а рантайм читает старые файлы как мусор.
+* Hashing a non-canonical path → duplicate resources, partially working hot reload.
+* 32-bit hashes in a large project with no collision checking.
+* Synchronous loading "just in case" in gameplay code → micro-stutters that only show up on a
+  player's slow disk.
+* Keeping a pointer obtained from a handle across frames.
+* Immediate unloading at zero references → thrashing on level change.
+* Unloading a resource the GPU is still using in frames "in flight".
+* Load-completion callbacks invoked from the IO thread that touch game state.
+* Hot reload that crashes on a syntax error in a file, or rereads a broken file on every poll,
+  flooding the log.
+* `fwrite` of a whole struct as a "binary format" — it will break when the compiler, flags or
+  platform change.
+* No version in the format → after a cooker change the runtime reads old files as garbage.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Почему рантайм движка не должен уметь читать PNG/FBX? Что он теряет и что выигрывает?
-2. Сравните хеш пути и GUID как идентификаторы ассетов. Как совмещают оба подхода?
-3. Оцените вероятность хотя бы одной коллизии 32-битного хеша для 50 000 ассетов. А 64-битного?
-   Где и как коллизию надо обнаруживать?
-4. Почему хендл `{index, generation}` лучше умного указателя для ресурсов, которые могут
-   перезагружаться? Когда разыменовывать хендл?
-5. Что такое thrashing при смене уровня и как его избежать, не отказываясь от подсчёта ссылок?
-6. Зачем отдельное состояние `WAITING_DEPS`? В каком порядке ставить зависимости в очередь и почему?
-7. Почему количество одновременных чтений ограничивают, и как оптимальное значение зависит от
-   носителя (HDD, NVMe, оптический диск)?
-8. Перечислите три правила надёжного hot reload. Почему перелинковку зависимых делают отдельным
-   проходом?
-9. Какие проверки готового формата выполняются в рантайме и какие — только при готовке? Почему?
-10. Почему TOC архива обычно пишут в конец файла? Как устроено перекрытие файлов патчем?
-11. Что такое in-place loading и какие требования он предъявляет к формату (выравнивание,
-    endianness, указатели)?
-12. Как связаны менеджер ресурсов и бюджеты памяти/аллокаторы из главы 02?
+1. Why shouldn't an engine runtime be able to read PNG/FBX? What does it lose and what does it
+   gain?
+2. Compare path hashes and GUIDs as asset identifiers. How are the two approaches combined?
+3. Estimate the probability of at least one collision of a 32-bit hash for 50,000 assets. And of
+   a 64-bit one? Where and how should a collision be detected?
+4. Why is an `{index, generation}` handle better than a smart pointer for resources that may be
+   reloaded? When should a handle be dereferenced?
+5. What is thrashing on level change, and how do you avoid it without giving up reference
+   counting?
+6. Why have a separate `WAITING_DEPS` state? In what order should dependencies be queued, and
+   why?
+7. Why is the number of concurrent reads limited, and how does the optimal value depend on the
+   medium (HDD, NVMe, optical disc)?
+8. List three rules of robust hot reload. Why is relinking of dependents done as a separate pass?
+9. Which checks of the cooked format are performed at runtime, and which only during cooking? Why?
+10. Why is an archive's TOC usually written at the end of the file? How does a patch override
+    files?
+11. What is in-place loading, and what requirements does it impose on the format (alignment,
+    endianness, pointers)?
+12. How is the resource manager related to the memory budgets/allocators from chapter 02?
 
-## Что почитать
+## Further reading
 
-* Jason Gregory, *Game Engine Architecture* (3rd ed.), глава 7 «Resources and the File System».
-* Блог Bitsquid/Stingray (Niklas Frykholm, Tobias Persson): серии про resource system,
-  «Data-oriented data compilation», «A Simple Roll-Your-Own Async Loading» и про in-place
-  форматы — bitsquid.blogspot.com.
-* Our Machinery blog (архив): «The Asset System», про GUID'ы, кэш производных данных и
-  «truth»-модель данных редактора.
-* Unreal Engine docs: «Asset Management», «Cooking Content», «Pak/IoStore», «Derived Data Cache».
-* Unity docs: «Addressables», «AssetBundles», «Asset Database».
-* Godot docs: «Resources», «Background loading», исходники `core/io/resource_loader.cpp`.
-* Fabien Sanglard, *Game Engine Black Book: DOOM* — WAD-формат и загрузка на ограниченном железе.
-* Shawn Hargreaves, «Content pipeline» (XNA blog) — хорошее объяснение идеи офлайн-готовки.
-* Rich Geldreich — заметки о сжатии текстур и форматах данных для игр.
+* Jason Gregory, *Game Engine Architecture* (3rd ed.), chapter 7 "Resources and the File System".
+* The Bitsquid/Stingray blog (Niklas Frykholm, Tobias Persson): series on the resource system,
+  "Data-oriented data compilation", "A Simple Roll-Your-Own Async Loading", and on in-place
+  formats — bitsquid.blogspot.com.
+* Our Machinery blog (archive): "The Asset System", on GUIDs, the derived data cache and the
+  "truth" editor data model.
+* Unreal Engine docs: "Asset Management", "Cooking Content", "Pak/IoStore", "Derived Data Cache".
+* Unity docs: "Addressables", "AssetBundles", "Asset Database".
+* Godot docs: "Resources", "Background loading", the source `core/io/resource_loader.cpp`.
+* Fabien Sanglard, *Game Engine Black Book: DOOM* — the WAD format and loading on constrained
+  hardware.
+* Shawn Hargreaves, "Content pipeline" (XNA blog) — a good explanation of the offline cooking
+  idea.
+* Rich Geldreich — notes on texture compression and data formats for games.

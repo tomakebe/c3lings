@@ -1,46 +1,48 @@
 // =====================================================================
-//  034 · `??` — значение по умолчанию и «ленивость» Optional
+//  034 · `??` - default values and Optional "laziness"
 // =====================================================================
 //
-//  Часто на ошибку хочется ответить просто: «не получилось — возьми
-//  значение по умолчанию». Для этого есть оператор `??`:
+//  Often you want to respond to an error simply: "didn't work - use a
+//  default value". That's what the `??` operator is for:
 //
 //      int port = parse_port(text) ?? 8080;
 //
-//  Если слева результат — берётся он, если пустой Optional — правая
-//  часть. Результат уже НЕ Optional (если справа обычное значение).
+//  If the left side has a result, it's used; if it's an empty Optional,
+//  the right side is used. The result is NO LONGER an Optional (if the
+//  right side is a plain value).
 //
-//  Правая часть вычисляется ЛЕНИВО — только если слева ошибка, как
-//  второй операнд `||` в C. Поэтому справа можно вызывать даже
-//  дорогую функцию:
+//  The right side is evaluated LAZILY - only if the left side is an
+//  error, like the second operand of `||` in C. So you can even call an
+//  expensive function on the right:
 //
 //      Config c = load_user_config() ?? load_default_config();
 //
-//  Справа может стоять и ДРУГАЯ ошибка — так ошибку «переименовывают»,
-//  чтобы вызывающему было понятнее, что случилось:
+//  The right side can also be a DIFFERENT error - this is how you
+//  "rename" an error so the caller better understands what happened:
 //
 //      int? n = text.to_int() ?? BAD_PORT~;   // MALFORMED_INTEGER -> BAD_PORT
 //
-//  А `?? BAD_PORT~!` — переименовать и сразу пробросить (`!` из 033).
+//  And `?? BAD_PORT~!` renames it and rethrows it right away (`!` from 033).
 //
-//  Второе важное свойство — вызов функции с Optional-аргументом.
-//  Функция `fn int double_it(int x)` принимает обычный `int`. Что
-//  будет, если передать ей `int?`?
+//  The second important property is calling a function with an Optional
+//  argument. The function `fn int double_it(int x)` takes a plain `int`.
+//  What happens if you pass it an `int?`?
 //
 //      int? r = double_it(maybe_number);
 //
-//  Если в `maybe_number` есть значение — функция вызывается как обычно.
-//  Если там ошибка — функция НЕ ВЫЗЫВАЕТСЯ ВООБЩЕ, а `r` получает ту же
-//  ошибку. Аргументы проверяются слева направо, берётся первая ошибка.
-//  Именно поэтому `io::printfn("%d", maybe)` с пустым Optional'ом
-//  молча ничего не печатает, и компилятор требует явно отбросить
-//  результат: `(void)io::printfn(...)` — чтобы вы не удивлялись.
+//  If `maybe_number` holds a value, the function is called as usual.
+//  If it holds an error, the function is NOT CALLED AT ALL, and `r` gets
+//  that same error. Arguments are checked left to right, and the first
+//  error wins. That's exactly why `io::printfn("%d", maybe)` with an
+//  empty Optional silently prints nothing, and the compiler requires
+//  you to explicitly discard the result: `(void)io::printfn(...)` - so
+//  you won't be surprised.
 //
-//  Это удобно (ошибка «протекает» по цепочке вызовов сама), но надо
-//  помнить: побочные эффекты функции при ошибке не произойдут.
+//  This is convenient (the error "leaks" through the call chain on its
+//  own), but remember: the function's side effects won't happen on error.
 //
-//  ЗАДАЧА: почините четыре места, помеченные `// <-`. Два из них —
-//  предсказать, сколько раз на самом деле вызвалась функция.
+//  TASK: fix the four places marked with `// <-`. Two of them ask you
+//  to predict how many times a function was actually called.
 //
 import std::io;
 
@@ -63,27 +65,27 @@ fn int double_it(int x)
 
 fn int? load_port(String text)
 {
-    // Ошибку разбора числа заменяем на нашу, более понятную.
-    return text.to_int() ?? BAD_PORT~; // <- переименуйте ошибку
+    // Replace the number-parsing error with our own, clearer one.
+    return text.to_int() ?? BAD_PORT~; // <- rename the error
 }
 
 fn void main()
 {
-    int p1 = load_port("3000") ?? default_port(); // <- значение по умолчанию
+    int p1 = load_port("3000") ?? default_port(); // <- default value
     int p2 = load_port("oops") ?? default_port();
     io::printfn("p1=%d p2=%d", p1, p2);
     assert(p1 == 3000 && p2 == 8080);
-    assert(default_calls == 1); // <- сколько раз вызвалась default_port()?
+    assert(default_calls == 1); // <- how many times was default_port() called?
 
     int? d1 = double_it(load_port("21"));
     int? d2 = double_it(load_port("twenty"));
-    assert(double_calls == 1); // <- а double_it()?
+    assert(double_calls == 1); // <- and double_it()?
 
     io::printfn("d1=%d", d1 ?? -1);
     io::printfn("d2=%d", d2 ?? -1);
     assert(@catch(d2) == BAD_PORT);
 
-    // Optional в арифметике: если хоть один операнд пуст — пусто всё.
+    // Optionals in arithmetic: if any operand is empty, the whole thing is empty.
     int sum = (load_port("1") + load_port("x") + load_port("2")) ?? 0;
     io::printfn("sum=%d", sum);
 }

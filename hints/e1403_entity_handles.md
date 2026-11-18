@@ -1,3 +1,3 @@
-Упаковка: `(gen << INDEX_BITS) | index`, распаковка: `h & INDEX_MASK` и `h >> INDEX_BITS`.
-В `destroy` достаточно `e.gen++;` — новое поколение не совпадёт ни с одним выданным хендлом.
-`resolve`: если `index >= self.used` — `return STALE_HANDLE~;`; затем проверьте `e.alive` и `e.gen == handle_gen(h)`.
+Packing: `(gen << INDEX_BITS) | index`, unpacking: `h & INDEX_MASK` and `h >> INDEX_BITS`.
+In `destroy`, `e.gen++;` is enough - the new generation won't match any handle handed out so far.
+`resolve`: if `index >= self.used` - `return STALE_HANDLE~;`; then check `e.alive` and `e.gen == handle_gen(h)`.

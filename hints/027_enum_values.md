@@ -1,4 +1,4 @@
-1. Каждое значение должно задать оба поля по порядку: `{ 7, "long bow" }`.
-2. Ассоциированное поле читается через точку: `w.damage`.
-3. Используйте `Weapon::lookup_field(label, "long bow")` и `??` с запасным значением,
-   как в строке с `unknown` ниже.
+1. Every value must provide both fields, in order: `{ 7, "long bow" }`.
+2. An associated field is read with a dot: `w.damage`.
+3. Use `Weapon::lookup_field(label, "long bow")` and `??` with a fallback value,
+   like in the `unknown` line below.

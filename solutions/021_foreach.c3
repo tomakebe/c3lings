@@ -2,35 +2,38 @@
 //  021 · foreach
 // =====================================================================
 //
-//  Обходить массив через `for (int i = 0; i < arr.len; i++)` скучно и
-//  чревато ошибками на единицу. `foreach` перебирает элементы массива,
-//  среза (и строки — это ведь тоже срез `char[]`):
+//  Walking an array with `for (int i = 0; i < arr.len; i++)` is boring
+//  and invites off-by-one errors. `foreach` iterates over the elements
+//  of an array or a slice (and of a string — that's just a `char[]`
+//  slice too):
 //
-//      foreach (x : arr)          // x — КОПИЯ очередного элемента
+//      foreach (x : arr)          // x is a COPY of the current element
 //      {
 //          io::printn(x);
 //      }
 //
-//  С ИНДЕКСОМ: перед значением можно попросить индекс (тип `usz`):
+//  WITH AN INDEX: you can ask for the index (of type `usz`) before the
+//  value:
 //
 //      foreach (i, x : arr) io::printfn("%d: %d", i, x);
 //
-//  Типы можно указать и явно: `foreach (usz i, int x : arr)`.
+//  You can also spell out the types: `foreach (usz i, int x : arr)`.
 //
-//  ПО ССЫЛКЕ: переменная цикла — копия, поэтому `x += 1` массив НЕ
-//  изменит (и компилятор об этом не предупредит!). Чтобы менять
-//  элементы на месте, возьмите указатель на элемент, добавив `&`:
+//  BY REFERENCE: the loop variable is a copy, so `x += 1` does NOT
+//  change the array (and the compiler won't warn you about it!). To
+//  modify elements in place, take a pointer to the element by adding
+//  `&`:
 //
-//      foreach (&x : arr) *x += 1;    // x имеет тип int*
+//      foreach (&x : arr) *x += 1;    // x has type int*
 //
-//  (Подробнее об указателях и `*` — в упражнении 029. Пока достаточно
-//  знать, что `*x` — «то, на что указывает x».)
+//  (More about pointers and `*` in exercise 029. For now it's enough
+//  to know that `*x` means "the thing x points to".)
 //
-//  В ОБРАТНОМ ПОРЯДКЕ: `foreach_r` — то же самое, но с конца.
+//  IN REVERSE: `foreach_r` does the same thing, but from the end.
 //
-//      foreach_r (x : arr) ...        // последний элемент первым
+//      foreach_r (x : arr) ...        // last element first
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      1. Ann (hp 40)
 //      2. Bob (hp 55)
@@ -44,7 +47,7 @@ fn void main()
     String[3] names = { "Ann", "Bob", "Cid" };
     int[3] hp = { 30, 45, 60 };
 
-    // Лечим всех на 10.
+    // Heal everyone by 10.
     foreach (&h : hp)
     {
         *h += 10;

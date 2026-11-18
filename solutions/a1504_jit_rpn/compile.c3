@@ -1,36 +1,37 @@
 // =====================================================================
-//  a1504 · JIT для стековой машины (RPN)
+//  a1504 · A JIT for a stack machine (RPN)
 // =====================================================================
 //
-//  Байт-код — обратная польская запись: CONST k кладёт число на стек,
-//  ARG кладёт аргумент x, ADD/SUB/MUL снимают два значения и кладут
-//  результат, NEG меняет знак вершины. Интерпретатор (в main.c3) на
-//  каждой инструкции делает switch, читает и пишет массив-стек — это
-//  десятки тактов на операцию. JIT переводит программу в машинный код
-//  ОДИН раз, и дальше она выполняется со скоростью нативной функции.
+//  The bytecode is reverse Polish notation: CONST k pushes a number onto
+//  the stack, ARG pushes the argument x, ADD/SUB/MUL pop two values and
+//  push the result, NEG negates the top. The interpreter (in main.c3)
+//  does a switch on every instruction and reads and writes a stack array —
+//  that is dozens of cycles per operation. A JIT translates the program
+//  into machine code ONCE, and from then on it runs at the speed of a
+//  native function.
 //
-//  Самая простая схема кодогенерации: стек байт-кода = машинный стек.
+//  The simplest code generation scheme: bytecode stack = machine stack.
 //
 //      CONST k   ->  mov rax, k ; push rax
-//      ARG       ->  push rdi               (x пришёл в rdi по System V)
+//      ARG       ->  push rdi               (x arrived in rdi per System V)
 //      ADD       ->  pop rcx ; pop rax ; add rax, rcx ; push rax
 //      SUB       ->  pop rcx ; pop rax ; sub rax, rcx ; push rax
 //      MUL       ->  pop rcx ; pop rax ; imul rax, rcx ; push rax
 //      NEG       ->  pop rax ; neg rax ; push rax
-//      конец     ->  pop rax ; ret          (результат — в rax)
+//      end       ->  pop rax ; ret          (the result is in rax)
 //
-//  Обратите внимание на порядок в SUB: первым снимается ПРАВЫЙ операнд.
-//  Стек в конце возвращается к исходному состоянию, поэтому `ret` найдёт
-//  свой адрес возврата. Функция никого не вызывает, значит, о
-//  выравнивании стека думать не нужно.
+//  Note the order in SUB: the RIGHT operand is popped first. At the end
+//  the stack returns to its original state, so `ret` will find its
+//  return address. The function calls nothing, so there is no need to
+//  think about stack alignment.
 //
-//  Это неэффективный код (каждое значение проходит через память), но он
-//  корректен и в разы быстрее интерпретатора. Настоящие JIT дальше
-//  распределяют регистры, сворачивают константы (CONST 3; CONST 4; ADD ->
-//  CONST 7) и т.д.
+//  This is inefficient code (every value goes through memory), but it is
+//  correct and many times faster than the interpreter. Real JITs go on to
+//  allocate registers, fold constants (CONST 3; CONST 4; ADD ->
+//  CONST 7), and so on.
 //
-//  ЗАДАЧА: допишите случаи ADD, SUB, MUL, NEG в compile(). Эмиттер
-//  (emit.c3) уже готов: e.push, e.pop, e.mov_imm64, e.add, e.sub,
+//  TASK: complete the ADD, SUB, MUL, NEG cases in compile(). The emitter
+//  (emit.c3) is already done: e.push, e.pop, e.mov_imm64, e.add, e.sub,
 //  e.imul, e.neg, e.ret.
 //
 module jit;

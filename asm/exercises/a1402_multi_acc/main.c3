@@ -1,4 +1,4 @@
-// Драйвер упражнения a1402. Этот файл НЕ нужно править — правьте sum.s.
+// Driver for exercise a1402. You do NOT need to edit this file — edit sum.s.
 import std::io;
 
 extern fn long sum_i64(long* a, long n);

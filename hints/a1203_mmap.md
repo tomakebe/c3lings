@@ -1,3 +1,3 @@
-mmap — номер 9. Аргументы: rdi = 0, rsi = len, rdx = 3, r10 = 0x22 (не rcx!), r8 = -1, r9 = 0. len пришёл в rdi — сначала перенесите его в rsi.
-Ошибку проверяйте как в a1202 (`cmp rax, -4096; ja`) и возвращайте 0.
-mprotect (10) и munmap (11): аргументы уже на месте, нужно только `mov eax, N; syscall`.
+mmap is number 9. Arguments: rdi = 0, rsi = len, rdx = 3, r10 = 0x22 (not rcx!), r8 = -1, r9 = 0. len arrives in rdi — move it to rsi first.
+Check for an error as in a1202 (`cmp rax, -4096; ja`) and return 0.
+mprotect (10) and munmap (11): the arguments are already in place, you only need `mov eax, N; syscall`.

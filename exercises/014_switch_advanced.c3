@@ -1,32 +1,32 @@
 // =====================================================================
-//  014 · switch: nextcase, диапазоны и switch без выражения
+//  014 · switch: nextcase, ranges and switch without an expression
 // =====================================================================
 //
-//  NEXTCASE — ЯВНЫЙ ПРОВАЛ
-//  Раз неявного провала в C3 нет, для него есть явная инструкция
-//  `nextcase`: «продолжить со следующего case».
+//  NEXTCASE — EXPLICIT FALLTHROUGH
+//  Since C3 has no implicit fallthrough, there is an explicit statement
+//  for it, `nextcase`: "continue with the next case".
 //
 //      switch (level)
 //      {
 //          case 2:
 //              io::printn("two");
-//              nextcase;               // идём в case 1
+//              nextcase;               // go on to case 1
 //          case 1:
 //              io::printn("one");
 //      }
 //
-//  Можно и прыгнуть к конкретному значению: `nextcase 5;` — как если бы
-//  switch заново вычислил выражение и получил 5. И к ветке по
-//  умолчанию: `nextcase default;`. Так легко пишутся конечные автоматы.
+//  You can also jump to a specific value: `nextcase 5;` — as if the
+//  switch evaluated its expression again and got 5. Or to the default
+//  branch: `nextcase default;`. This makes state machines easy to write.
 //
-//  ДИАПАЗОНЫ
-//  `case 1..5:` — совпадает со значениями от 1 до 5 ВКЛЮЧИТЕЛЬНО.
-//  Работает и для символов: `case 'a'..'z':`.
+//  RANGES
+//  `case 1..5:` matches the values from 1 to 5 INCLUSIVE.
+//  It works for characters too: `case 'a'..'z':`.
 //
-//  SWITCH БЕЗ ВЫРАЖЕНИЯ
-//  Если после `switch` нет `(выражения)`, каждая метка — это условие
-//  (bool), и выполняется первая ветка, чьё условие истинно. Это
-//  аккуратная замена длинной цепочке `if / else if`:
+//  SWITCH WITHOUT AN EXPRESSION
+//  If there is no `(expression)` after `switch`, every label is a
+//  condition (a bool), and the first branch whose condition is true
+//  runs. It's a tidy replacement for a long `if / else if` chain:
 //
 //      switch
 //      {
@@ -35,9 +35,9 @@
 //          default:      io::printn("positive");
 //      }
 //
-//  Порядок важен: условия проверяются сверху вниз.
+//  Order matters: the conditions are checked from top to bottom.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      95 -> A, 85 -> B, 72 -> C, 40 -> F
 //      level 3 bonus: 111
@@ -52,7 +52,7 @@ fn String grade(int score)
     {
         case 90..100: return "A";
         case 80..89:  return "B";
-        case ???:     return "C";           // <- оценки от 70 до 79
+        case ???:     return "C";           // <- scores from 70 to 79
         default:      return "F";
     }
 }
@@ -63,7 +63,7 @@ fn int bonus(int level)
     switch (level)
     {
         case 3:
-            total += 100;                   // <- дальше должны выполниться case 2 и case 1
+            total += 100;                   // <- case 2 and case 1 should run after this
         case 2:
             total += 10;
             nextcase;
@@ -84,7 +84,7 @@ fn void main()
     {
         switch
         {
-            case i % 3 == 0:  io::print("Fizz");   // <- до этой ветки 15 не должно дойти
+            case i % 3 == 0:  io::print("Fizz");   // <- 15 should never reach this branch
             case i % 5 == 0:  io::print("Buzz");
             case i % 15 == 0: io::print("FizzBuzz");
             default:          io::print(i);

@@ -1,208 +1,208 @@
-# Программа курса
+# Syllabus
 
-Курс состоит из трёх треков, которые проходятся подряд одной командой `./c3lings`.
+The course has three tracks, done in order with a single command: `./c3lings`.
 
 ---
 
-## Трек 1. Язык C3 (`exercises/`)
+## Track 1. The C3 language (`exercises/`)
 
-### Часть I. Основы (001–030)
-| № | Тема |
+### Part I. Basics (001–030)
+| # | Topic |
 |---|---|
 | 001 | Hello world, `main`, `import std::io` |
-| 002 | Комментарии, `io::print`/`printn`/`printfn`, форматные спецификаторы |
-| 003 | Переменные, объявление, нулевая инициализация по умолчанию, `var` |
-| 004 | Целые типы фиксированного размера (`ichar`…`int128`, `sz`/`usz`), литералы, суффиксы, `_` в числах, hex/bin/oct |
-| 005 | Числа с плавающей точкой, литералы, форматированная печать |
-| 006 | `bool`, `char`, символьные литералы, escape-последовательности |
-| 007 | Константы `const`, вычисление во время компиляции |
-| 008 | Неявные и явные преобразования, запрет signed↔unsigned, сужение |
-| 009 | Операторы и приоритеты (отличия от C у битовых операций), сдвиги, `%`, переполнение |
-| 010 | `if`/`else`, тернарный оператор, `?:` (elvis) |
-| 011 | `while`, `do { } while`, `do`-блок без `while` |
+| 002 | Comments, `io::print`/`printn`/`printfn`, format specifiers |
+| 003 | Variables, declarations, zero initialization by default, `var` |
+| 004 | Fixed-size integer types (`ichar`…`int128`, `sz`/`usz`), literals, suffixes, `_` in numbers, hex/bin/oct |
+| 005 | Floating-point numbers, literals, formatted printing |
+| 006 | `bool`, `char`, character literals, escape sequences |
+| 007 | `const` constants, compile-time evaluation |
+| 008 | Implicit and explicit conversions, no signed↔unsigned mixing, narrowing |
+| 009 | Operators and precedence (bitwise operators differ from C), shifts, `%`, overflow |
+| 010 | `if`/`else`, the ternary operator, `?:` (elvis) |
+| 011 | `while`, `do { } while`, a `do` block without `while` |
 | 012 | `for` |
-| 013 | `switch`: неявный `break`, несколько меток, пустые case |
-| 014 | `switch`: `nextcase`, диапазоны `case 1..5`, `switch` без выражения |
-| 015 | Метки, `break LABEL`, `continue LABEL` |
-| 016 | Функции, параметры, возврат значения, краткая форма `=>` |
-| 017 | Аргументы по умолчанию и именованные аргументы |
-| 018 | Рекурсия, отсутствие перегрузки, порядок объявления не важен |
-| 019 | Массивы фиксированного размера, семантика значений (копирование) |
-| 020 | Срезы `arr[1..3]`, `arr[1:2]`, `arr[^1]`, срезы из указателей |
-| 021 | `foreach`, индекс, по ссылке `&`, `foreach_r` |
-| 022 | Строки: `String`, `ZString`, raw-строки, сравнение |
-| 023 | Работа со строками из stdlib: поиск, разбиение, преобразование в числа |
-| 024 | Структуры, позиционная и именованная (designated) инициализация, вложенные |
-| 025 | Методы, `self`, `&self`, точечный вызов |
-| 026 | `enum`: ordinal, `values`, `names`, `from_ordinal`, `switch` по enum |
-| 027 | Enum с ассоциированными значениями, `lookup_field` |
-| 028 | `union`, анонимные вложенные структуры/объединения |
-| 029 | Указатели, `&`, `*`, `null`, доступ к полям через `.`, арифметика указателей |
-| 030 | `defer`, порядок выполнения |
+| 013 | `switch`: implicit `break`, multiple labels, empty cases |
+| 014 | `switch`: `nextcase`, ranges `case 1..5`, `switch` without an expression |
+| 015 | Labels, `break LABEL`, `continue LABEL` |
+| 016 | Functions, parameters, return values, the short `=>` form |
+| 017 | Default and named arguments |
+| 018 | Recursion, no overloading, declaration order does not matter |
+| 019 | Fixed-size arrays, value semantics (copying) |
+| 020 | Slices `arr[1..3]`, `arr[1:2]`, `arr[^1]`, slices from pointers |
+| 021 | `foreach`, index, by reference `&`, `foreach_r` |
+| 022 | Strings: `String`, `ZString`, raw strings, comparison |
+| 023 | Working with strings in the stdlib: searching, splitting, parsing numbers |
+| 024 | Structs, positional and designated initialization, nesting |
+| 025 | Methods, `self`, `&self`, dot calls |
+| 026 | `enum`: ordinal, `values`, `names`, `from_ordinal`, `switch` on an enum |
+| 027 | Enums with associated values, `lookup_field` |
+| 028 | `union`, anonymous nested structs/unions |
+| 029 | Pointers, `&`, `*`, `null`, field access with `.`, pointer arithmetic |
+| 030 | `defer`, execution order |
 
-### Часть II. Средний уровень (031–070)
-| № | Тема |
+### Part II. Intermediate (031–070)
+| # | Topic |
 |---|---|
-| 031 | Optional `T?`, `excuse`, возврат ошибки `ERR~` |
-| 032 | Распаковка: `if (catch err = x)`, `if (try v = x)`, flow typing |
-| 033 | Проброс `!`, принудительная распаковка `!!` |
-| 034 | `??` (значение по умолчанию), «ленивость» вызовов с Optional-аргументами |
+| 031 | Optional `T?`, `excuse`, returning an error with `ERR~` |
+| 032 | Unwrapping: `if (catch err = x)`, `if (try v = x)`, flow typing |
+| 033 | Rethrow `!`, force unwrap `!!` |
+| 034 | `??` (default value), calls with Optional arguments are skipped |
 | 035 | `defer catch`, `defer try`, `defer (catch err)` |
-| 036 | Встроенные ошибки, `switch` по ошибкам, описание ошибок |
-| 037 | Модули и импорт (многофайловое упражнение) |
-| 038 | Видимость: `@private`, `@local`, секции модулей |
-| 039 | `alias`: синонимы типов, функций, указателей на функции |
-| 040 | `typedef`: отдельные типы, `inline` typedef |
-| 041 | Указатели на функции и лямбды |
-| 042 | Контракты `@require`/`@ensure`, doc-комментарии `<* *>` |
+| 036 | Built-in faults, `switch` on faults, fault descriptions |
+| 037 | Modules and imports (a multi-file exercise) |
+| 038 | Visibility: `@private`, `@local`, module sections |
+| 039 | `alias`: aliases for types, functions and function pointers |
+| 040 | `typedef`: distinct types, `inline` typedefs |
+| 041 | Function pointers and lambdas |
+| 042 | Contracts `@require`/`@ensure`, doc comments `<* *>` |
 | 043 | `bitstruct` |
-| 044 | SIMD-вектора `int[<4>]`, swizzle, редукции |
-| 045 | Составные литералы, временные адреса, копирование структур |
-| 046 | Многомерные массивы |
+| 044 | SIMD vectors `int[<4>]`, swizzling, reductions |
+| 045 | Compound literals, temporary addresses, copying structs |
+| 046 | Multidimensional arrays |
 | 047 | `constset` |
-| 048 | Статические инициализаторы `@init`/`@finalizer`, `static` локальные переменные |
-| 049 | Вариадические функции: типизированные `int...` и `any...` |
-| 050 | Форматированный вывод в деталях |
-| 051 | Куча: `malloc`/`free`, `mem::new`, `mem::new_array`, `defer free` |
-| 052 | Временный аллокатор: `@pool`, `tmem`, `tformat` |
-| 053 | Параметр `Allocator`, соглашения об именах (`new_*`, `t*`), владение памятью |
+| 048 | Static initializers `@init`/`@finalizer`, `static` local variables |
+| 049 | Variadic functions: typed `int...` and `any...` |
+| 050 | Formatted output in detail |
+| 051 | The heap: `malloc`/`free`, `mem::new`, `mem::new_array`, `defer free` |
+| 052 | The temp allocator: `@pool`, `tmem`, `tformat` |
+| 053 | The `Allocator` parameter, naming conventions (`new_*`, `t*`), memory ownership |
 | 054 | `List{T}` |
 | 055 | `HashMap{K, V}` |
-| 056 | `DString` — построение строк |
-| 057 | Форматирование в строку, `string::format`, `tformat` |
-| 058 | `any`, `typeid`, `switch` по типу |
-| 059 | Интерфейсы и `@dynamic` |
-| 060 | Наследование структур через `inline`-член (subtyping) |
-| 061 | Перегрузка арифметических операторов |
-| 062 | Перегрузка `[]`, `&[]`, `[]=`, `len` → поддержка `foreach` |
-| 063 | Перегрузка `==` и `<` |
-| 064 | Собственная печать: `to_format` |
-| 065 | Файлы: запись, чтение, обработка ошибок ввода-вывода |
+| 056 | `DString` — building strings |
+| 057 | Formatting into a string, `string::format`, `tformat` |
+| 058 | `any`, `typeid`, `switch` on a type |
+| 059 | Interfaces and `@dynamic` |
+| 060 | Struct inheritance through an `inline` member (subtyping) |
+| 061 | Overloading arithmetic operators |
+| 062 | Overloading `[]`, `&[]`, `[]=`, `len` → `foreach` support |
+| 063 | Overloading `==` and `<` |
+| 064 | Custom printing: `to_format` |
+| 065 | Files: writing, reading, handling I/O errors |
 | 066 | `std::math` |
-| 067 | Сортировка, компараторы |
-| 068 | Итерация по собственным типам |
-| 069 | `assert`, `unreachable`, паника, safe-режим |
-| 070 | Мини-проект: частотный словарь слов |
+| 067 | Sorting, comparators |
+| 068 | Iterating over your own types |
+| 069 | `assert`, `unreachable`, panics, safe mode |
+| 070 | Mini project: a word frequency counter |
 
-### Часть III. Продвинутый уровень (071–105)
-| № | Тема |
+### Part III. Advanced (071–105)
+| # | Topic |
 |---|---|
-| 071 | Generic-функции |
-| 072 | Generic-структуры, `alias` инстанцирований |
-| 073 | Generic-модули, группировка generics |
-| 074 | Контракты на generic-параметры |
-| 075 | Методы generic-типов |
-| 076 | Макросы: основы |
-| 077 | Ленивые аргументы `#expr`, `@`-макросы |
-| 078 | Макросы с trailing-блоком `@body` |
-| 079 | Параметры-типы `$Type`, compile-time параметры |
-| 080 | Вариадические макросы `$vaarg` |
+| 071 | Generic functions |
+| 072 | Generic structs, `alias` for instantiations |
+| 073 | Generic modules, how generics are grouped |
+| 074 | Contracts on generic parameters |
+| 075 | Methods on generic types |
+| 076 | Macros: the basics |
+| 077 | Lazy arguments `#expr`, `@` macros |
+| 078 | Macros with a trailing `@body` block |
+| 079 | Type parameters `$Type`, compile-time parameters |
+| 080 | Variadic macros `$vaarg` |
 | 081 | `$if`, `$switch` |
 | 082 | `$for`, `$foreach` |
 | 083 | `$defined`, `$assert`, `$error`, `$echo` |
 | 084 | `$stringify`, `$eval`, `$Typeof`, `$Typefrom` |
-| 085 | Вычисления во время компиляции |
-| 086 | Рефлексия: поля, размеры, смещения |
-| 087 | Рефлексия enum'ов и методов |
-| 088 | Рефлексия на практике: универсальный дампер структур |
-| 089 | Атрибуты: `@align`, `@packed`, `@nodiscard`, `@noinline`… |
-| 090 | Пользовательские атрибуты и теги |
-| 091 | Условная компиляция `@feat`/`$feat`, флаг `-D` |
-| 092 | Взаимодействие с C: `extern fn`, `@cname`, колбэки |
-| 093 | Взаимодействие с C: раскладка структур, `CInt`, вариадики C |
-| 094 | Встроенные функции `$$…`, битовые операции |
-| 095 | Inline-ассемблер |
-| 096 | Потоки |
-| 097 | Мьютексы и условные переменные |
-| 098 | Атомики, `compare_exchange` |
-| 099 | Каналы и пулы потоков |
-| 100 | Юнит-тесты `@test`, `c3c compile-test` |
-| 101 | Safe и unchecked режимы, проверки границ |
-| 102 | Отслеживание утечек памяти |
-| 103 | Собственный аллокатор, реализующий `Allocator` |
-| 104 | Optional в сложных сценариях |
-| 105 | Мини-проект: калькулятор выражений (лексер + рекурсивный спуск) |
+| 085 | Compile-time computation |
+| 086 | Reflection: fields, sizes, offsets |
+| 087 | Reflecting on enums and methods |
+| 088 | Reflection in practice: a generic struct dumper |
+| 089 | Attributes: `@align`, `@packed`, `@nodiscard`, `@noinline`… |
+| 090 | User-defined attributes and tags |
+| 091 | Conditional compilation `@feat`/`$feat`, the `-D` flag |
+| 092 | C interop: `extern fn`, `@cname`, callbacks |
+| 093 | C interop: struct layout, `CInt`, C variadics |
+| 094 | Builtins `$$…`, bit operations |
+| 095 | Inline assembly |
+| 096 | Threads |
+| 097 | Mutexes and condition variables |
+| 098 | Atomics, `compare_exchange` |
+| 099 | Channels and thread pools |
+| 100 | Unit tests `@test`, `c3c compile-test` |
+| 101 | Safe and unchecked modes, bounds checks |
+| 102 | Tracking memory leaks |
+| 103 | A custom allocator implementing `Allocator` |
+| 104 | Optionals in complex scenarios |
+| 105 | Mini project: an expression calculator (lexer + recursive descent) |
 
-### Часть IV. Expert+ (106–125)
-| № | Тема |
+### Part IV. Expert+ (106–125)
+| # | Topic |
 |---|---|
 | 106 | Data-oriented design: AoS → SoA |
-| 107 | SIMD на практике |
-| 108 | Generic хеш-таблица с открытой адресацией с нуля |
-| 109 | Интрузивные списки и макросы |
-| 110 | Generic slot map с поколениями (handles) |
-| 111 | Generic кольцевой буфер + `foreach` |
-| 112 | Lock-free SPSC-очередь на атомиках |
-| 113 | Интернирование строк |
-| 114 | Дерево в арене с индексами вместо указателей |
-| 115 | Байткодовая виртуальная машина |
-| 116 | Компилятор AST → байткод |
-| 117 | Конечные автоматы, `nextcase`, jump-таблицы `@jump` |
-| 118 | Битовые трюки: битсеты, коды Мортона |
-| 119 | Форматирование generic-контейнеров |
-| 120 | Двоичный сериализатор на рефлексии |
-| 121 | Плагины: таблицы функций и интерфейсы |
-| 122 | Архитектура обработки ошибок в многослойной системе |
-| 123 | Дизайн API: opaque-хендлы, builder, модули |
-| 124 | Раскладка памяти: выравнивание, padding, кеш-линии |
-| 125 | Финальный босс: интерпретатор мини-Lisp |
+| 107 | SIMD in practice |
+| 108 | A generic open-addressing hash map from scratch |
+| 109 | Intrusive lists and macros |
+| 110 | A generic slot map with generations (handles) |
+| 111 | A generic ring buffer + `foreach` |
+| 112 | A lock-free SPSC queue on atomics |
+| 113 | String interning |
+| 114 | A tree in an arena with indices instead of pointers |
+| 115 | A bytecode virtual machine |
+| 116 | An AST → bytecode compiler |
+| 117 | State machines, `nextcase`, `@jump` jump tables |
+| 118 | Bit tricks: bitsets, Morton codes |
+| 119 | Formatting generic containers |
+| 120 | A reflection-based binary serializer |
+| 121 | Plugins: function tables and interfaces |
+| 122 | Error-handling architecture in a layered system |
+| 123 | API design: opaque handles, builders, modules |
+| 124 | Memory layout: alignment, padding, cache lines |
+| 125 | Final boss: a mini-Lisp interpreter |
 
 ---
 
-## Трек 2. Ассемблер x86-64 (`asm/`)
+## Track 2. x86-64 assembly (`asm/`)
 
-Проходится после языка и перед движками. Платформа: x86-64 Linux, System V ABI,
-GNU as в Intel-синтаксисе (`.intel_syntax noprefix`). Упражнение — каталог с `.c3`-драйвером,
-который вызывает ваши функции из `.s`-файла (раннер ассемблирует их через `cc -c`).
-Теория каждой главы — в `asm/docs/CC_*.md`, упражнения — `asm/exercises/aCCNN_*/`.
+Done after the language and before the engines. Platform: x86-64 Linux, System V ABI,
+GNU as in Intel syntax (`.intel_syntax noprefix`). Each exercise is a directory with a `.c3` driver
+that calls your functions from a `.s` file (the runner assembles them with `cc -c`).
+Each chapter's theory is in `asm/docs/CC_*.md`, its exercises in `asm/exercises/aCCNN_*/`.
 
-| Глава | Тема |
+| Chapter | Topic |
 |---|---|
-| 00 | Введение: как работает CPU, регистры, память, инструменты (`as`, `objdump`, `gdb`, `c3c --emit-asm`) |
-| 01 | Регистры и `mov`, первая функция, возврат значения по System V ABI |
-| 02 | Арифметика: `add`/`sub`/`imul`/`div`, флаги, знаковое и беззнаковое |
-| 03 | Управление потоком: `cmp`/`test`, условные переходы, циклы |
-| 04 | Адресация памяти: массивы, `[base + index*scale + disp]`, `lea` |
-| 05 | Соглашение о вызовах System V: аргументы, callee-saved регистры, выравнивание стека, вызов C3/libc из ассемблера |
-| 06 | Стековые кадры, локальные переменные, рекурсия |
-| 07 | Структуры, указатели, строки, строковые инструкции (`rep movsb`, `scasb`) |
-| 08 | Битовые операции: сдвиги, вращения, `bt`, `popcnt`, `lzcnt`/`tzcnt`, BMI |
-| 09 | Плавающая точка: скалярные SSE-инструкции |
-| 10 | SIMD: SSE/AVX2, векторизация циклов |
-| 11 | Inline-ассемблер C3 и чтение кода, сгенерированного компилятором |
-| 12 | Системные вызовы Linux напрямую, без libc |
-| 13 | Branchless-код (`cmov`, `setcc`), атомарные операции (`lock`, `cmpxchg`), барьеры памяти |
-| 14 | Производительность: конвейер, зависимости, развёртка циклов, кеш, как измерять |
-| 15 | Финал: JIT-компилятор — генерация машинного кода в исполняемую память во время работы |
+| 00 | Introduction: how a CPU works, registers, memory, tools (`as`, `objdump`, `gdb`, `c3c --emit-asm`) |
+| 01 | Registers and `mov`, your first function, returning a value per the System V ABI |
+| 02 | Arithmetic: `add`/`sub`/`imul`/`div`, flags, signed and unsigned |
+| 03 | Control flow: `cmp`/`test`, conditional jumps, loops |
+| 04 | Memory addressing: arrays, `[base + index*scale + disp]`, `lea` |
+| 05 | The System V calling convention: arguments, callee-saved registers, stack alignment, calling C3/libc from assembly |
+| 06 | Stack frames, local variables, recursion |
+| 07 | Structs, pointers, strings, string instructions (`rep movsb`, `scasb`) |
+| 08 | Bit operations: shifts, rotations, `bt`, `popcnt`, `lzcnt`/`tzcnt`, BMI |
+| 09 | Floating point: scalar SSE instructions |
+| 10 | SIMD: SSE/AVX2, vectorizing loops |
+| 11 | C3 inline assembly and reading compiler-generated code |
+| 12 | Linux system calls directly, without libc |
+| 13 | Branchless code (`cmov`, `setcc`), atomic operations (`lock`, `cmpxchg`), memory barriers |
+| 14 | Performance: the pipeline, dependencies, loop unrolling, caches, how to measure |
+| 15 | Finale: a JIT compiler — generating machine code into executable memory at run time |
 
 ---
 
-## Трек 3. Архитектура игровых движков (`engine/`)
+## Track 3. Game engine architecture (`engine/`)
 
-Каждая глава — теория в `engine/docs/CC_*.md` (читать **перед** упражнениями главы) и
-упражнения `engine/exercises/eCCNN_*.c3`.
+Each chapter is theory in `engine/docs/CC_*.md` (read it **before** the chapter's exercises) plus
+exercises `engine/exercises/eCCNN_*.c3`.
 
-| Глава | Тема |
+| Chapter | Topic |
 |---|---|
-| 00 | Введение: из чего состоит движок, слои, runtime vs tools, как читать эту часть |
-| 01 | Игровой цикл: fixed timestep, аккумулятор, интерполяция, детерминизм |
-| 02 | Память: линейный/стековый/пул/кадровый аллокаторы, бюджеты памяти |
-| 03 | Контейнеры движка: handles, slot map, sparse set, стабильность ссылок |
-| 04 | Математика: вектора, матрицы, кватернионы, преобразования, SIMD |
-| 05 | ECS: архетипы vs sparse sets, запросы, системы, планирование |
-| 06 | События и сообщения: очереди, двойная буферизация, наблюдатель |
-| 07 | Ресурсы и ассеты: менеджер ресурсов, подсчёт ссылок, hot reload, пайплайн |
-| 08 | Сцена: иерархия трансформаций, dirty flags, пространственные структуры |
-| 09 | Рендеринг: архитектура рендерера, command buffer, sort keys, софтверный растеризатор |
-| 10 | Ввод: абстракция устройств, action mapping, буферизация |
-| 11 | Физика: интеграторы, коллизии, broadphase, разрешение контактов |
-| 12 | Многопоточность: job system, зависимости, parallel_for, фреймовый граф |
-| 13 | Сериализация и рефлексия: бинарные форматы, версионирование |
-| 14 | Скриптинг: встраиваемая VM, привязки, горячая перезагрузка логики |
-| 15 | Профилирование и отладка: инструментирование, debug draw, консоль |
-| 16 | Аудио: микширование, голосовой менеджер, генерация WAV |
-| 17 | Горячая перезагрузка кода и плагины: динамические библиотеки |
-| 18 | Сеть: lockstep, snapshot interpolation, delta compression, prediction |
-| 19 | Инструменты и редактор: undo/redo, command pattern, property-системы |
-| 20 | Итоговый проект: собственный мини-движок и игра |
-| 99 | Что дальше: книги, исходники движков, как расти дальше |
+| 00 | Introduction: what an engine is made of, layers, runtime vs tools, how to read this part |
+| 01 | The game loop: fixed timestep, the accumulator, interpolation, determinism |
+| 02 | Memory: linear/stack/pool/frame allocators, memory budgets |
+| 03 | Engine containers: handles, slot maps, sparse sets, reference stability |
+| 04 | Math: vectors, matrices, quaternions, transforms, SIMD |
+| 05 | ECS: archetypes vs sparse sets, queries, systems, scheduling |
+| 06 | Events and messaging: queues, double buffering, observers |
+| 07 | Resources and assets: the resource manager, reference counting, hot reload, the pipeline |
+| 08 | The scene: transform hierarchies, dirty flags, spatial structures |
+| 09 | Rendering: renderer architecture, command buffers, sort keys, a software rasterizer |
+| 10 | Input: device abstraction, action mapping, buffering |
+| 11 | Physics: integrators, collisions, broadphase, contact resolution |
+| 12 | Multithreading: the job system, dependencies, parallel_for, the frame graph |
+| 13 | Serialization and reflection: binary formats, versioning |
+| 14 | Scripting: an embedded VM, bindings, hot-reloading logic |
+| 15 | Profiling and debugging: instrumentation, debug draw, the console |
+| 16 | Audio: mixing, the voice manager, generating WAV |
+| 17 | Hot code reloading and plugins: dynamic libraries |
+| 18 | Networking: lockstep, snapshot interpolation, delta compression, prediction |
+| 19 | Tools and the editor: undo/redo, the command pattern, property systems |
+| 20 | Final project: your own mini engine and game |
+| 99 | What next: books, engine source code, how to keep growing |

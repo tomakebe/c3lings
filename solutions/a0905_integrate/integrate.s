@@ -1,33 +1,33 @@
 # =====================================================================
-#  a0905 · Вызов функции из ассемблера с плавающими аргументами
+#  a0905 · Calling a function from assembly with floating-point arguments
 # =====================================================================
 #
-#  Метод средних прямоугольников:
+#  Midpoint rectangle rule:
 #      h = (b - a) / n
 #      integral ~= h * sum_{i=0}^{n-1} f(a + (i + 0.5) * h)
 #
-#  Главная трудность — вызов f через указатель (`call rbx`):
+#  The main difficulty is calling f through a pointer (`call rbx`):
 #
-#    1. ВСЕ xmm-регистры caller-saved. После `call` в xmm0 — результат f,
-#       а остальные xmm могут содержать что угодно. Значит, сумму, a и h
-#       нужно хранить в памяти (на стеке) или... в целочисленных
-#       callee-saved регистрах (rbx, rbp, r12-r15) через movq r64, xmm.
-#       Callee-saved xmm-регистров в System V нет вообще (в Windows x64 — есть).
-#    2. Целочисленные callee-saved (rbx, r12..r15) можно использовать для
-#       f, n, i — но их нужно сохранить в прологе и восстановить в эпилоге.
-#    3. Перед `call` rsp должен быть кратен 16. При входе в функцию
-#       rsp ≡ 8 (mod 16) (адрес возврата). Посчитайте push'и и sub rsp.
+#    1. ALL xmm registers are caller-saved. After `call`, xmm0 holds f's
+#       result, and the other xmm registers may contain anything. So the sum,
+#       a and h must be kept in memory (on the stack) or... in integer
+#       callee-saved registers (rbx, rbp, r12-r15) via movq r64, xmm.
+#       System V has no callee-saved xmm registers at all (Windows x64 does).
+#    2. Integer callee-saved registers (rbx, r12..r15) can be used for
+#       f, n, i — but they must be saved in the prologue and restored in the epilogue.
+#    3. Before `call`, rsp must be a multiple of 16. On function entry
+#       rsp ≡ 8 (mod 16) (the return address). Count your pushes and sub rsp.
 #
-#  Подсказка по раскладке (можно иначе):
-#      push rbx; push r12; push r13         ; 3*8 + 8 (ret) = 32 — кратно 16
+#  A suggested layout (you may do it differently):
+#      push rbx; push r12; push r13         ; 3*8 + 8 (ret) = 32 — a multiple of 16
 #      sub rsp, 32                          ; [rsp]=a, [rsp+8]=h, [rsp+16]=sum
-#      ...                                  ; итого кратно 16 — можно звать
+#      ...                                  ; still a multiple of 16 — safe to call
 #      add rsp, 32; pop r13; pop r12; pop rbx; ret
 #
-#  Для (i + 0.5): cvtsi2sd xmm0, i; addsd с константой 0.5 из .rodata.
+#  For (i + 0.5): cvtsi2sd xmm0, i; addsd with the constant 0.5 from .rodata.
 #
-#  ЗАДАЧА: напишите integrate(f /*rdi*/, a /*xmm0*/, b /*xmm1*/, n /*rsi*/).
-#  f должна вызываться ровно n раз. Ожидаемый вывод — в checks/.
+#  TASK: write integrate(f /*rdi*/, a /*xmm0*/, b /*xmm1*/, n /*rsi*/).
+#  f must be called exactly n times. The expected output is in checks/.
 #
     .intel_syntax noprefix
     .section .rodata

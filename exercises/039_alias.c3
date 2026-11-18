@@ -1,52 +1,53 @@
 // =====================================================================
-//  039 · `alias`: синонимы типов, функций, указателей на функции
+//  039 · `alias`: synonyms for types, functions, function pointers
 // =====================================================================
 //
-//  `alias` даёт ещё одно имя чему-то уже существующему. Синтаксис
-//  всегда один: `alias НовоеИмя = старое;`
+//  `alias` gives one more name to something that already exists. The
+//  syntax is always the same: `alias NewName = old;`
 //
-//      alias Score    = int;              // синоним типа
-//      alias Row      = int[4];           // синоним составного типа
-//      alias Callback = fn void(int);     // тип указателя на функцию
-//      alias say      = io::printn;       // синоним функции (или макроса)
-//      alias MAX_HP   = LIMIT;            // синоним константы/глобальной
+//      alias Score    = int;              // type synonym
+//      alias Row      = int[4];           // synonym for a compound type
+//      alias Callback = fn void(int);     // function pointer type
+//      alias say      = io::printn;       // function (or macro) synonym
+//      alias MAX_HP   = LIMIT;            // constant/global synonym
 //
-//  В C для этого служили `typedef` и `#define`. В C3 `typedef` — это
-//  совсем другое (новый отдельный тип, см. 040), а `alias` — ровно
-//  «другое имя»: `Score` и `int` — ОДИН И ТОТ ЖЕ тип, они свободно
-//  смешиваются, и `Score::size` == `int::size`.
+//  In C, `typedef` and `#define` served this purpose. In C3, `typedef`
+//  is something completely different (a new distinct type, see 040),
+//  while `alias` is exactly "another name": `Score` and `int` are THE
+//  SAME type, they mix freely, and `Score::size` == `int::size`.
 //
-//  Соглашение об именах (компилятор его проверяет!): синонимы типов
-//  пишутся с заглавной буквы (`Score`), синонимы функций и переменных —
-//  со строчной (`say`), констант — ЗАГЛАВНЫМИ.
+//  Naming convention (the compiler enforces it!): type synonyms start
+//  with an uppercase letter (`Score`), function and variable synonyms
+//  with a lowercase one (`say`), constants are ALL CAPS.
 //
-//  Указатели на функции в C3 записываются ТОЛЬКО через alias. Тип
-//  получается из объявления функции, если выкинуть её имя:
+//  Function pointers in C3 are written ONLY via alias. The type comes
+//  from the function declaration with its name dropped:
 //
-//      fn int square(int x)    ->    fn int(int x)   (имя параметра можно опустить)
+//      fn int square(int x)    ->    fn int(int x)   (the parameter name can be omitted)
 //
 //      alias IntFn = fn int(int);
-//      IntFn f = &square;     // адрес функции берётся явно через &
-//      int y = f(5);          // вызов как у обычной функции
+//      IntFn f = &square;     // the function's address is taken explicitly with &
+//      int y = f(5);          // called just like a regular function
 //
-//  В отличие от C, просто `square` без `&` в качестве значения
-//  использовать нельзя — компилятор попросит `&square`.
+//  Unlike C, plain `square` without `&` can't be used as a value - the
+//  compiler will ask for `&square`.
 //
-//  Синонимы функций полезны, чтобы сократить длинное имя из другого
-//  модуля или дать функции имя по смыслу, не создавая обёртку.
+//  Function synonyms are handy for shortening a long name from another
+//  module, or for giving a function a meaningful name without writing
+//  a wrapper.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`.
+//  TASK: fix the three places marked with `// <-`.
 //
 import std::io;
 
 alias Row = int[4];
-alias IntFn = ???; // <- тип «функция, принимающая int и возвращающая int»
-// <- объявите здесь синоним say для io::printn
+alias IntFn = ???; // <- the type "function taking an int and returning an int"
+// <- declare the synonym say for io::printn here
 
 fn int square(int x) => x * x;
 fn int negate(int x) => -x;
 
-// Принимает обычный int[4] — и Row подходит, это тот же тип.
+// Takes a plain int[4] - and Row fits, it's the same type.
 fn int sum(int[4] values)
 {
     int total;
@@ -66,7 +67,7 @@ fn void main()
     Row row = { 1, 2, 3, 4 };
     assert(Row::size == int::size * 4);
 
-    Row squares = map(row, square); // <- передаём адрес функции
+    Row squares = map(row, square); // <- pass the function's address
     IntFn f = &negate;
     Row negated = map(row, f);
 

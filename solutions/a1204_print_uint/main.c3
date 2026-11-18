@@ -1,4 +1,4 @@
-// Драйвер упражнения a1204. Этот файл НЕ нужно править — правьте print.s.
+// Driver for exercise a1204. You do NOT need to edit this file — edit print.s.
 import std::io;
 
 extern fn long print_u64(ulong x);

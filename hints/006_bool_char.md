@@ -1,4 +1,4 @@
-1. В C3 нельзя записать `1` в `bool`. Используйте `true`.
-2. Строчные буквы в ASCII идут на 32 позиции позже заглавных. Можно написать
-   число 32, а можно выразить это через символы: `('a' - 'A')`.
-3. Апостроф внутри символьного литерала экранируется обратной косой: `'\''`.
+1. In C3 you can't store `1` in a `bool`. Use `true`.
+2. In ASCII, lowercase letters come 32 positions after uppercase ones. You can write
+   the number 32, or express it using characters: `('a' - 'A')`.
+3. An apostrophe inside a character literal is escaped with a backslash: `'\''`.

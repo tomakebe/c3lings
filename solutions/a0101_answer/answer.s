@@ -1,37 +1,37 @@
 # =====================================================================
-#  a0101 · Первая функция на ассемблере
+#  a0101 · Your first assembly function
 # =====================================================================
 #
-#  Добро пожаловать во второй трек! Здесь каждое упражнение — каталог:
-#  в нём лежит C3-драйвер main.c3 (это тестовый стенд, его НЕ трогаем)
-#  и один или несколько .s-файлов, которые правите вы. Раннер собирает
-#  .s через `cc -c` (это GNU as) и линкует с драйвером.
+#  Welcome to the second track! Here every exercise is a directory:
+#  it contains a C3 driver main.c3 (the test harness — DON'T touch it)
+#  and one or more .s files, which are yours to edit. The runner builds
+#  the .s files with `cc -c` (that's GNU as) and links them with the driver.
 #
-#  Мы пишем в Intel-синтаксисе: «приёмник, источник».
+#  We write in Intel syntax: "destination, source".
 #
 #      mov eax, 5        # eax = 5
 #
-#  Строки файла:
-#    .intel_syntax noprefix   — Intel-синтаксис без % перед регистрами;
-#    .text                    — дальше идёт код;
-#    .globl asm_answer        — сделать метку видимой линковщику
-#                               (иначе C3 не найдёт функцию);
-#    asm_answer:              — метка = адрес первой инструкции функции;
-#    ret                      — вернуться туда, откуда нас вызвали.
-#  Последняя строка (.note.GNU-stack) говорит линковщику, что нашему
-#  коду не нужен исполняемый стек. Просто копируйте её в конец файла.
+#  The lines of the file:
+#    .intel_syntax noprefix   — Intel syntax without % before registers;
+#    .text                    — code follows;
+#    .globl asm_answer        — make the label visible to the linker
+#                               (otherwise C3 won't find the function);
+#    asm_answer:              — label = address of the function's first instruction;
+#    ret                      — return to wherever we were called from.
+#  The last line (.note.GNU-stack) tells the linker that our code does
+#  not need an executable stack. Just copy it to the end of the file.
 #
-#  Комментарии в GNU as для x86 начинаются с `#`.
+#  Comments in GNU as for x86 start with `#`.
 #
-#  По соглашению System V ABI (Linux, x86-64) целое значение функция
-#  возвращает в регистре rax. Для 32-битного `int` используется его
-#  младшая половина — eax. Драйвер объявил функцию так:
+#  Under the System V ABI convention (Linux, x86-64) a function returns
+#  an integer value in the rax register. For a 32-bit `int` its lower
+#  half, eax, is used. The driver declared the function like this:
 #
 #      extern fn int asm_answer();
 #
-#  и прочитает результат из eax сразу после `ret`.
+#  and will read the result from eax right after `ret`.
 #
-#  ЗАДАЧА: функция должна вернуть 42. Программа напечатает
+#  TASK: the function must return 42. The program will print
 #      asm_answer() = 42
 #
     .intel_syntax noprefix
@@ -39,7 +39,7 @@
 
     .globl asm_answer
 asm_answer:
-    mov eax, 42             # TODO: вернуть нужно 42
+    mov eax, 42             # TODO: should return 42
     ret
 
     .section .note.GNU-stack,"",@progbits

@@ -1,14 +1,14 @@
-`tokenize`: индекс `i` по строке. Пробел/таб — пропустить; `;` — `i++` и выйти из цикла;
-`"` — токен от символа после кавычки до следующей `"` (или конца), закрывающую кавычку
-пропустить; иначе — до пробела/таба/`;`/`"`. Токен — срез `line[start:end - start]`,
-кладите его, только если `n < out.len`. В конце `*consumed = i`.
+`tokenize`: an index `i` over the line. Space/tab - skip; `;` - `i++` and break out of the loop;
+`"` - the token runs from the character after the quote to the next `"` (or the end), skip the closing
+quote; otherwise - up to a space/tab/`;`/`"`. A token is the slice `line[start:end - start]`,
+store it only if `n < out.len`. At the end `*consumed = i`.
 
-`set_cvar`: сначала флаги (`cv.flags & CVAR_READONLY`, `cv.flags & CVAR_CHEAT && !self.cheats.b`),
-потом `switch (cv.kind)` с `text.to_int()` / `text.to_float()` / `parse_bool(text)` и
-`if (catch v) { печать; return false; }`, затем зажим в `[min, max]`.
+`set_cvar`: flags first (`cv.flags & CVAR_READONLY`, `cv.flags & CVAR_CHEAT && !self.cheats.b`),
+then `switch (cv.kind)` with `text.to_int()` / `text.to_float()` / `parse_bool(text)` and
+`if (catch v) { print; return false; }`, then clamp to `[min, max]`.
 
-`execute_tokens`: `find_cmd` → `cmd.handler(self, toks[1..])`; `find_cvar` → печать или
-`set_cvar(cv, toks[1])`; иначе "unknown command: ...".
+`execute_tokens`: `find_cmd` -> `cmd.handler(self, toks[1..])`; `find_cvar` -> print or
+`set_cvar(cv, toks[1])`; otherwise "unknown command: ...".
 
-`complete`: соберите подходящие имена (`starts_with`) из команд и cvar'ов, затем
+`complete`: collect matching names (`starts_with`) from commands and cvars, then
 `sort::quicksort(out[:n], fn int(String a, String b) => a.compare_to(b));`.

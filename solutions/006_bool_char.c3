@@ -1,42 +1,44 @@
 // =====================================================================
-//  006 · bool и char
+//  006 · bool and char
 // =====================================================================
 //
 //  BOOL
-//  Тип `bool` имеет два значения: `true` и `false`. Логические операции
-//  как в C: `&&`, `||`, `!`. Сравнения (`==`, `<`, ...) дают bool.
+//  The `bool` type has two values: `true` and `false`. Logical operators
+//  are the same as in C: `&&`, `||`, `!`. Comparisons (`==`, `<`, ...)
+//  produce a bool.
 //
-//  В C `bool` — это по сути число, и `bool b = 1;` работает. В C3
-//  `int` и `bool` неявно друг в друга НЕ преобразуются:
+//  In C `bool` is essentially a number, and `bool b = 1;` works. In C3
+//  `int` and `bool` do NOT implicitly convert into each other:
 //
-//      bool b = 1;         // ошибка
-//      bool b = true;      // правильно
-//      int  i = true;      // ошибка; можно (int)true == 1
+//      bool b = 1;         // error
+//      bool b = true;      // correct
+//      int  i = true;      // error; but (int)true == 1 is fine
 //
-//  (При этом в условии `if (x)` целое число разрешено — оно
-//  сравнивается с нулём.)
+//  (That said, an integer is allowed in a condition like `if (x)` — it
+//  is compared against zero.)
 //
 //  CHAR
-//  `char` — беззнаковый 8-битный тип (байт). Символьный литерал в
-//  одинарных кавычках — это просто число, ASCII-код символа:
-//  'A' == 65, 'a' == 97, '0' == 48. Поэтому с символами можно считать:
+//  `char` is an unsigned 8-bit type (a byte). A character literal in
+//  single quotes is just a number, the ASCII code of the character:
+//  'A' == 65, 'a' == 97, '0' == 48. So you can do arithmetic with
+//  characters:
 //
 //      'a' + 1          == 'b'
-//      '7' - '0'        == 7      (цифра-символ -> число)
-//      'a' - 'A'        == 32     (расстояние между регистрами)
+//      '7' - '0'        == 7      (digit character -> number)
+//      'a' - 'A'        == 32     (distance between the cases)
 //
-//  Печать: `%c` печатает символ, `%d` — его код. Будьте внимательны:
-//  `io::printn(c)` для char печатает ЧИСЛО, а не букву.
+//  Printing: `%c` prints the character, `%d` prints its code. Be
+//  careful: `io::printn(c)` for a char prints a NUMBER, not a letter.
 //
-//  ESCAPE-ПОСЛЕДОВАТЕЛЬНОСТИ (в символах и строках)
-//      \n  перевод строки     \t  табуляция      \0  нулевой байт
-//      \\  обратная косая     \'  апостроф       \"  кавычка
-//      \x41  байт с шестнадцатеричным кодом (здесь 'A')
-//  Восьмеричных escape-последовательностей (как `\101` в C) нет,
-//  кроме `\0`.
+//  ESCAPE SEQUENCES (in characters and strings)
+//      \n  newline            \t  tab            \0  null byte
+//      \\  backslash          \'  apostrophe     \"  double quote
+//      \x41  a byte with a hexadecimal code (here 'A')
+//  There are no octal escape sequences (like `\101` in C), except
+//  for `\0`.
 //
-//  ЗАДАЧА: исправьте места, отмеченные `// <-`. Программа должна
-//  напечатать:
+//  TASK: fix the places marked with `// <-`. The program should
+//  print:
 //
 //      ready: true
 //      upper: C (code 67)

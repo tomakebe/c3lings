@@ -2,41 +2,42 @@
 //  030 · defer
 // =====================================================================
 //
-//  `defer <инструкция>;` откладывает выполнение инструкции до момента
-//  ВЫХОДА ИЗ ТЕКУЩЕЙ ОБЛАСТИ ВИДИМОСТИ (блока `{ }`), каким бы путём
-//  этот выход ни случился: конец блока, `return`, `break`, `continue`.
+//  `defer <statement>;` postpones running the statement until the
+//  moment you EXIT THE CURRENT SCOPE (the `{ }` block), no matter how
+//  that exit happens: end of the block, `return`, `break`, `continue`.
 //
 //      fn void work()
 //      {
 //          File f = open(...);
-//          defer close(f);          // выполнится при любом выходе
-//          if (bad) return;         // close(f) будет вызван
+//          defer close(f);          // runs on any exit
+//          if (bad) return;         // close(f) will be called
 //          ...
-//      }                            // и здесь тоже
+//      }                            // and here too
 //
-//  Зачем: в C освобождение ресурсов пишут в конце функции, а потом
-//  кто-то добавляет ранний `return` — и ресурс утекает. Или пишут
-//  лестницу из `goto cleanup`. В C3 «открыл — сразу написал defer
-//  закрыть»: парная операция стоит рядом и не может быть пропущена.
+//  Why: in C, resources are released at the end of the function, and
+//  then somebody adds an early `return` — and the resource leaks. Or
+//  people build a ladder of `goto cleanup`. In C3 it's "open it, then
+//  immediately write the defer that closes it": the paired operation
+//  sits right next to it and can't be skipped.
 //
-//  ПОРЯДОК: несколько defer выполняются в ОБРАТНОМ порядке
-//  (последним объявлен — первым выполнен, LIFO). Это естественно:
-//  ресурсы освобождаются в порядке, обратном захвату.
+//  ORDER: multiple defers run in REVERSE order (last declared, first
+//  run — LIFO). That's natural: resources are released in the reverse
+//  order of acquisition.
 //
 //      {
 //          defer io::printn("A");
 //          defer io::printn("B");
 //          io::printn("C");
-//      }                            // печатает C, B, A
+//      }                            // prints C, B, A
 //
-//  defer привязан к БЛОКУ, а не к функции (в отличие от Go): defer в
-//  теле цикла срабатывает в конце КАЖДОЙ итерации.
+//  A defer is tied to the BLOCK, not to the function (unlike Go): a
+//  defer in a loop body fires at the end of EVERY iteration.
 //
-//  Блок тоже можно отложить: `defer { ...несколько инструкций... }`.
-//  Есть ещё `defer catch` / `defer try`, работающие с ошибками, —
-//  упражнение 035.
+//  You can defer a whole block too: `defer { ...several statements... }`.
+//  There are also `defer catch` / `defer try`, which work with errors —
+//  exercise 035.
 //
-//  ЗАДАЧА: исправьте места с `// <-`. Программа должна напечатать:
+//  TASK: fix the places marked `// <-`. The program should print:
 //
 //      open save.dat
 //      read save.dat
@@ -54,14 +55,14 @@ import std::io;
 fn bool load(String name, bool fail)
 {
     io::printfn("open %s", name);
-                                                // <- закрывайте файл при любом выходе
+                                                // <- close the file on any exit
     if (fail)
     {
         io::printfn("error in %s", name);
         return false;
     }
     io::printfn("read %s", name);
-    io::printfn("close %s", name);              // <- ранний return сюда не доходит
+    io::printfn("close %s", name);              // <- an early return never gets here
     return true;
 }
 
@@ -71,14 +72,14 @@ fn void main()
     assert(!load("broken.dat", true));
 
     {
-        defer io::printn("2. save");            // <- defer выполняются в обратном порядке
+        defer io::printn("2. save");            // <- defers run in reverse order
         defer io::printn("3. unlock");
         io::printn("1. edit");
     }
 
     for (int i = 0; i < 3; i++)
     {
-        defer io::print("]");                   // в конце каждой итерации
+        defer io::print("]");                   // at the end of every iteration
         io::printf("[%d", i);
     }
     io::printn();

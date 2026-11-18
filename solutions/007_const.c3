@@ -1,38 +1,38 @@
 // =====================================================================
-//  007 · Константы
+//  007 · Constants
 // =====================================================================
 //
-//  Константа объявляется словом `const`:
+//  A constant is declared with the `const` keyword:
 //
 //      const int MAX_HP = 100;
-//      const GREETING = "hello";     // тип можно не указывать
+//      const GREETING = "hello";     // the type can be omitted
 //
-//  Правила:
-//  * Имя константы — ЗАГЛАВНЫМИ буквами. Это не стиль, а требование
-//    компилятора: `const int max_hp` — ошибка
+//  Rules:
+//  * A constant's name is in UPPERCASE letters. This isn't style, it's
+//    a compiler requirement: `const int max_hp` is an error
 //    "Names of consts must be all uppercase".
-//  * Значение должно быть известно во время компиляции. Константы можно
-//    вычислять из других констант: `const int AREA = WIDTH * HEIGHT;`
-//    — компилятор посчитает это сам, в программе будет просто число.
-//  * Присвоить константе новое значение нельзя.
+//  * The value must be known at compile time. Constants can be computed
+//    from other constants: `const int AREA = WIDTH * HEIGHT;`
+//    — the compiler calculates it itself, and the program just contains
+//    a number.
+//  * You can't assign a new value to a constant.
 //
-//  В C для этого обычно пишут `#define MAX_HP 100`. В C3 препроцессора
-//  нет, и `const` его заменяет — при этом у константы есть тип, она
-//  подчиняется областям видимости и правилам модулей.
+//  In C you'd usually write `#define MAX_HP 100` for this. C3 has no
+//  preprocessor, and `const` takes its place — and on top of that, a
+//  constant has a type and obeys scopes and module rules.
 //
-//  Слово `const` в C3 НЕ является квалификатором типа, как в C
-//  (`const char*` здесь нет). Оно означает только «константа времени
-//  компиляции».
+//  The word `const` in C3 is NOT a type qualifier like in C (there is no
+//  `const char*` here). It only means "compile-time constant".
 //
-//  Где нужна константа времени компиляции:
-//  * размер массива: `int[SLOTS] inventory;` — обычная переменная
-//    здесь не подойдёт ("Expected a constant value as length").
-//  * `$assert(условие)` — проверка во ВРЕМЯ КОМПИЛЯЦИИ. Если условие
-//    ложно, программа просто не соберётся. Это бесплатно во время
-//    выполнения и ловит ошибки раньше, чем `assert`.
+//  Where a compile-time constant is needed:
+//  * an array size: `int[SLOTS] inventory;` — a regular variable won't
+//    work here ("Expected a constant value as length").
+//  * `$assert(condition)` — a check at COMPILE TIME. If the condition
+//    is false, the program simply won't build. It costs nothing at
+//    runtime and catches bugs earlier than `assert`.
 //
-//  ЗАДАЧА: исправьте две ошибки компиляции, отмеченные `// <-`.
-//  Программа должна напечатать:
+//  TASK: fix the two compile errors marked with `// <-`.
+//  The program should print:
 //
 //      Welcome to the dungeon
 //      hp=100 area=48 slots=4
@@ -43,9 +43,9 @@ const GREETING = "Welcome to the dungeon";
 const int MAX_HP = 100;
 const int WIDTH = 8;
 const int HEIGHT = 6;
-const int AREA = WIDTH * HEIGHT;        // вычисляется при компиляции
+const int AREA = WIDTH * HEIGHT;        // computed at compile time
 
-$assert(AREA == 48);                    // проверка при компиляции
+$assert(AREA == 48);                    // compile-time check
 
 fn void main()
 {

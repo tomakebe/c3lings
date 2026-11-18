@@ -1,4 +1,4 @@
-// Драйвер упражнения a1202. Этот файл НЕ нужно править — правьте errno.s.
+// Driver for exercise a1202. You do NOT need to edit this file — edit errno.s.
 import std::io;
 
 extern CInt last_errno;

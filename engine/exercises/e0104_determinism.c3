@@ -1,36 +1,36 @@
 // =====================================================================
-//  E0104 · Детерминированная симуляция
+//  E0104 · Deterministic simulation
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/01_game_loop.md (раздел 5).
+//  Read engine/docs/01_game_loop.md first (section 5).
 //
-//  Детерминизм: одинаковое начальное состояние + одинаковый ввод =>
-//  одинаковое состояние на КАЖДОМ тике, на любой частоте кадров.
-//  На этом держатся replays, lockstep-мультиплеер и воспроизведение багов.
+//  Determinism: same initial state + same input => same state on EVERY
+//  tick, at any frame rate. Replays, lockstep multiplayer and bug
+//  reproduction all rely on this.
 //
-//  Что для этого сделано в коде ниже (и что должны сделать вы):
-//    * симуляция на целых числах: позиции в фиксированной точке 8.8
-//      (1 единица = 256), направления — таблица, никакого sin/cos/float;
-//    * шаг всегда один и тот же; время кадров — целые микросекунды;
-//    * ввод записан с привязкой к НОМЕРУ ТИКА, а не к кадру: запись
-//      { tick = 120, buttons = THRUST } значит «начиная с тика 120
-//      зажат газ». Воспроизведение применяет ввод к тем же тикам;
-//    * после каждого тика состояние хешируется (FNV-1a, 64 бита) —
-//      так в RTS ищут рассинхронизацию: первый тик с разными хешами.
+//  What the code below does to achieve this (and what you must do):
+//    * the simulation uses integers: positions are 8.8 fixed point
+//      (1 unit = 256), directions come from a table, no sin/cos/float;
+//    * the step is always the same; frame times are integer microseconds;
+//    * input is recorded against the TICK NUMBER, not the frame: the record
+//      { tick = 120, buttons = THRUST } means "throttle held starting at
+//      tick 120". Playback applies the input on the same ticks;
+//    * after every tick the state is hashed (FNV-1a, 64 bits) — this is
+//      how RTS games hunt desyncs: the first tick with differing hashes.
 //
-//  Мы прогоняем одну и ту же запись ввода при четырёх «частотах кадров»
-//  (30, 60, 144 Гц и рваный ритм из ГПСЧ с фиксированным seed) — итоговые
-//  хеши обязаны совпасть. Для контраста в конце показан float с
-//  переменным dt: там результат зависит от частоты кадров.
+//  We replay the same input recording at four "frame rates" (30, 60,
+//  144 Hz, and a ragged rhythm from a PRNG with a fixed seed) — the final
+//  hashes must match. For contrast, the end shows float with a variable
+//  dt: there the result depends on the frame rate.
 //
-//  ЗАДАЧА:
-//    * InputPlayer.at   — кнопки для данного тика (записи отсортированы
-//      по tick; используйте курсор, тики запрашиваются по возрастанию);
-//    * hash_long        — подмешать 8 байт числа в хеш FNV-1a
-//      (младший байт первым: h ^= byte; h *= FNV_PRIME);
-//    * run              — цикл с аккумулятором: ровно TARGET_TICKS тиков,
-//      на каждом тике: buttons = player.at(tick); world.step(buttons);
-//      hash = world.hash(hash). Кадры берутся из frames по кругу.
+//  TASK:
+//    * InputPlayer.at   — the buttons for a given tick (records are sorted
+//      by tick; use a cursor, ticks are queried in increasing order);
+//    * hash_long        — mix the 8 bytes of a number into an FNV-1a hash
+//      (low byte first: h ^= byte; h *= FNV_PRIME);
+//    * run              — an accumulator loop: exactly TARGET_TICKS ticks,
+//      on each tick: buttons = player.at(tick); world.step(buttons);
+//      hash = world.hash(hash). Frames are taken from frames cyclically.
 //
 import std::io;
 
@@ -41,12 +41,12 @@ const uint FIRE   = 8;
 
 const long DT_US = 16_667;
 const long TARGET_TICKS = 600;
-const int WORLD = 256 << 8;      // размер мира в единицах 8.8
+const int WORLD = 256 << 8;      // world size in 8.8 units
 
 const ulong FNV_OFFSET = 14695981039346656037UL;
 const ulong FNV_PRIME  = 1099511628211UL;
 
-// cos(i * 22.5 градусов) * 64, округлено
+// cos(i * 22.5 degrees) * 64, rounded
 const int[16] COS64 = { 64, 59, 45, 24, 0, -24, -45, -59, -64, -59, -45, -24, 0, 24, 45, 59 };
 
 fn int dir_x(int a) => COS64[a & 15];
@@ -63,8 +63,8 @@ struct InputPlayer
 
 fn uint InputPlayer.at(&self, long tick)
 {
-    // TODO: продвиньте курсор по всем записям с tick <= запрошенного,
-    //       запоминая их buttons в self.current; верните self.current.
+    // TODO: advance the cursor over all records with tick <= the requested one,
+    //       storing their buttons in self.current; return self.current.
     return 0;
 }
 
@@ -90,7 +90,7 @@ fn void World.step(&self, uint buttons)
         self.vx += dir_x(self.angle);
         self.vy += dir_y(self.angle);
     }
-    self.vx -= self.vx / 32;     // трение
+    self.vx -= self.vx / 32;     // friction
     self.vy -= self.vy / 32;
     self.x = wrap(self.x + self.vx);
     self.y = wrap(self.y + self.vy);
@@ -117,7 +117,7 @@ fn void World.step(&self, uint buttons)
 
 fn ulong hash_long(ulong h, long v)
 {
-    // TODO: FNV-1a по 8 байтам числа, младший байт первым
+    // TODO: FNV-1a over the 8 bytes of the number, low byte first
     return h;
 }
 
@@ -147,8 +147,8 @@ fn RunResult run(InputEvent[] log, long[] frames)
     ulong h = FNV_OFFSET;
     long tick = 0;
     int frame_count = 0;
-    // TODO: это наивный цикл «один тик на кадр». Замените его циклом с
-    //       аккумулятором (DT_US), который делает ровно TARGET_TICKS тиков.
+    // TODO: this is a naive "one tick per frame" loop. Replace it with an
+    //       accumulator loop (DT_US) that runs exactly TARGET_TICKS ticks.
     while (tick < TARGET_TICKS)
     {
         frame_count++;
@@ -160,7 +160,7 @@ fn RunResult run(InputEvent[] log, long[] frames)
     return { h, tick, frame_count, w };
 }
 
-// Для контраста: float и переменный dt. Высота после 1 с падения.
+// For contrast: float and a variable dt. Height after 1 s of falling.
 fn float float_fall(long frame_us)
 {
     float y = 100;
@@ -178,7 +178,7 @@ fn float float_fall(long frame_us)
 
 fn void main()
 {
-    // Сначала проверим хеш на известном значении (FNV-1a от 8 нулевых байт).
+    // First check the hash against a known value (FNV-1a of 8 zero bytes).
     assert(hash_long(FNV_OFFSET, 0) == 0xa8c7f832281a39c5UL, "hash_long is wrong");
 
     InputEvent[] log = {

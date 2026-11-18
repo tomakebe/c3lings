@@ -1,57 +1,57 @@
-# Глава 14. Производительность: конвейер, зависимости, кеш, измерения
+# Chapter 14. Performance: the pipeline, dependencies, cache, measurement
 
-Мы умеем писать правильный ассемблер. Эта глава — о том, почему два
-правильных варианта могут отличаться по скорости в 10 раз, и как это
-измерить, не обманув себя. Это знание нужно не для того, чтобы писать всё
-на ассемблере (почти никогда не нужно), а чтобы понимать, что делает
-процессор с кодом на C3 — и почему.
+We know how to write correct assembly. This chapter is about why two
+correct versions can differ in speed by a factor of 10, and how to
+measure it without fooling yourself. You need this knowledge not to write
+everything in assembly (you almost never should), but to understand what
+the processor does with your C3 code — and why.
 
-Упражнения: `a1401`–`a1405`. Они проверяют только корректность: время
-зависит от машины и нагрузки, поэтому в ожидаемом выводе его нет.
-Измерять — ваша самостоятельная работа (раздел 8).
+Exercises: `a1401`–`a1405`. They check correctness only: timing depends
+on the machine and its load, so it is not part of the expected output.
+Measuring is your own homework (section 8).
 
-## 1. Как исполняется инструкция
+## 1. How an instruction executes
 
-Современное ядро x86 (Zen, Golden Cove) устроено примерно так:
+A modern x86 core (Zen, Golden Cove) looks roughly like this:
 
 ```
- фронтенд                          бэкенд (out-of-order)
+ frontend                          backend (out-of-order)
  ┌───────────┐  ┌───────────┐  ┌──────────────┐  ┌──────────────────────┐
- │ предсказ. │→ │ выборка и │→ │ переименов.  │→ │ планировщик → порты: │
- │ переходов │  │ декодер / │  │ регистров,   │  │ ALU ×4, AGU/LOAD ×3, │
- │           │  │ uop-кеш   │  │ ROB (~250)   │  │ STORE ×2, FP/SIMD ×4 │
+ │ branch    │→ │ fetch and │→ │ register     │→ │ scheduler → ports:   │
+ │ predictor │  │ decoder / │  │ renaming,    │  │ ALU ×4, AGU/LOAD ×3, │
+ │           │  │ uop cache │  │ ROB (~250)   │  │ STORE ×2, FP/SIMD ×4 │
  └───────────┘  └───────────┘  └──────────────┘  └──────────────────────┘
-                 4–6 мкоп/такт                       завершение по порядку
+                 4–6 µops/cycle                      in-order retirement
 ```
 
-* Инструкции разбиваются на **микрооперации** (мкоп, µops). Большинство
-  простых инструкций — 1 мкоп; `div` — десятки; «микрокод» (`rep movsb`
-  на коротких строках, `pdep` на Zen 2) — ещё больше.
-* **Внеочередное исполнение**: мкоп выполняется, как только готовы её
-  операнды и свободен порт, а не в порядке программы. Буфер переупорядочивания
-  (ROB) держит ~200–500 мкоп «в полёте».
-* **Переименование регистров**: `rax` в соседних независимых
-  вычислениях — разные физические регистры. Ложные зависимости
-  исчезают. Идиомы обнуления (`xor eax, eax`) и `mov reg, reg` часто
-  выполняются прямо в переименователе, без порта (move elimination).
-* **Спекуляция**: после предсказанного перехода выполнение продолжается;
-  при промахе — откат (15–20 тактов).
+* Instructions are split into **micro-operations** (µops). Most simple
+  instructions are 1 µop; `div` is dozens; "microcoded" ones (`rep movsb`
+  on short strings, `pdep` on Zen 2) are even more.
+* **Out-of-order execution**: a µop executes as soon as its operands are
+  ready and a port is free, not in program order. The reorder buffer
+  (ROB) holds ~200–500 µops "in flight".
+* **Register renaming**: `rax` in neighbouring independent computations
+  maps to different physical registers. False dependencies disappear.
+  Zeroing idioms (`xor eax, eax`) and `mov reg, reg` are often executed
+  right in the renamer, without a port (move elimination).
+* **Speculation**: after a predicted branch, execution continues; on a
+  mispredict, it rolls back (15–20 cycles).
 
-## 2. Задержка и пропускная способность
+## 2. Latency and throughput
 
-Для каждой инструкции важны два числа:
+Two numbers matter for every instruction:
 
-* **задержка** (latency) — через сколько тактов результат можно
-  использовать следующей зависимой инструкцией;
-* **обратная пропускная способность** (reciprocal throughput) — как часто
-  можно запускать *независимые* такие инструкции.
+* **latency** — how many cycles until the result can be used by the
+  next dependent instruction;
+* **reciprocal throughput** — how often *independent* instructions of
+  that kind can be issued.
 
-| Инструкция | Задержка | Пропускная (тактов/инстр) |
+| Instruction | Latency | Throughput (cycles/instr) |
 |---|---|---|
-| `add`, `and`, `lea` (простая) | 1 | 0.25 |
+| `add`, `and`, `lea` (simple) | 1 | 0.25 |
 | `imul r64, r64` | 3 | 1 |
-| `div r64` | 13–45 (зависит от CPU и значений) | 13–40 |
-| загрузка из L1 | 4–5 | 0.33–0.5 |
+| `div r64` | 13–45 (depends on CPU and values) | 13–40 |
+| load from L1 | 4–5 | 0.33–0.5 |
 | `addsd`/`vaddps` | 3–4 | 0.5 |
 | `vfmadd231ps` | 4–5 | 0.5 |
 | `sqrtsd` | 13–20 | 4–6 |
@@ -60,23 +60,23 @@
 | `pdep` (Zen 2) | ~18–300 | — |
 | `lock xadd` | ~10–20 | ~10–20 |
 
-(Порядки величин для современных CPU; точные данные — Agner Fog
-«Instruction tables» и uops.info.)
+(Orders of magnitude for modern CPUs; for exact data see Agner Fog's
+"Instruction tables" and uops.info.)
 
-Скорость цикла ограничена **самым узким местом**:
+A loop's speed is limited by its **bottleneck**:
 
-1. **Цепочка зависимостей**, переносимая между итерациями (loop-carried
-   dependency): `sum += a[i]` — каждая итерация ждёт предыдущий `sum`.
-   Время ≥ длина цепочки × задержка.
-2. **Пропускная способность** портов: если в цикле 8 загрузок, а портов
-   загрузки 2–3, быстрее 3–4 тактов итерация не будет.
-3. **Фронтенд**: не более 4–6 мкоп за такт поступает в бэкенд.
-4. **Память**: если данные не в кеше, всё остальное неважно.
+1. A **dependency chain** carried across iterations (loop-carried
+   dependency): `sum += a[i]` — each iteration waits for the previous
+   `sum`. Time ≥ chain length × latency.
+2. Port **throughput**: if the loop has 8 loads and there are 2–3 load
+   ports, an iteration can't be faster than 3–4 cycles.
+3. The **frontend**: no more than 4–6 µops per cycle enter the backend.
+4. **Memory**: if the data isn't in cache, nothing else matters.
 
-### Несколько аккумуляторов
+### Multiple accumulators
 
 ```asm
-; 1 аккумулятор: 1 такт/элемент (задержка add)    ; 4 аккумулятора: ~0.33–0.5 такта/элемент
+; 1 accumulator: 1 cycle/element (add latency)     ; 4 accumulators: ~0.33–0.5 cycles/element
 1:  add rax, [rdi + rcx*8]                         1:  add rax, [rdi + rcx*8]
     inc rcx                                            add r8,  [rdi + rcx*8 + 8]
     cmp rcx, rsi                                       add r9,  [rdi + rcx*8 + 16]
@@ -86,188 +86,192 @@
                                                        jl  1b
 ```
 
-Для плавающей точки эффект сильнее: `vaddps` — 3 такта задержки при двух
-запусках за такт, значит, нужно **6–8 независимых аккумуляторов**, чтобы
-загрузить блок FP полностью. Это закон Литтла: *параллелизм = задержка ×
-пропускная способность*.
+For floating point the effect is stronger: `vaddps` has 3 cycles of
+latency with two issues per cycle, so you need **6–8 independent
+accumulators** to fully saturate the FP units. This is Little's law:
+*parallelism = latency × throughput*.
 
-### Развёртка циклов
+### Loop unrolling
 
-Развёртка (unrolling) уменьшает накладные расходы цикла (`inc`/`cmp`/`jl`
-на N элементов вместо одного) и открывает возможность для нескольких
-аккумуляторов. Но у неё есть цена: больше кода (давление на uop-кеш и
-L1i), больше хвостов. Компиляторы обычно разворачивают в 2–4 раза. Пара
-`cmp`+`jcc` сливается в одну мкоп (macro-fusion) — поэтому служебные
-инструкции цикла обходятся дешевле, чем кажется.
+Unrolling reduces loop overhead (`inc`/`cmp`/`jl` per N elements instead
+of per one) and opens the door to multiple accumulators. But it has a
+cost: more code (pressure on the uop cache and L1i), more tail handling.
+Compilers typically unroll by 2–4. A `cmp`+`jcc` pair fuses into a single
+µop (macro-fusion) — so loop bookkeeping instructions are cheaper than
+they look.
 
-## 3. Иерархия памяти
+## 3. The memory hierarchy
 
-| Уровень | Размер (типично) | Задержка | Пропускная |
+| Level | Size (typical) | Latency | Throughput |
 |---|---|---|---|
-| регистры | — | 0 | — |
-| L1d | 32–48 КиБ на ядро | 4–5 тактов | 2–3 загрузки/такт |
-| L2 | 512 КиБ–2 МиБ на ядро | 12–15 тактов | ~1 линия/такт |
-| L3 | 8–64 МиБ общий | 40–50 тактов | |
-| DRAM | гигабайты | 80–120 нс (~300+ тактов) | 20–50 ГБ/с |
+| registers | — | 0 | — |
+| L1d | 32–48 KiB per core | 4–5 cycles | 2–3 loads/cycle |
+| L2 | 512 KiB–2 MiB per core | 12–15 cycles | ~1 line/cycle |
+| L3 | 8–64 MiB shared | 40–50 cycles | |
+| DRAM | gigabytes | 80–120 ns (~300+ cycles) | 20–50 GB/s |
 
-Ключевые понятия:
+Key concepts:
 
-* **Кеш-линия** — 64 байта. Память читается только линиями. Прочитали
-  один байт — оплатили 64. Значит, плотная упаковка данных и
-  последовательный доступ — главное. Это основа data-oriented design и ECS
-  в движках: массив структур vs структура массивов.
-* **Аппаратный префетчер** распознаёт последовательный и шаговый доступ
-  и подгружает линии заранее. Случайный доступ (связные списки, хеш-
-  таблицы, деревья) он не предскажет.
-* **Программный префетч**: `prefetcht0 [addr]` (во все уровни),
-  `prefetcht1/t2`, `prefetchnta` (минимально загрязняя кеш). Полезен,
-  когда адрес известен заранее, а префетчер его не угадает (обход дерева,
-  бинарный поиск, «прыжки» по индексам). Расстояние префетча подбирается
-  измерением: на ~100–300 тактов вперёд.
-* **TLB**: трансляция виртуальных адресов кешируется (L1 dTLB ~64
-  записи, L2 ~2000). Доступ к памяти разбросанный по многим страницам
-  промахивается мимо TLB — «огромные страницы» (2 МиБ) помогают.
-* **Ассоциативность и 4K aliasing**: адреса, отличающиеся на кратное
-  4096, попадают в один набор кеша. Транспонирование матрицы 1024×1024
-  int по столбцам — патологический случай (упражнение `a1405` решает его
-  блоками).
-* **Выравнивание**: доступ, пересекающий границу линии (split load),
-  стоит дороже; пересекающий границу страницы — намного дороже.
-  `vmovdqa` требует выравнивания, `vmovdqu` — нет, но и ему выгодно
-  выровненное (упражнение `a1404`).
-* **Non-temporal записи** (`movnti`, `vmovntdq`) идут мимо кеша — для
-  больших буферов, которые не будут скоро прочитаны (заполнение
-  кадрового буфера, большие memset). После них — `sfence`.
+* A **cache line** is 64 bytes. Memory is read only in whole lines. Read
+  one byte — pay for 64. So dense data packing and sequential access are
+  what matter most. This is the foundation of data-oriented design and
+  ECS in engines: array of structs vs struct of arrays.
+* The **hardware prefetcher** recognizes sequential and strided access
+  and fetches lines ahead of time. It cannot predict random access
+  (linked lists, hash tables, trees).
+* **Software prefetch**: `prefetcht0 [addr]` (into all levels),
+  `prefetcht1/t2`, `prefetchnta` (with minimal cache pollution). Useful
+  when the address is known in advance but the prefetcher won't guess it
+  (tree traversal, binary search, "jumping" through indices). The
+  prefetch distance is tuned by measurement: ~100–300 cycles ahead.
+* **TLB**: virtual address translation is cached (L1 dTLB ~64 entries,
+  L2 ~2000). Memory access scattered across many pages misses the TLB —
+  "huge pages" (2 MiB) help.
+* **Associativity and 4K aliasing**: addresses that differ by a multiple
+  of 4096 land in the same cache set. Transposing a 1024×1024 int matrix
+  column-by-column is a pathological case (exercise `a1405` solves it
+  with blocking).
+* **Alignment**: an access that crosses a cache line boundary (split
+  load) costs more; one that crosses a page boundary costs much more.
+  `vmovdqa` requires alignment, `vmovdqu` doesn't, but it still benefits
+  from aligned data (exercise `a1404`).
+* **Non-temporal stores** (`movnti`, `vmovntdq`) bypass the cache — for
+  large buffers that won't be read again soon (filling a framebuffer,
+  large memsets). Follow them with `sfence`.
 
-## 4. Предсказание переходов
+## 4. Branch prediction
 
-Повторение главы 13: промах — 15–20 тактов. Простые правила:
+A recap of chapter 13: a mispredict costs 15–20 cycles. Simple rules:
 
-* делайте переходы предсказуемыми (сортировка данных, разделение
-  «горячего» и «холодного» пути);
-* для непредсказуемых условий — `cmov`/`setcc`/SIMD-маски;
-* для косвенных переходов (`switch`, виртуальные вызовы, интерпретаторы
-  байт-кода) предсказатель тоже есть, но он хуже; «threaded code» в
-  интерпретаторах (по переходу в конце каждого обработчика) предсказывается
-  лучше, чем один общий `switch` — и JIT в главе 15 избавляется от этого
-  совсем.
+* make branches predictable (sort the data, separate the "hot" and
+  "cold" paths);
+* for unpredictable conditions use `cmov`/`setcc`/SIMD masks;
+* indirect branches (`switch`, virtual calls, bytecode interpreters)
+  also have a predictor, but it is weaker; "threaded code" in
+  interpreters (a jump at the end of every handler) predicts better than
+  a single shared `switch` — and the JIT in chapter 15 gets rid of this
+  entirely.
 
-## 5. Что ещё влияет
+## 5. What else matters
 
-* **Ложные зависимости**: запись в 8/16-битную часть регистра (`mov al, ...`)
-  сливается со старым значением; `popcnt`/`lzcnt` на старых Intel ждали
-  приёмник; `cvtsi2sd` — старшие биты xmm. Разрывайте `xor`-ом.
-* **Store forwarding**: чтение только что записанного адреса берётся из
-  буфера записи (~4–5 тактов). Если чтение шире записи или смещено —
-  «store forwarding stall», ~10–15 тактов.
-* **Денормализованные float** — микрокод, в десятки раз медленнее.
-* **Выравнивание кода**: горячие циклы иногда выравнивают на 32/64
-  байта (`.p2align 5`), чтобы они помещались в меньше строк uop-кеша.
-  Эффект мал и нестабилен — измеряйте.
-* **Частота**: тяжёлый AVX2/AVX-512 код на некоторых Intel снижал частоту
-  ядра; турбобуст зависит от температуры и числа активных ядер.
+* **False dependencies**: writing to an 8/16-bit part of a register
+  (`mov al, ...`) merges with the old value; `popcnt`/`lzcnt` on older
+  Intel waited on the destination; `cvtsi2sd` on the upper bits of the
+  xmm. Break them with `xor`.
+* **Store forwarding**: a read of a just-written address is served from
+  the store buffer (~4–5 cycles). If the read is wider than the write or
+  misaligned relative to it — a "store forwarding stall", ~10–15 cycles.
+* **Denormal floats** — microcode, dozens of times slower.
+* **Code alignment**: hot loops are sometimes aligned to 32/64 bytes
+  (`.p2align 5`) so they fit in fewer uop cache lines. The effect is
+  small and unstable — measure.
+* **Frequency**: heavy AVX2/AVX-512 code lowered the core frequency on
+  some Intel CPUs; turbo boost depends on temperature and the number of
+  active cores.
 
-## 6. Измерения
+## 6. Measurement
 
-Правила честного измерения:
+Rules for honest measurement:
 
-1. Измеряйте **оптимизированную** сборку (`-O3`) — `-O0` измерять бессмысленно.
-2. **Прогрев**: первый проход идёт по холодным кешам, TLB, предсказателю;
-   страницы памяти ещё не выделены (page faults).
-3. **Повторы**: берите минимум или медиану из многих запусков; смотрите
-   разброс.
-4. **Не дайте компилятору выкинуть работу**: результат должен «утекать»
-   (печать, `volatile`, `asm`-барьер), иначе цикл исчезнет.
-5. **Размер данных**: 10 КиБ (L1), 1 МиБ (L2/L3) и 1 ГиБ (DRAM) — три
-   разные задачи. Пишите это рядом с результатом.
-6. Фиксируйте частоту (`cpupower frequency-set -g performance`),
-   закрепляйте поток на ядре (`taskset -c 2`).
+1. Measure an **optimized** build (`-O3`) — measuring `-O0` is pointless.
+2. **Warm-up**: the first pass runs with cold caches, TLB and predictor;
+   memory pages are not yet allocated (page faults).
+3. **Repetitions**: take the minimum or median of many runs; look at the
+   spread.
+4. **Don't let the compiler throw the work away**: the result must "leak"
+   (printing, `volatile`, an `asm` barrier), otherwise the loop vanishes.
+5. **Data size**: 10 KiB (L1), 1 MiB (L2/L3) and 1 GiB (DRAM) are three
+   different problems. Write it down next to the result.
+6. Pin the frequency (`cpupower frequency-set -g performance`), pin the
+   thread to a core (`taskset -c 2`).
 
 ### rdtsc
 
 ```asm
-    lfence          ; всё предыдущее завершено
+    lfence          ; everything before has completed
     rdtsc           ; edx:eax = TSC
     shl  rdx, 32
     or   rax, rdx
-    ; ... измеряемый код ...
-    rdtscp          ; ждёт завершения предыдущих инструкций
-    lfence          ; и не пускает последующие раньше
+    ; ... code being measured ...
+    rdtscp          ; waits for preceding instructions to complete
+    lfence          ; and doesn't let subsequent ones start early
 ```
 
-TSC на современных CPU тикает с постоянной («номинальной») частотой,
-независимо от турбо и энергосбережения, — это часы, а не такты ядра.
-В C3 — `$$sysclock()`; для времени — `std::time` (`clock::now()`).
+On modern CPUs the TSC ticks at a constant ("nominal") frequency,
+independent of turbo and power saving — it is a clock, not core cycles.
+In C3 it is `$$sysclock()`; for time, use `std::time` (`clock::now()`).
 
 ### perf
 
-Linux `perf` читает аппаратные счётчики производительности (PMU):
+Linux `perf` reads the hardware performance counters (PMU):
 
 ```
-perf stat ./prog                      # такты, инструкции, IPC, промахи переходов
+perf stat ./prog                      # cycles, instructions, IPC, branch misses
 perf stat -e cycles,instructions,branch-misses,cache-misses,L1-dcache-load-misses ./prog
-perf record -g ./prog && perf report  # где тратится время (с call graph)
-perf annotate                         # горячие инструкции в дизассемблере
+perf record -g ./prog && perf report  # where the time goes (with call graph)
+perf annotate                         # hot instructions in the disassembly
 ```
 
-Главные метрики:
+Key metrics:
 
-* **IPC** (instructions per cycle): < 1 — что-то ждёт (память, промахи),
-  2–4 — код хорошо загружает ядро;
-* **branch-misses** на тысячу инструкций;
-* **cache-misses**, промахи L1/LLC;
-* методика **Top-Down** (Intel, Yasin): доля тактов frontend bound /
-  backend bound (memory / core) / bad speculation / retiring — `perf stat
-  --topdown` или `toplev`.
+* **IPC** (instructions per cycle): < 1 — something is waiting (memory,
+  mispredicts), 2–4 — the code keeps the core busy;
+* **branch-misses** per thousand instructions;
+* **cache-misses**, L1/LLC misses;
+* the **Top-Down** method (Intel, Yasin): the share of cycles that are
+  frontend bound / backend bound (memory / core) / bad speculation /
+  retiring — `perf stat --topdown` or `toplev`.
 
-### Статический анализ
+### Static analysis
 
-* **llvm-mca** — симулирует блок инструкций на модели конкретного CPU и
-  показывает узкое место: `llvm-mca -mcpu=znver2 loop.s`.
-* **uiCA** (uops.info) — то же для Intel, очень точно.
-* Compiler Explorer умеет показывать вывод llvm-mca прямо рядом с кодом.
+* **llvm-mca** — simulates a block of instructions on a model of a
+  specific CPU and shows the bottleneck: `llvm-mca -mcpu=znver2 loop.s`.
+* **uiCA** (uops.info) — the same for Intel, very accurate.
+* Compiler Explorer can show llvm-mca output right next to the code.
 
-## 7. Чек-лист оптимизации
+## 7. Optimization checklist
 
-1. Правильный алгоритм и структура данных (O-большое никто не отменял).
-2. Расположение данных: последовательный доступ, плотная упаковка,
-   SoA для горячих полей, отсутствие указательной беготни.
-3. Убрать лишнюю работу из горячего цикла (вынести инварианты, не
-   аллоцировать).
-4. Разорвать цепочки зависимостей (несколько аккумуляторов).
-5. Векторизовать (глава 10) — или помочь компилятору сделать это.
-6. Убрать непредсказуемые ветвления (глава 13).
-7. Многопоточность — последней, и следить за false sharing.
+1. The right algorithm and data structure (big-O still applies).
+2. Data layout: sequential access, dense packing, SoA for hot fields,
+   no pointer chasing.
+3. Remove unnecessary work from the hot loop (hoist invariants, don't
+   allocate).
+4. Break dependency chains (multiple accumulators).
+5. Vectorize (chapter 10) — or help the compiler do it.
+6. Remove unpredictable branches (chapter 13).
+7. Multithreading — last, and watch out for false sharing.
 
-Каждый шаг — **только после измерения**, которое показывает, что именно
-он — узкое место.
+Take each step **only after a measurement** shows that this exact thing
+is the bottleneck.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Чем задержка инструкции отличается от пропускной способности? Приведите
-   пример цикла, ограниченного каждой из них.
-2. Почему сумма массива с четырьмя аккумуляторами быстрее, чем с одним? Сколько
-   аккумуляторов нужно для `vaddps` с задержкой 3 и двумя запусками за такт?
-3. Что такое кеш-линия и почему обход матрицы по столбцам медленный?
-4. Когда полезен `prefetcht0`, а когда бесполезен?
-5. Зачем `lfence` перед `rdtsc`? Что именно считает TSC?
-6. Какие метрики `perf stat` вы посмотрите первыми и что они скажут?
-7. Почему результаты замеров на `-O0` бессмысленны?
-8. Что такое store forwarding stall?
+1. How does an instruction's latency differ from its throughput? Give an
+   example of a loop limited by each.
+2. Why is an array sum with four accumulators faster than with one? How
+   many accumulators do you need for `vaddps` with latency 3 and two
+   issues per cycle?
+3. What is a cache line, and why is traversing a matrix by columns slow?
+4. When is `prefetcht0` useful, and when is it useless?
+5. Why `lfence` before `rdtsc`? What exactly does the TSC count?
+6. Which `perf stat` metrics will you look at first, and what will they
+   tell you?
+7. Why are benchmark results at `-O0` meaningless?
+8. What is a store forwarding stall?
 
-## Что почитать
+## Further reading
 
-* Denis Bakhvalov, «Performance Analysis and Tuning on Modern CPUs»
-  (бесплатная книга, easyperf.net) — основной источник по этой главе.
-* Agner Fog: «Optimizing software in C++», «Optimizing subroutines in
-  assembly language», «The microarchitecture of Intel, AMD and VIA CPUs»,
-  «Instruction tables» (agner.org/optimize).
+* Denis Bakhvalov, "Performance Analysis and Tuning on Modern CPUs"
+  (free book, easyperf.net) — the main source for this chapter.
+* Agner Fog: "Optimizing software in C++", "Optimizing subroutines in
+  assembly language", "The microarchitecture of Intel, AMD and VIA CPUs",
+  "Instruction tables" (agner.org/optimize).
 * https://uops.info, https://uica.uops.info.
-* Ulrich Drepper, «What Every Programmer Should Know About Memory».
+* Ulrich Drepper, "What Every Programmer Should Know About Memory".
 * Intel® 64 and IA-32 Architectures Optimization Reference Manual; AMD
   Software Optimization Guide for Zen.
-* Daniel Lemire's blog — множество аккуратных микробенчмарков.
-* Brendan Gregg, «Systems Performance» и сайт brendangregg.com (perf,
+* Daniel Lemire's blog — lots of careful microbenchmarks.
+* Brendan Gregg, "Systems Performance" and brendangregg.com (perf,
   flame graphs).
-* Mike Acton, «Data-Oriented Design and C++» (CppCon 2014) — мост к треку
-  про движки.
+* Mike Acton, "Data-Oriented Design and C++" (CppCon 2014) — a bridge to
+  the engine track.

@@ -1,4 +1,4 @@
-После ucomisd SF/OF всегда 0, поэтому jl/jg бесполезны — нужны jb/ja/je.
-Порядок проверок в fcompare: `jp` (NaN) → `je` (равны) → `jb` (меньше) → иначе больше. Добавьте метки для возврата 2 и 0.
-clamp: `maxsd xmm0, xmm1` затем `minsd xmm0, xmm2`.
-count_greater: сравнивайте `ucomisd xmm1, xmm0` (элемент с порогом) и пропускайте инкремент по `jbe` — он сработает и для NaN.
+After ucomisd SF/OF are always 0, so jl/jg are useless — you need jb/ja/je.
+Order of checks in fcompare: `jp` (NaN) → `je` (equal) → `jb` (less) → otherwise greater. Add labels for returning 2 and 0.
+clamp: `maxsd xmm0, xmm1` then `minsd xmm0, xmm2`.
+count_greater: compare with `ucomisd xmm1, xmm0` (element against threshold) and skip the increment with `jbe` — it also fires for NaN.

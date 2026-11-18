@@ -1,68 +1,68 @@
 // =====================================================================
-//  089 · Атрибуты: `@align`, `@packed`, `@nodiscard`, `@noinline`…
+//  089 · Attributes: `@align`, `@packed`, `@nodiscard`, `@noinline`…
 // =====================================================================
 //
-//  Атрибуты — аннотации к объявлениям, которые пишутся ПОСЛЕ
-//  объявляемого: `fn int f() @nodiscard`, `struct S @packed { ... }`,
-//  `int x @align(16);`. Вы уже встречали `@operator`, `@dynamic`,
-//  `@private`, `@local`, `@init`, `@test`. В C то же самое делается
-//  нестандартными `__attribute__((packed))` / `__declspec(align(16))`,
-//  разными для каждого компилятора; в C3 это часть языка.
+//  Attributes are annotations on declarations, written AFTER the thing
+//  being declared: `fn int f() @nodiscard`, `struct S @packed { ... }`,
+//  `int x @align(16);`. You've already met `@operator`, `@dynamic`,
+//  `@private`, `@local`, `@init`, `@test`. In C the same things are done
+//  with non-standard `__attribute__((packed))` / `__declspec(align(16))`,
+//  different for every compiler; in C3 they are part of the language.
 //
-//  РАСКЛАДКА ПАМЯТИ
+//  MEMORY LAYOUT
 //
-//    `@packed` (struct/union) — убрать выравнивание: все поля идут
-//    вплотную, без padding, выравнивание структуры = 1. Нужно для
-//    двоичных форматов (заголовки файлов, сетевые пакеты), где каждый
-//    байт на своём месте. Цена — невыровненный доступ к полям (на x86
-//    чуть медленнее, на некоторых архитектурах — заметно). И ловушка:
-//    АДРЕС невыровненного поля нельзя использовать как обычный `uint*`.
-//    `io::printfn("%d", h.length)` неявно берёт адрес (аргумент
-//    становится `any`), и в safe-режиме программа упадёт с
-//    "Unaligned access". Копируйте поле в локальную переменную.
+//    `@packed` (struct/union) — remove alignment: all fields are packed
+//    tightly with no padding, and the struct's alignment is 1. Needed for
+//    binary formats (file headers, network packets) where every byte has
+//    its fixed place. The price is unaligned access to fields (slightly
+//    slower on x86, noticeably slower on some architectures). And a trap:
+//    the ADDRESS of an unaligned field can't be used as a regular `uint*`.
+//    `io::printfn("%d", h.length)` implicitly takes the address (the
+//    argument becomes `any`), and in safe mode the program will crash with
+//    "Unaligned access". Copy the field into a local variable first.
 //
 //        struct WireHeader @packed { char kind; uint length; ushort crc; }
-//        // 7 байт вместо 12
+//        // 7 bytes instead of 12
 //
-//    `@align(N)` — минимальное выравнивание (только УВЕЛИЧИВАЕТ). На
-//    структуре — для кеш-линий (64 байта: чтобы два потока не дрались за
-//    одну линию, «false sharing») и SIMD (16/32); на поле — сдвигает
-//    поле на границу N:
+//    `@align(N)` — minimum alignment (it can only INCREASE it). On a
+//    struct it's used for cache lines (64 bytes: so that two threads don't
+//    fight over one line — "false sharing") and SIMD (16/32); on a field
+//    it moves the field to an N-byte boundary:
 //
 //        struct Counter @align(64) { int value; }    // size 64, align 64
 //
-//    Сочетание `@packed @align(N)` даёт «плотно внутри, но выровнено
-//    снаружи».
+//    Combining `@packed @align(N)` gives you "tight inside, but aligned
+//    outside".
 //
-//  ФУНКЦИИ
+//  FUNCTIONS
 //
-//    `@nodiscard` — результат нельзя игнорировать. Для функций, где
-//    забытый результат почти наверняка баг (код ошибки, новое значение
-//    вместо изменения на месте). Если очень надо — `(void)f();`.
-//    (Optional-результаты и так нельзя молча отбросить, `@maydiscard`
-//    наоборот разрешает это.)
+//    `@nodiscard` — the result must not be ignored. For functions where a
+//    forgotten result is almost certainly a bug (an error code, a new value
+//    instead of an in-place change). If you really must — `(void)f();`.
+//    (Optional results can't be silently dropped anyway; `@maydiscard`
+//    does the opposite and allows it.)
 //
-//    `@inline` / `@noinline` — всегда/никогда не встраивать функцию.
-//    Можно ставить и на конкретный вызов: `helper() @inline`. `@noinline`
-//    полезен для «холодного» кода (обработка ошибок), чтобы не раздувать
-//    горячий цикл, и для профилирования.
+//    `@inline` / `@noinline` — always/never inline the function. They can
+//    also be put on a specific call: `helper() @inline`. `@noinline` is
+//    useful for "cold" code (error handling), so it doesn't bloat a hot
+//    loop, and for profiling.
 //
-//    `@deprecated("сообщение")` — использование даёт предупреждение.
+//    `@deprecated("message")` — any use produces a warning.
 //
-//    Ещё полезные: `@noreturn` (функция не возвращается — `exit`),
-//    `@unused` (не предупреждать о неиспользуемом), `@cname("...")` /
-//    `@export` (имя символа для C, см. 092), `@weak`, `@section(...)`.
-//    Полный список — в MANUAL.md, раздел 6_13.
+//    Other useful ones: `@noreturn` (the function never returns — `exit`),
+//    `@unused` (don't warn about it being unused), `@cname("...")` /
+//    `@export` (symbol name for C, see 092), `@weak`, `@section(...)`.
+//    The full list is in MANUAL.md, section 6_13.
 //
-//  ЗАДАЧА:
-//    1. `WireHeader` описывает 7-байтовый заголовок пакета. Добавьте
-//       атрибут, чтобы проверка размера прошла.
-//    2. `SharedCounter` должен занимать ровно одну кеш-линию (64 байта)
-//       и быть выровнен на 64.
-//    3. Поле `data` у `SimdBlock` должно начинаться со смещения 16.
-//    4. Строка с `apply_damage` не компилируется из-за `@nodiscard`.
-//       Это не просто так: функция НЕ меняет hp, а возвращает новое
-//       значение. Исправьте вызов, чтобы результат использовался.
+//  TASK:
+//    1. `WireHeader` describes a 7-byte packet header. Add an attribute
+//       so that the size check passes.
+//    2. `SharedCounter` must take exactly one cache line (64 bytes) and
+//       be aligned to 64.
+//    3. The `data` field of `SimdBlock` must start at offset 16.
+//    4. The line with `apply_damage` doesn't compile because of
+//       `@nodiscard`. That's for a reason: the function does NOT change
+//       hp, it returns the new value. Fix the call so the result is used.
 //
 import std::io;
 
@@ -107,10 +107,10 @@ fn void main()
     io::printfn("SimdBlock:     size=%d, data at offset %d", SimdBlock::size, $reflect(SimdBlock.data).offset);
 
     WireHeader h = { 1, 512, 0xBEEF };
-    // Поля packed-структуры не выровнены. Передать их в printf напрямую
-    // нельзя (он получает `any` — указатель на поле, и safe-режим
-    // упадёт с "Unaligned access"). Сначала копируем в локальные
-    // переменные: чтение поля по значению компилятор делает корректно.
+    // Fields of a packed struct are not aligned. You can't pass them to
+    // printf directly (it receives `any` — a pointer to the field, and safe
+    // mode will crash with "Unaligned access"). So we copy them into local
+    // variables first: the compiler reads a field by value correctly.
     uint length = h.length;
     ushort crc = h.crc;
     io::printfn("header: kind=%d length=%d crc=%x", h.kind, length, crc);

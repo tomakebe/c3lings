@@ -1,11 +1,11 @@
 // =====================================================================
-//  e0703 · Состояния загрузки, зависимости и бюджет ввода-вывода
+//  e0703 · Loading states, dependencies and an I/O budget
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/07_resources.md (разделы «Состояния
-//  загрузки» и «Асинхронная загрузка»).
+//  Read engine/docs/07_resources.md first (sections "Loading
+//  states" and "Asynchronous loading").
 //
-//  Загрузка ассета — не мгновенный вызов, а процесс, растянутый на кадры:
+//  Loading an asset is not an instant call but a process spread over frames:
 //
 //      UNLOADED --request--> QUEUED --IO slot--> LOADING --IO done--+
 //                                                                    |
@@ -17,33 +17,33 @@
 //                                                v
 //                                             LOADED
 //
-//  * Одновременно выполняется не более max_in_flight чтений: диск (и
-//    особенно оптический/сетевой) не любит сотню параллельных запросов.
-//  * Ассет становится LOADED, только когда загружены ВСЕ его зависимости
-//    (материал без шейдера бесполезен). Байты самого ассета при этом
-//    могут прийти раньше — он ждёт в WAITING_DEPS.
-//  * Ошибка распространяется вверх: если текстура не нашлась, материал,
-//    который от неё зависит, тоже FAILED. (Многие движки вместо этого
-//    подставляют «заглушку» — розово-чёрную текстуру; см. главу.)
+//  * At most max_in_flight reads run at once: a disk (and
+//    especially optical/network storage) does not like a hundred parallel requests.
+//  * An asset becomes LOADED only once ALL its dependencies are loaded
+//    (a material without a shader is useless). The asset's own bytes may
+//    arrive earlier — then it waits in WAITING_DEPS.
+//  * Failure propagates upward: if a texture is not found, the material
+//    that depends on it is FAILED too. (Many engines instead
+//    substitute a "placeholder" — a pink-and-black texture; see the chapter.)
 //
-//  Здесь «асинхронность» моделируется тиками: у каждого ассета есть
-//  io_cost — сколько тиков длится его чтение. Это та же логика, что и в
-//  настоящем стриминге, только без потоков, а значит детерминированно.
+//  Here "asynchrony" is modeled with ticks: each asset has an
+//  io_cost — how many ticks its read takes. It is the same logic as in
+//  real streaming, only without threads, and therefore deterministic.
 //
-//  ЗАДАЧА: реализуйте Loader.request и Loader.tick (TODO ниже).
-//    request(i): если ассет не UNLOADED — ничего не делать (повторный
-//      запрос не должен ставить его в очередь второй раз). Иначе СНАЧАЛА
-//      рекурсивно запросить зависимости, ПОТОМ перевести ассет в QUEUED и
-//      положить в конец очереди (зависимости начинают читаться раньше).
-//    tick() — три фазы строго в таком порядке:
-//      1. Все LOADING (в порядке индексов): remaining--; при 0 освободить
-//         слот IO (in_flight--) и перейти в FAILED (если missing) или
-//         в WAITING_DEPS.
-//      2. Разрешение зависимостей: повторять проход по всем WAITING_DEPS,
-//         пока что-то меняется: если какая-то зависимость FAILED -> FAILED;
-//         если все LOADED -> LOADED.
-//      3. Запуск чтений: пока in_flight < max_in_flight и очередь не пуста,
-//         взять ассет из НАЧАЛА очереди -> LOADING, remaining = io_cost,
+//  TASK: implement Loader.request and Loader.tick (TODO below).
+//    request(i): if the asset is not UNLOADED — do nothing (a repeated
+//      request must not queue it a second time). Otherwise FIRST
+//      recursively request the dependencies, THEN move the asset to QUEUED and
+//      append it to the queue (dependencies start reading earlier).
+//    tick() — three phases, strictly in this order:
+//      1. All LOADING (in index order): remaining--; at 0 release the
+//         IO slot (in_flight--) and move to FAILED (if missing) or
+//         to WAITING_DEPS.
+//      2. Dependency resolution: repeat passes over all WAITING_DEPS
+//         while anything changes: if any dependency is FAILED -> FAILED;
+//         if all are LOADED -> LOADED.
+//      3. Start reads: while in_flight < max_in_flight and the queue is not empty,
+//         take an asset from the FRONT of the queue -> LOADING, remaining = io_cost,
 //         in_flight++, io_starts++.
 //
 import std::io;
@@ -64,8 +64,8 @@ struct Asset
 {
     String name;
     int io_cost;
-    bool missing;          // файла нет на диске
-    int[] deps;            // индексы зависимостей
+    bool missing;          // the file is not on disk
+    int[] deps;            // dependency indices
     LoadState state;
     int remaining;
 }
@@ -101,7 +101,7 @@ fn void Loader.request(&self, int i)
 
 fn void Loader.tick(&self)
 {
-    // 1. продвигаем чтения
+    // 1. advance reads
     foreach (&a : self.assets)
     {
         if (a.state != LOADING) continue;
@@ -110,7 +110,7 @@ fn void Loader.tick(&self)
         self.in_flight--;
         a.state = a.missing ? FAILED : WAITING_DEPS;
     }
-    // 2. разрешаем зависимости до неподвижной точки
+    // 2. resolve dependencies to a fixed point
     bool changed = true;
     while (changed)
     {
@@ -130,7 +130,7 @@ fn void Loader.tick(&self)
             else if (all_loaded) { a.state = LOADED; changed = true; }
         }
     }
-    // 3. запускаем новые чтения
+    // 3. start new reads
     while (self.in_flight < self.max_in_flight && self.q_head < self.q_tail)
     {
         Asset* a = &self.assets[self.queue[self.q_head++]];
@@ -142,7 +142,7 @@ fn void Loader.tick(&self)
 }
 
 // ---------------------------------------------------------------------
-// Ниже — проверочный код, его менять не нужно.
+// The checking code below does not need to be changed.
 // ---------------------------------------------------------------------
 
 fn bool Loader.busy(&self)
@@ -209,7 +209,7 @@ fn void main()
 
     ld.request(Id.HERO_MAT.ordinal);
     ld.request(Id.BROKEN_MAT.ordinal);
-    ld.request(Id.HERO_MAT.ordinal);        // повторный запрос — без эффекта
+    ld.request(Id.HERO_MAT.ordinal);        // repeated request — no effect
     assert(ld.q_tail == 8, "queue must contain 8 unique assets, got %d", ld.q_tail);
     assert(ld.queue[0] == Id.VS.ordinal && ld.queue[2] == Id.PROG.ordinal,
            "dependencies must be queued before the asset that needs them");

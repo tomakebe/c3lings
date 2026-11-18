@@ -1,47 +1,47 @@
 // =====================================================================
-//  e0705 · Офлайн-пайплайн: «готовка» ассета в бинарный формат
+//  e0705 · Offline pipeline: "cooking" an asset into a binary format
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/07_resources.md (раздел «Пайплайн
-//  ассетов: source -> cooked»).
+//  Read engine/docs/07_resources.md first (section "Asset
+//  pipeline: source -> cooked").
 //
-//  Исходные ассеты (FBX, PNG, JSON, текстовые конфиги) удобны людям и
-//  DCC-инструментам, но плохи для рантайма: их надо разбирать, проверять,
-//  конвертировать. Поэтому движки «готовят» (cook) их ОФЛАЙН — в
-//  инструментах или на билд-ферме — в бинарный формат, который рантайм
-//  загружает почти без работы: прочитал блок байтов, проверил заголовок,
-//  выставил указатели прямо в загруженный буфер («in-place loading»).
+//  Source assets (FBX, PNG, JSON, text configs) are convenient for people and
+//  DCC tools but bad for the runtime: they must be parsed, validated,
+//  converted. So engines "cook" them OFFLINE — in
+//  the tools or on a build farm — into a binary format that the runtime
+//  loads with almost no work: read a block of bytes, check the header,
+//  point pointers straight into the loaded buffer ("in-place loading").
 //
-//  Наш формат мешa (все числа little-endian):
+//  Our mesh format (all numbers little-endian):
 //
-//      offset size  поле
+//      offset size  field
 //      0      4     magic    = 'M','S','H','1'
 //      4      2     version  = FORMAT_VERSION
-//      6      2     flags    (пока 0)
+//      6      2     flags    (0 for now)
 //      8      4     vertex_count
 //      12     4     index_count
-//      16     4     payload_size   (байт после заголовка)
-//      20     4     checksum       FNV-1a 32 от payload
-//      24     ...   payload: vertex_count * 3 float, затем index_count
-//                   ushort, затем нули до кратности 4
+//      16     4     payload_size   (bytes after the header)
+//      20     4     checksum       FNV-1a 32 of the payload
+//      24     ...   payload: vertex_count * 3 float, then index_count
+//                   ushort, then zeros up to a multiple of 4
 //
-//  Заголовок 24 байта — кратен 4, поэтому float'ы в payload выровнены, и
-//  рантайм может смотреть на них как на float[] без копирования.
+//  The 24-byte header is a multiple of 4, so the floats in the payload are aligned, and
+//  the runtime can view them as a float[] without copying.
 //
-//  Принцип: вся дорогая валидация (индексы в диапазоне, лимиты) — при
-//  готовке. Рантайм проверяет только то, что дёшево и ловит реальные
-//  проблемы: magic, версию (формат поменялся — пересобери ассеты!),
-//  размер (файл обрезан) и контрольную сумму (файл повреждён).
+//  Principle: all expensive validation (indices in range, limits) happens at
+//  cook time. The runtime checks only what is cheap and catches real
+//  problems: magic, version (format changed — rebuild the assets!),
+//  size (file truncated) and checksum (file corrupted).
 //
-//  Числа пишем побайтово, явно в little-endian, а не `memcpy` структуры:
-//  так формат не зависит от компилятора (padding) и платформы.
+//  Numbers are written byte by byte, explicitly little-endian, rather than `memcpy`ing a struct:
+//  that way the format does not depend on the compiler (padding) or platform.
 //
-//  ЗАДАЧА (TODO ниже):
-//    1. put_u16 / put_u32 / put_f32 — запись в little-endian.
-//    2. cook(src, out) — проверить исходник (INVALID_SOURCE~ при индексе
-//       вне диапазона или числе индексов, не кратном 3) и записать файл.
-//    3. load(blob) — проверить заголовок и вернуть Mesh со срезами,
-//       указывающими прямо в blob.
+//  TASK (TODO below):
+//    1. put_u16 / put_u32 / put_f32 — little-endian writes.
+//    2. cook(src, out) — validate the source (INVALID_SOURCE~ on an index
+//       out of range or an index count not divisible by 3) and write the file.
+//    3. load(blob) — check the header and return a Mesh with slices
+//       pointing straight into blob.
 //
 import std::io;
 import std::collections::list;
@@ -60,7 +60,7 @@ fn uint fnv1a32(char[] data)
 }
 
 // ---------------------------------------------------------------------
-// Исходный («source») формат — текст. Разбор дан готовым.
+// The "source" format is text. Parsing is provided.
 // ---------------------------------------------------------------------
 struct SourceMesh
 {
@@ -68,9 +68,9 @@ struct SourceMesh
     List{int} indices;
 }
 
-// ВНИМАНИЕ: List без init() при первом push берёт ВРЕМЕННЫЙ аллокатор
-// (tmem). Внутри @pool() это означает «данные исчезнут при выходе из
-// пула». Поэтому всё, что должно жить дольше, явно инициализируем mem.
+// NOTE: a List without init() takes the TEMPORARY allocator on the first push
+// (tmem). Inside @pool() that means "the data disappears when the pool
+// exits". So everything that must live longer is explicitly initialized with mem.
 fn void SourceMesh.init(&self)
 {
     self.positions.init(mem);
@@ -106,48 +106,48 @@ fn void? parse_source(String text, SourceMesh* out) => @pool()
 }
 
 // ---------------------------------------------------------------------
-// Запись
+// Writing
 // ---------------------------------------------------------------------
 fn void put_u8(List{char}* out, char v) => out.push(v);
 
 fn void put_u16(List{char}* out, ushort v)
 {
-    // TODO: младший байт первым: (char)(v & 0xFF), затем (char)(v >> 8)
+    // TODO: low byte first: (char)(v & 0xFF), then (char)(v >> 8)
 }
 
 fn void put_u32(List{char}* out, uint v)
 {
-    // TODO: 4 байта, младший первым
+    // TODO: 4 bytes, low byte first
 }
 
 fn void put_f32(List{char}* out, float v)
 {
-    // TODO: float записывается как его 32-битное представление (IEEE 754).
-    //       Нужна не конвертация значения, а переинтерпретация битов.
+    // TODO: a float is written as its 32-bit representation (IEEE 754).
+    //       You need a reinterpretation of the bits, not a value conversion.
 }
 
 fn void? cook(SourceMesh* src, List{char}* out)
 {
     // TODO:
     //  1. vcount = positions.len() / 3, icount = indices.len() (List.len()
-    //     возвращает знаковый sz — приведите к usz). Проверьте: icount % 3 == 0,
-    //     vcount <= 65535, каждый индекс в [0, vcount). Иначе INVALID_SOURCE~.
-    //  2. Соберите payload в отдельный List{char} (init(mem) и defer free!):
-    //     все float'ы, все индексы как ushort, нули до кратности 4.
-    //  3. Запишите в out заголовок (см. таблицу в шапке) и сам payload
+    //     returns a signed sz — cast it to usz). Check: icount % 3 == 0,
+    //     vcount <= 65535, every index in [0, vcount). Otherwise INVALID_SOURCE~.
+    //  2. Build the payload in a separate List{char} (init(mem) and defer free!):
+    //     all floats, all indices as ushort, zeros up to a multiple of 4.
+    //  3. Write the header (see the table in the file header) and the payload itself to out
     //     (out.push_all(payload.array_view())).
     return INVALID_SOURCE~;
 }
 
 // ---------------------------------------------------------------------
-// Чтение (рантайм)
+// Reading (runtime)
 // ---------------------------------------------------------------------
 fn ushort get_u16(char[] b, usz at) => (ushort)b[at] | (ushort)b[at + 1] << 8;
 fn uint get_u32(char[] b, usz at)
     => (uint)b[at] | (uint)b[at + 1] << 8 | (uint)b[at + 2] << 16 | (uint)b[at + 3] << 24;
 
-// Срезы смотрят прямо в blob: загрузка без копирования.
-// (Каст байтов в float[] предполагает little-endian хост — как у x86/ARM.)
+// The slices point straight into blob: zero-copy loading.
+// (Casting bytes to float[] assumes a little-endian host — like x86/ARM.)
 struct Mesh
 {
     float[] positions;
@@ -156,11 +156,11 @@ struct Mesh
 
 fn Mesh? load(char[] blob)
 {
-    // TODO: по порядку: размер >= HEADER_SIZE (TRUNCATED), magic (BAD_MAGIC),
-    //       версия (BAD_VERSION), blob вмещает payload_size (TRUNCATED),
-    //       checksum payload (CORRUPT). Затем верните Mesh, чьи срезы
-    //       указывают прямо в payload:  ((float*)payload.ptr)[:vcount * 3]
-    //       и индексы сразу после float'ов.
+    // TODO: in order: size >= HEADER_SIZE (TRUNCATED), magic (BAD_MAGIC),
+    //       version (BAD_VERSION), blob holds payload_size (TRUNCATED),
+    //       payload checksum (CORRUPT). Then return a Mesh whose slices
+    //       point straight into the payload:  ((float*)payload.ptr)[:vcount * 3]
+    //       and the indices right after the floats.
     return TRUNCATED~;
 }
 
@@ -216,7 +216,7 @@ fn void main()
     assert((char*)m.positions.ptr == blob.entries + HEADER_SIZE, "load must not copy - slices point into the blob");
     io::printfn("loaded: %d vertices, %d triangles", m.positions.len / 3, m.indices.len / 3);
 
-    // --- рантайм-проверки ---
+    // --- runtime checks ---
     char[] b = blob.array_view();
     assert(@catch(load(b[:10])) == TRUNCATED);
     assert(@catch(load(b[:b.len - 4])) == TRUNCATED, "payload shorter than payload_size");
@@ -231,7 +231,7 @@ fn void main()
     b[0] = 'M';
     (void)load(b)!!;
 
-    // --- проверки при готовке ---
+    // --- cook-time checks ---
     SourceMesh bad;
     bad.init();
     defer bad.free();

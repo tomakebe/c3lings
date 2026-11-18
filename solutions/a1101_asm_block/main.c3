@@ -1,31 +1,32 @@
 // =====================================================================
-//  a1101 · Inline-ассемблер C3: блок asm { ... }
+//  a1101 · C3 inline assembly: the asm { ... } block
 // =====================================================================
 //
-//  В этой главе править нужно САМ .c3-файл: ассемблер живёт внутри
-//  функций C3. У C3 два вида inline-ассемблера:
+//  In this chapter you edit the .c3 file ITSELF: the assembly lives inside
+//  C3 functions. C3 has two kinds of inline assembly:
 //
-//    asm("nop");        — строка передаётся в LLVM как есть. Компилятор
-//                         ничего не знает о том, что она читает и портит.
-//                         Годится для nop/pause/int3, не больше.
+//    asm("nop");        — the string is passed to LLVM as is. The compiler
+//                         knows nothing about what it reads and clobbers.
+//                         Good for nop/pause/int3, nothing more.
 //
-//    asm { ... }        — «структурный» блок. Компилятор САМ разбирает
-//                         инструкции, понимает, какие переменные читаются
-//                         и пишутся, какие регистры и флаги портятся, и
-//                         генерирует правильные ограничения для LLVM.
+//    asm { ... }        — a "structured" block. The compiler parses the
+//                         instructions ITSELF, understands which variables
+//                         are read and written, which registers and flags
+//                         get clobbered, and generates correct constraints
+//                         for LLVM.
 //
-//  Синтаксис блока — гибрид:
-//    * мнемоники в стиле AT&T, С СУФФИКСОМ РАЗМЕРА: movl (32 бита),
+//  The block syntax is a hybrid:
+//    * AT&T-style mnemonics, WITH A SIZE SUFFIX: movl (32 bits),
 //      movq (64), addl, subq, xorl, ...
-//    * но порядок операндов — как в Intel: ПРИЁМНИК ПЕРВЫЙ:
+//    * but the operand order is Intel's: DESTINATION FIRST:
 //          addl r, b;     // r += b
-//    * регистры — с префиксом $: $eax, $rdx, $xmm0;
-//    * операнды могут быть переменными C3 — по имени: movl r, a;
-//    * память — [p], [p + 4], [p + i * 4 + 8] (p — переменная-указатель);
-//    * размер переменной должен совпадать с суффиксом: movl требует
-//      int/uint, movq — long/ulong/указатель. Иначе — ошибка компиляции
-//      «'ulong' is not supported in this position».
-//    * каждая инструкция заканчивается `;`.
+//    * registers take a $ prefix: $eax, $rdx, $xmm0;
+//    * operands can be C3 variables, by name: movl r, a;
+//    * memory is [p], [p + 4], [p + i * 4 + 8] (p is a pointer variable);
+//    * the variable's size must match the suffix: movl requires
+//      int/uint, movq requires long/ulong/a pointer. Otherwise you get the
+//      compile error "'ulong' is not supported in this position".
+//    * every instruction ends with `;`.
 //
 //      fn int add(int a, int b)
 //      {
@@ -38,11 +39,11 @@
 //          return r;
 //      }
 //
-//  Поддерживается лишь подмножество инструкций (полный список печатает
-//  `c3c compile --list-asm file.c3`). Например, нет and, shl, imul, cmp,
-//  jmp — для них C3 и так генерирует отличный код.
+//  Only a subset of instructions is supported (the full list is printed by
+//  `c3c compile --list-asm file.c3`). For example, there is no and, shl,
+//  imul, cmp, jmp — C3 already generates excellent code for those.
 //
-//  ЗАДАЧА: исправьте три функции так, чтобы проверки прошли.
+//  TASK: fix the three functions so that the checks pass.
 //
 import std::io;
 
@@ -58,7 +59,7 @@ fn int add(int a, int b)
     return r;
 }
 
-// r = a - b  (64 бита)
+// r = a - b  (64 bits)
 fn long sub64(long a, long b)
 {
     long r;
@@ -70,7 +71,7 @@ fn long sub64(long a, long b)
     return r;
 }
 
-// r = ~(a ^ b) + 1   (то есть -(a ^ b))
+// r = ~(a ^ b) + 1   (that is, -(a ^ b))
 fn uint xor_neg(uint a, uint b)
 {
     uint r = a;

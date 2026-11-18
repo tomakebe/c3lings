@@ -1,30 +1,30 @@
 # =====================================================================
-#  a1303 · Атомарные операции: префикс lock и xadd
+#  a1303 · Atomic operations: the lock prefix and xadd
 # =====================================================================
 #
-#  `add dword ptr [rdi], 1` — это на самом деле три шага: прочитать,
-#  сложить, записать. Если два ядра делают это одновременно, оба могут
-#  прочитать 5 и оба записать 6 — одно увеличение потеряется.
+#  `add dword ptr [rdi], 1` is actually three steps: read, add, write.
+#  If two cores do this at the same time, both may read 5 and both
+#  write 6 — one increment is lost.
 #
-#  Префикс `lock` делает чтение-изменение-запись АТОМАРНОЙ: ядро
-#  захватывает кеш-линию в эксклюзивное владение (протокол MESI) и не
-#  отдаёт её, пока операция не завершится:
+#  The `lock` prefix makes the read-modify-write ATOMIC: the core takes
+#  the cache line into exclusive ownership (MESI protocol) and doesn't
+#  give it up until the operation completes:
 #
-#      lock add  dword ptr [rdi], esi     ; атомарно *p += v
+#      lock add  dword ptr [rdi], esi     ; atomically *p += v
 #      lock inc  qword ptr [rdi]
-#      lock xadd dword ptr [rdi], eax     ; атомарно: tmp = *p; *p += eax; eax = tmp
+#      lock xadd dword ptr [rdi], eax     ; atomically: tmp = *p; *p += eax; eax = tmp
 #
-#  `xadd` (exchange-and-add) возвращает СТАРОЕ значение — это fetch_add,
-#  основа счётчиков ссылок, тикет-локов, раздачи индексов в очередях задач.
+#  `xadd` (exchange-and-add) returns the OLD value — this is fetch_add,
+#  the basis of reference counts, ticket locks, and handing out indices in task queues.
 #
-#  lock-операции на x86 к тому же — ПОЛНЫЙ барьер памяти (глава в доке).
-#  Цена: ~20 тактов без конкуренции; при борьбе ядер за одну линию — сотни.
+#  On x86, lock operations are also a FULL memory barrier (see the chapter doc).
+#  Cost: ~20 cycles uncontended; when cores fight over one line — hundreds.
 #
-#  `xchg` с памятью атомарен ВСЕГДА, даже без lock (lock подразумевается).
+#  `xchg` with memory is ALWAYS atomic, even without lock (lock is implied).
 #
-#  ЗАДАЧА:
-#      atomic_fetch_add(p, v)  — вернуть старое значение *p, атомарно *p += v
-#      atomic_inc64(p)         — атомарно ++*p (64 бита), вернуть НОВОЕ значение
+#  TASK:
+#      atomic_fetch_add(p, v)  — return the old value of *p, atomically *p += v
+#      atomic_inc64(p)         — atomically ++*p (64 bits), return the NEW value
 #
     .intel_syntax noprefix
     .text
@@ -32,14 +32,14 @@
 # CInt atomic_fetch_add(CInt* p /*rdi*/, CInt v /*esi*/)
     .globl atomic_fetch_add
 atomic_fetch_add:
-    add dword ptr [rdi], esi    # TODO: не атомарно и ничего не возвращает
+    add dword ptr [rdi], esi    # TODO: not atomic and returns nothing
     xor eax, eax
     ret
 
 # long atomic_inc64(long* p)
     .globl atomic_inc64
 atomic_inc64:
-    # TODO: lock xadd с единицей, к старому значению прибавить 1
+    # TODO: lock xadd with one, then add 1 to the old value
     xor eax, eax
     ret
 

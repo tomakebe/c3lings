@@ -1,11 +1,11 @@
 // =====================================================================
-//  027 · Enum с ассоциированными значениями
+//  027 · Enums with associated values
 // =====================================================================
 //
-//  Часто к каждому значению enum хочется привязать данные: урон оружия,
-//  цвет, имя для показа. В C для этого заводят параллельный массив
-//  `weapon_damage[WEAPON_COUNT]` и надеются, что он не разойдётся с
-//  enum. В C3 данные можно объявить прямо в enum:
+//  Often you want to attach data to each enum value: a weapon's damage,
+//  a color, a display name. In C you'd set up a parallel array
+//  `weapon_damage[WEAPON_COUNT]` and hope it never drifts out of sync
+//  with the enum. In C3 you can declare the data right in the enum:
 //
 //      enum Weapon : (int damage, String label)
 //      {
@@ -13,31 +13,31 @@
 //          SWORD { 10, "iron sword" },
 //      }
 //
-//  После двоеточия в скобках — список ассоциированных полей с типами.
-//  Каждое значение обязано указать ВСЕ поля, по порядку ("Expected 2
-//  associated values for this enum value"). Это и есть защита: забыть
-//  урон для нового оружия невозможно.
+//  After the colon, in parentheses, comes the list of associated fields
+//  with their types. Every value must provide ALL the fields, in order
+//  ("Expected 2 associated values for this enum value"). That's the
+//  safety net: you can't forget the damage for a new weapon.
 //
-//  Можно указать и тип ordinal'а: `enum Weapon : char (int damage, ...)`.
+//  You can also specify the ordinal type: `enum Weapon : char (int damage, ...)`.
 //
-//  Доступ — как к полям структуры:
+//  Access works like struct fields:
 //
 //      Weapon w = SWORD;
 //      io::printn(w.damage);       // 10
 //      io::printn(w.label);        // "iron sword"
 //
-//  Данные хранятся в константной таблице; сам enum по-прежнему всего
-//  лишь маленькое число-ordinal.
+//  The data lives in a constant table; the enum itself is still just a
+//  small ordinal number.
 //
-//  ПОИСК ПО ЗНАЧЕНИЮ ПОЛЯ
-//  `Weapon::lookup_field(label, "iron sword")` ищет первое значение, у
-//  которого поле `label` равно заданному. Результат — Optional
-//  (`Weapon?`), потому что такого значения может и не быть. Как и в 023,
-//  проще всего задать значение по умолчанию через `??`:
+//  LOOKUP BY FIELD VALUE
+//  `Weapon::lookup_field(label, "iron sword")` finds the first value
+//  whose `label` field equals the given one. The result is an Optional
+//  (`Weapon?`), because there may be no such value. As in 023, the
+//  simplest thing is to give a default value with `??`:
 //
 //      Weapon w = Weapon::lookup_field(label, "laser") ?? FISTS;
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      FISTS: bare fists, damage 1
 //      SWORD: iron sword, damage 10
@@ -52,10 +52,10 @@ enum Weapon : (int damage, String label)
 {
     FISTS { 1,  "bare fists" },
     SWORD { 10, "iron sword" },
-    BOW   { "long bow" },                          // <- урон лука — 7
+    BOW   { "long bow" },                          // <- the bow's damage is 7
 }
 
-fn int total_damage(Weapon w, int hits) => ??? * hits;   // <- урон оружия w
+fn int total_damage(Weapon w, int hits) => ??? * hits;   // <- the damage of weapon w
 
 fn void main()
 {
@@ -65,7 +65,7 @@ fn void main()
     }
     io::printfn("total damage of 3 hits: %d", total_damage(SWORD, 3));
 
-    Weapon picked = ???;                           // <- найдите оружие с label "long bow"
+    Weapon picked = ???;                           // <- find the weapon with label "long bow"
     io::printfn("picked: %s", picked);
 
     Weapon unknown = Weapon::lookup_field(label, "laser") ?? FISTS;

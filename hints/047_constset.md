@@ -1,5 +1,5 @@
-1. Значения enum'а всегда 0, 1, 2... — задать `OK = 200` нельзя (отсюда ошибка «Expected '}'»).
-   Для произвольных значений объявите `constset HttpStatus : int { ... }`.
-2. У константы без значения оно равно предыдущему + 1.
-3. `constset` — отдельный тип: `int` в `HttpStatus` превращается только явным приведением `(HttpStatus)code`.
-4. Обратно — тоже явно: `(uint)mine`.
+1. Enum values are always 0, 1, 2... — you can't set `OK = 200` (hence the "Expected '}'" error).
+   For arbitrary values, declare `constset HttpStatus : int { ... }`.
+2. A constant without a value gets the previous one + 1.
+3. `constset` is a distinct type: an `int` only becomes an `HttpStatus` through an explicit cast `(HttpStatus)code`.
+4. The other way is explicit too: `(uint)mine`.

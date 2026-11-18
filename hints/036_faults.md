@@ -1,4 +1,4 @@
-1. Встроенная ошибка «элемента нет в коллекции» — `NOT_FOUND` (без префикса, она `@builtin`). Не забудьте `~`.
-2. `EMPTY_STRING` объявлена в модуле `string`, поэтому снаружи пишется `string::EMPTY_STRING`.
-3. Нулевой (пустой) `fault` означает «ошибки нет» и в условии ведёт себя как `false`.
-   Условие должно быть истинным, когда ошибки НЕТ.
+1. The built-in "element not in the collection" error is `NOT_FOUND` (no prefix, it's `@builtin`). Don't forget the `~`.
+2. `EMPTY_STRING` is declared in the `string` module, so from outside it's written `string::EMPTY_STRING`.
+3. A zero (empty) `fault` means "no error" and behaves like `false` in a condition.
+   The condition should be true when there is NO error.

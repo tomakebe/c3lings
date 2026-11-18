@@ -1,3 +1,3 @@
-1. Для n = 0 и n = 1 функция должна вернуть само n: условие `n < 2`.
-2. Две функции не могут называться `power`. В `main` (и внутри самой функции)
-   целочисленная версия вызывается как `ipower` — переименуйте её.
+1. For n = 0 and n = 1 the function should return n itself: the condition is `n < 2`.
+2. Two functions can't both be called `power`. In `main` (and inside the function itself)
+   the integer version is called as `ipower` — rename it.

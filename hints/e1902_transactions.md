@@ -1,6 +1,6 @@
-`begin`: если `cursor < txn_len`, обрежьте `txn_len = cursor`, а `cmd_len` поставьте на конец последней
-оставшейся транзакции (`first + count`, или 0).
-`commit` (слияние): pending.merge_key != 0, в pending одна команда, `cursor == txn_len`, у последней транзакции
-тот же merge_key, одна команда и тот же target — тогда `lc.new_value = nc.new_value; self.cmd_len--; return;`.
-`cancel` и `undo`: идите по командам от последней к первой и пишите `doc[target] = old_value`;
-в cancel ещё верните `cmd_len = pending.first`.
+`begin`: if `cursor < txn_len`, truncate `txn_len = cursor`, and set `cmd_len` to the end of the last
+remaining transaction (`first + count`, or 0).
+`commit` (merging): pending.merge_key != 0, pending has one command, `cursor == txn_len`, the last transaction has
+the same merge_key, one command and the same target - then `lc.new_value = nc.new_value; self.cmd_len--; return;`.
+`cancel` and `undo`: walk the commands from last to first and write `doc[target] = old_value`;
+in cancel also restore `cmd_len = pending.first`.

@@ -1,37 +1,37 @@
 # =====================================================================
-#  a0103 · Ширина регистров: 64, 32, 16, 8 бит
+#  a0103 · Register widths: 64, 32, 16, 8 bits
 # =====================================================================
 #
-#  У каждого регистра общего назначения есть «окна» разной ширины:
+#  Every general-purpose register has "windows" of different widths:
 #
-#      64     32     16    8 (младший)
-#      rax    eax    ax    al          (и ah = биты 8..15 у a/b/c/d)
+#      64     32     16    8 (low)
+#      rax    eax    ax    al          (and ah = bits 8..15 for a/b/c/d)
 #      rdi    edi    di    dil
 #      rsi    esi    si    sil
-#      r8     r8d    r8w   r8b   ... и так до r15
+#      r8     r8d    r8w   r8b   ... and so on up to r15
 #
-#  Правила записи (ВАЖНО, это любимый источник багов):
-#    * запись в 32-битный регистр (eax) ОБНУЛЯЕТ старшие 32 бита rax;
-#    * запись в 16- или 8-битный (ax, al) НЕ трогает остальные биты.
+#  Write rules (IMPORTANT, this is a favorite source of bugs):
+#    * writing a 32-bit register (eax) ZEROES the upper 32 bits of rax;
+#    * writing a 16- or 8-bit one (ax, al) does NOT touch the other bits.
 #
-#  Чтобы расширить маленькое значение до большого регистра, есть:
-#    movzx eax, dil     — zero-extend: дополнить нулями (беззнаковое);
-#    movsx rax, dil     — sign-extend: размножить знаковый бит;
-#    movsxd rax, edi    — sign-extend 32 -> 64 (для int -> long).
-#  (movzx в 64-битный приёмник не нужен: movzx eax, ... уже обнулит
-#  верх rax по первому правилу.)
+#  To widen a small value into a bigger register there are:
+#    movzx eax, dil     — zero-extend: pad with zeros (unsigned);
+#    movsx rax, dil     — sign-extend: replicate the sign bit;
+#    movsxd rax, edi    — sign-extend 32 -> 64 (for int -> long).
+#  (You don't need movzx into a 64-bit destination: movzx eax, ... already
+#  zeroes the top of rax by the first rule.)
 #
-#  Ещё одна ловушка ABI: если аргумент имеет тип `int` (32 бита),
-#  вызывающий кладёт его в edi, а старшие 32 бита rdi НЕ определены —
-#  там может быть мусор или нули, но точно не знаковое расширение.
-#  Поэтому `mov rax, rdi` для int-аргумента — ошибка.
+#  One more ABI trap: if an argument has type `int` (32 bits), the
+#  caller puts it in edi, and the upper 32 bits of rdi are UNDEFINED —
+#  there may be garbage or zeros, but certainly not a sign extension.
+#  So `mov rax, rdi` for an int argument is a bug.
 #
-#  ЗАДАЧА: исправьте четыре функции:
-#    asm_low32(x)  — младшие 32 бита x (беззнаково);
-#    asm_low8(x)   — младший байт x (беззнаково, 0..255);
-#    asm_sext8(x)  — младший байт x как знаковое число (-128..127);
-#    asm_sext32(x) — int x, расширенный до long.
-#  Программа напечатает
+#  TASK: fix four functions:
+#    asm_low32(x)  — the low 32 bits of x (unsigned);
+#    asm_low8(x)   — the low byte of x (unsigned, 0..255);
+#    asm_sext8(x)  — the low byte of x as a signed number (-128..127);
+#    asm_sext32(x) — int x, extended to long.
+#  The program will print
 #      low32=55667788 low8=88 sext8=-120 sext32=-5
 #
     .intel_syntax noprefix

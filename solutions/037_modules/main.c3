@@ -1,61 +1,63 @@
 // =====================================================================
-//  037 · Модули и импорт
+//  037 · Modules and imports
 // =====================================================================
 //
-//  Это первое упражнение из НЕСКОЛЬКИХ файлов: вся папка
-//  exercises/037_modules/ компилируется вместе. Откройте все три файла:
+//  This is the first exercise made of SEVERAL files: the whole folder
+//  exercises/037_modules/ is compiled together. Open all three files:
 //  main.c3, geometry.c3, shapes.c3.
 //
-//  В C «модульность» держится на #include и заголовочных файлах.
-//  В C3 заголовков нет вообще. Каждый файл начинается с объявления
-//  модуля:
+//  In C, "modularity" rests on #include and header files. C3 has no
+//  headers at all. Every file starts with a module declaration:
 //
 //      module geometry;
 //
-//  * Модуль может состоять из нескольких файлов — у всех одна и та же
-//    строка `module geometry;`, и всё объявленное в них видно друг
-//    другу без всяких префиксов.
-//  * Имена модулей — строчные латинские буквы, цифры и `_`.
-//  * Модули бывают вложенными: `module geometry::shapes;`.
-//  * Если `module` не написан (как во всех прошлых упражнениях из одного
-//    файла), имя модуля берётся из имени файла.
+//  * A module can consist of several files - they all have the same
+//    `module geometry;` line, and everything declared in them is visible
+//    to each other without any prefixes.
+//  * Module names use lowercase Latin letters, digits and `_`.
+//  * Modules can be nested: `module geometry::shapes;`.
+//  * If `module` isn't written (as in all the previous single-file
+//    exercises), the module name is taken from the file name.
 //
-//  Чтобы пользоваться чужим модулем, его импортируют:
+//  To use someone else's module, you import it:
 //
-//      import geometry;           // заодно импортирует и geometry::shapes!
-//      import std::io, std::math; // можно несколько через запятую
+//      import geometry;           // also imports geometry::shapes!
+//      import std::io, std::math; // several at once, separated by commas
 //
-//  Импорт рекурсивный: подмодули подтягиваются автоматически. А модуль
-//  `std::core` (там assert, String, встроенные ошибки...) импортирован
-//  всегда. Кроме того, модули с общим «корнем» видят друг друга без
-//  import: `geometry::shapes` неявно видит `geometry`.
+//  Imports are recursive: submodules are pulled in automatically. And
+//  the `std::core` module (home of assert, String, built-in errors...)
+//  is always imported. Besides that, modules sharing a common "root"
+//  see each other without an import: `geometry::shapes` implicitly sees
+//  `geometry`.
 //
-//  Правило префиксов — самое важное здесь:
+//  The prefix rule is the most important thing here:
 //
-//  * ТИПЫ (struct, enum, alias...) пишутся БЕЗ префикса: `Point p;`.
-//    Префикс нужен, только если два модуля дают одинаковое имя типа.
-//  * ФУНКЦИИ, МАКРОСЫ, КОНСТАНТЫ и ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ из другого
-//    модуля пишутся с префиксом — достаточно последней части пути:
-//    `io::printn`, `shapes::area` (можно и полностью
-//    `geometry::shapes::area`). Это верно даже для «родительского»
-//    модуля: из geometry::shapes константу PI пишут как `geometry::PI`.
-//  * МЕТОДЫ вызываются через точку и префикса не требуют: `p.len_sq()`.
+//  * TYPES (struct, enum, alias...) are written WITHOUT a prefix: `Point p;`.
+//    A prefix is only needed if two modules provide the same type name.
+//  * FUNCTIONS, MACROS, CONSTANTS and GLOBAL VARIABLES from another
+//    module are written with a prefix - the last part of the path is
+//    enough: `io::printn`, `shapes::area` (the full form
+//    `geometry::shapes::area` works too). This is true even for the
+//    "parent" module: from geometry::shapes, the constant PI is written
+//    as `geometry::PI`.
+//  * METHODS are called with a dot and need no prefix: `p.len_sq()`.
 //
-//  Благодаря префиксам по коду сразу видно, откуда пришла функция, а
-//  конфликтов имён (как в C, где все функции в одной куче) почти нет.
+//  Thanks to prefixes, the code shows at a glance where a function comes
+//  from, and name clashes (as in C, where all functions live in one big
+//  pile) are almost nonexistent.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-` (два в main.c3 и одно
-//  в shapes.c3).
+//  TASK: fix the three places marked with `// <-` (two in main.c3 and
+//  one in shapes.c3).
 //
 module app;
 import std::io;
-import geometry; // <- подключите модуль geometry
+import geometry; // <- import the geometry module
 
 fn void main()
 {
     Point a = { 3, 4 };
     Point b = { 1, 2 };
-    float d = geometry::dot(a, b); // <- функция из другого модуля
+    float d = geometry::dot(a, b); // <- a function from another module
     io::printfn("dot = %.1f", d);
     io::printfn("len_sq = %.1f", a.len_sq());
 

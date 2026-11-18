@@ -1,8 +1,8 @@
 // =====================================================================
-//  010 · if / else, тернарный оператор и elvis
+//  010 · if / else, the ternary operator and elvis
 // =====================================================================
 //
-//  `if` выглядит как в C:
+//  `if` looks just like in C:
 //
 //      if (hp <= 0)
 //      {
@@ -17,36 +17,36 @@
 //          io::printn("ok");
 //      }
 //
-//  Условие — bool. Целые числа и указатели тоже допускаются (сравниваются
-//  с нулём / null), но bool нагляднее.
+//  The condition is a bool. Integers and pointers are allowed too (they
+//  are compared with zero / null), but a bool is clearer.
 //
-//  ФИГУРНЫЕ СКОБКИ
-//  Без `{ }` можно обойтись, только если тело на ТОЙ ЖЕ строке, что и
-//  `if`:
+//  CURLY BRACES
+//  You can only omit `{ }` if the body is on the SAME line as the `if`:
 //
-//      if (x < 0) return -x;          // можно
+//      if (x < 0) return -x;          // OK
 //
 //      if (x < 0)
-//          return -x;                 // ОШИБКА в C3
+//          return -x;                 // ERROR in C3
 //
-//  Это защита от классической ошибки C: человек добавляет вторую строку
-//  с тем же отступом и думает, что она тоже внутри `if`.
+//  This protects against a classic C bug: someone adds a second line
+//  with the same indentation and thinks it's inside the `if` too.
 //
-//  ТЕРНАРНЫЙ ОПЕРАТОР — как в C: `условие ? если_да : если_нет`.
+//  THE TERNARY OPERATOR — same as in C: `condition ? if_true : if_false`.
 //
 //      String s = n > 0 ? "positive" : "not positive";
 //
-//  ELVIS `?:` — сокращение для «значение, а если оно "пустое" —
-//  запасное»:
+//  ELVIS `?:` — shorthand for "the value, or a fallback if it's
+//  'empty'":
 //
-//      a ?: b      то же, что   a ? a : b   (но `a` вычисляется один раз)
+//      a ?: b      same as   a ? a : b   (but `a` is evaluated only once)
 //
-//  «Пустое» значение — это 0, false, null или пустая строка "". Удобно
-//  для значений по умолчанию:
+//  An "empty" value is 0, false, null or the empty string "". Handy
+//  for default values:
 //
-//      int lives = saved_lives ?: 3;      // если сохранено 0 — даём 3
+//      int lives = saved_lives ?: 3;      // if 0 was saved, give 3
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked with `// <-`. The program should
+//  print:
 //
 //      -5 -> freezing
 //      12 -> cold

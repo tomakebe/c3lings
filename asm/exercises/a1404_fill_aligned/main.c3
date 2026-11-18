@@ -1,4 +1,4 @@
-// Драйвер упражнения a1404. Этот файл НЕ нужно править — правьте fill.s.
+// Driver for exercise a1404. You do NOT need to edit this file — edit fill.s.
 import std::io;
 
 extern fn void fill_u32(uint* dst, uint v, long n);

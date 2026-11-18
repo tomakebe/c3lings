@@ -1,3 +1,3 @@
-1. `|` и `&` в C3 на одном уровне приоритета — расставьте скобки так, как задумано.
-2. В C3 `<<` связывает сильнее `+`. Чтобы сначала сложить, нужны скобки.
-3. `ichar` хранит значения от -128 до 127. Что идёт «после» 127 при заворачивании?
+1. `|` and `&` are on the same precedence level in C3 — add parentheses the way it was intended.
+2. In C3 `<<` binds tighter than `+`. To add first, you need parentheses.
+3. `ichar` holds values from -128 to 127. What comes "after" 127 when it wraps around?

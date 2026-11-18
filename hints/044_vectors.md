@@ -1,4 +1,4 @@
-1. Чтобы свести вектор к одному числу-сумме, у вектора есть метод `.sum()`.
-2. `>` к векторам не применяется. Используйте поэлементный метод `.comp_gt(...)` и передайте ему
-   вектор — переменная `zero` уже объявлена.
-3. Swizzle: компоненты называются x, y, z (или r, g, b). Обратный порядок трёх компонентов — `zyx`.
+1. To boil a vector down to a single sum, vectors have the `.sum()` method.
+2. `>` doesn't apply to vectors. Use the element-wise method `.comp_gt(...)` and pass it
+   a vector — the `zero` variable is already declared.
+3. Swizzle: the components are named x, y, z (or r, g, b). The reverse order of three components is `zyx`.

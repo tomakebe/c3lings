@@ -1,29 +1,29 @@
 # =====================================================================
-#  a1403 · Развёртка + branchless: минимум и максимум за один проход
+#  a1403 · Unrolling + branchless: minimum and maximum in one pass
 # =====================================================================
 #
-#  Функция целиком. Наивный вариант с ветвлениями на случайных данных
-#  ошибается в предсказании: «новый минимум» встречается всё реже, но
-#  не регулярно. Branchless-вариант с cmov не ошибается никогда, но
-#  создаёт цепочку зависимостей: каждый cmovl зависит от предыдущего
-#  минимума (cmp + cmov = 2 такта на элемент на одну цепочку).
+#  The whole function. The naive version with branches mispredicts on
+#  random data: a "new minimum" shows up less and less often, but
+#  irregularly. The branchless version with cmov never mispredicts, but
+#  it creates a dependency chain: each cmovl depends on the previous
+#  minimum (cmp + cmov = 2 cycles per element per chain).
 #
-#  Поэтому разделите и здесь: развёртка на 2 элемента и ДВЕ пары
-#  аккумуляторов (min0/max0 для чётных, min1/max1 для нечётных), а в
-#  конце — объединение. Так длина цепочки на элемент уменьшается вдвое.
+#  So split things up here too: unroll by 2 elements with TWO pairs of
+#  accumulators (min0/max0 for even, min1/max1 for odd), and merge them
+#  at the end. This halves the chain length per element.
 #
-#  (А совсем быстро — SIMD: pminsd/pmaxsd по 4-8 элементов. Можете
-#  попробовать после того, как сделаете скалярную версию.)
+#  (The really fast way is SIMD: pminsd/pmaxsd on 4-8 elements at a
+#  time. Try it once you have the scalar version working.)
 #
-#  ЗАДАЧА: minmax(a /*rdi*/, n /*rsi*/, out_min /*rdx*/, out_max /*rcx*/),
-#  n >= 1. Записать минимум в *out_min и максимум в *out_max.
-#  Никаких условных переходов внутри тела цикла (переход цикла — можно).
+#  TASK: minmax(a /*rdi*/, n /*rsi*/, out_min /*rdx*/, out_max /*rcx*/),
+#  n >= 1. Store the minimum in *out_min and the maximum in *out_max.
+#  No conditional branches inside the loop body (the loop branch is fine).
 #
     .intel_syntax noprefix
     .text
     .globl minmax
 minmax:
-    # TODO: целиком
+    # TODO: the whole thing
     ret
 
     .section .note.GNU-stack,"",@progbits

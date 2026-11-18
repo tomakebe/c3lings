@@ -1,4 +1,4 @@
-`encode_delta`: для каждой сущности сравните три поля с базой. Ничего не изменилось — `out.put(0, 1)`.
-Иначе `out.put(1, 1)`, затем для каждого поля: бит «изменилось» и, если да, само значение (16, 16, 7 бит).
-`decode_delta` читает ровно в том же порядке: `out.e[i] = base.e[i];` затем
-`if (in.get(1) == 0) continue;` и три пары «бит + значение».
+`encode_delta`: for each entity compare the three fields against the baseline. Nothing changed - `out.put(0, 1)`.
+Otherwise `out.put(1, 1)`, then for each field: a "changed" bit and, if set, the value itself (16, 16, 7 bits).
+`decode_delta` reads in exactly the same order: `out.e[i] = base.e[i];` then
+`if (in.get(1) == 0) continue;` and three "bit + value" pairs.

@@ -1,46 +1,48 @@
 // =====================================================================
-//  047 · `constset` — набор именованных констант
+//  047 · `constset` — a set of named constants
 // =====================================================================
 //
-//  Вспомним 026: `enum` в C3 — это всегда значения 0, 1, 2, ... без
-//  пропусков. Зато у enum'а есть имена (`.nameof`), `values`,
-//  `from_ordinal` и switch проверяет, что все варианты разобраны.
-//  Задать enum'у произвольное число, как в C (`OK = 200`), НЕЛЬЗЯ.
+//  Remember 026: an `enum` in C3 always has the values 0, 1, 2, ...
+//  with no gaps. In exchange, an enum has names (`.nameof`), `values`,
+//  `from_ordinal`, and switch checks that every variant is handled.
+//  Giving an enum an arbitrary number, like in C (`OK = 200`), is NOT
+//  possible.
 //
-//  А что, если значения заданы извне — коды HTTP, коды клавиш из
-//  C-библиотеки, битовые флаги? Для этого `constset`:
+//  But what if the values are dictated from outside — HTTP codes, key
+//  codes from a C library, bit flags? That's what `constset` is for:
 //
-//      constset HttpStatus : int     // базовый тип
+//      constset HttpStatus : int     // the base type
 //      {
 //          OK = 200,
-//          CREATED,                  // нет значения => предыдущее + 1 = 201
+//          CREATED,                  // no value => previous + 1 = 201
 //          NOT_FOUND = 404,
 //      }
 //
-//  Свойства constset'а:
-//  * Это отдельный тип (как typedef, см. 040): `HttpStatus s = 404;` —
-//    ошибка, нужно `(HttpStatus)404`. Обратно — тоже явно: `(int)s`.
-//  * Он НЕ проверяет, что значение — одно из объявленных: в переменной
-//    может оказаться `(HttpStatus)500`, которого в списке нет. Поэтому в
-//    switch по constset'у обычно нужен `default`.
-//  * Доступ к константе: `HttpStatus.OK`, а там, где тип понятен из
-//    контекста (присваивание, case, аргумент), — просто `OK`.
-//  * Печать `%s` / `%d` выводит ЧИСЛО (имён у constset'а во время
-//    выполнения нет — в отличие от enum).
-//  * С флагами работают битовые операции: `Perm.READ | Perm.WRITE`,
-//    а `if (p & Perm.WRITE)` проверяет бит.
-//  * Базовый тип может быть любым, даже `String`. С `inline`
-//    (`constset Color : inline String { ... }`) константа неявно
-//    превращается в базовый тип.
+//  Properties of a constset:
+//  * It's a distinct type (like typedef, see 040): `HttpStatus s = 404;`
+//    is an error, you need `(HttpStatus)404`. The other way is explicit
+//    too: `(int)s`.
+//  * It does NOT check that the value is one of the declared ones: a
+//    variable may end up holding `(HttpStatus)500`, which isn't in the
+//    list. That's why a switch over a constset usually needs a `default`.
+//  * Accessing a constant: `HttpStatus.OK`, and where the type is clear
+//    from context (assignment, case, argument) — just `OK`.
+//  * Printing with `%s` / `%d` outputs the NUMBER (a constset has no
+//    names at runtime — unlike an enum).
+//  * Bitwise operations work with flags: `Perm.READ | Perm.WRITE`,
+//    and `if (p & Perm.WRITE)` tests a bit.
+//  * The base type can be anything, even `String`. With `inline`
+//    (`constset Color : inline String { ... }`) a constant implicitly
+//    converts to the base type.
 //
-//  Правило выбора: нужен закрытый список вариантов — `enum`; нужны
-//  конкретные числа, совместимые с внешним миром, — `constset`.
+//  Rule of thumb: need a closed list of variants — `enum`; need
+//  specific numbers compatible with the outside world — `constset`.
 //
-//  ЗАДАЧА: почините четыре места, помеченные `// <-`.
+//  TASK: fix the four spots marked with `// <-`.
 //
 import std::io;
 
-constset HttpStatus : int // <- у enum не может быть значений вроде 200
+constset HttpStatus : int // <- an enum can't have values like 200
 {
     OK = 200,
     CREATED,
@@ -71,17 +73,17 @@ fn String describe(HttpStatus s)
 
 fn void main()
 {
-    assert((int)HttpStatus.CREATED == 201); // <- какое значение у CREATED?
+    assert((int)HttpStatus.CREATED == 201); // <- what is the value of CREATED?
 
     int[4] from_server = { 204, 418, 500, 404 };
     foreach (code : from_server)
     {
-        HttpStatus s = (HttpStatus)code; // <- int -> HttpStatus только явно
+        HttpStatus s = (HttpStatus)code; // <- int -> HttpStatus only explicitly
         io::printfn("%d: %s", s, describe(s));
     }
 
     Perm mine = Perm.READ | Perm.WRITE;
-    uint mode = (uint)mine; // <- Perm -> uint только явно
+    uint mode = (uint)mine; // <- Perm -> uint only explicitly
     io::printfn("mode = %d", mode);
     if (mine & Perm.WRITE) io::printn("can write");
     if (!(mine & Perm.EXEC)) io::printn("cannot execute");

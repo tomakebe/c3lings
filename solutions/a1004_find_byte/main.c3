@@ -1,4 +1,4 @@
-// Драйвер упражнения a1004. Этот файл НЕ нужно править — правьте find.s.
+// Driver for exercise a1004. You do NOT need to edit this file — edit find.s.
 import std::io;
 
 extern fn long find_byte(char* s, long n, char c);

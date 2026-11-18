@@ -1,36 +1,37 @@
 // =====================================================================
-//  a1503 · Кодировщик инструкций: JIT начинается здесь
+//  a1503 · An instruction encoder: JIT starts here
 // =====================================================================
 //
-//  JIT-компилятору нужен «ассемблер в миниатюре»: функции, которые
-//  дописывают в буфер байты конкретных инструкций. Напишем такой
-//  эмиттер для нескольких инструкций с 64-битными регистрами.
-//  Правьте ЭТОТ файл (emit.c3). Эталон — ref.s: те же инструкции,
-//  собранные настоящим ассемблером; драйвер сравнивает байты и печатает
-//  таблицу (с вашими байтами для несовпадающих).
+//  A JIT compiler needs a "miniature assembler": functions that append
+//  the bytes of specific instructions to a buffer. Let's write such an
+//  emitter for a few instructions with 64-bit registers.
+//  Edit THIS file (emit.c3). The reference is ref.s: the same instructions
+//  assembled by a real assembler; the driver compares the bytes and prints
+//  a table (with your bytes shown for mismatches).
 //
-//  Кодировки (r — номер регистра 0..15, см. константы ниже):
+//  Encodings (r is the register number 0..15, see the constants below):
 //
-//    push r          [41] 50+(r&7)          41 = REX.B для r8..r15
+//    push r          [41] 50+(r&7)          41 = REX.B for r8..r15
 //    pop r           [41] 58+(r&7)
-//    mov r, imm64    REX.W|B  B8+(r&7)  imm64 (8 байт little-endian)
+//    mov r, imm64    REX.W|B  B8+(r&7)  imm64 (8 bytes little-endian)
 //    add dst, src    REX.W|R|B  01  ModRM(reg=src, rm=dst)
 //    sub dst, src    REX.W|R|B  29  ModRM(reg=src, rm=dst)
 //    imul dst, src   REX.W|R|B  0F AF  ModRM(reg=dst, rm=src)
 //    ret             C3
 //
 //    REX = 0100 W R X B = 0x40 | W<<3 | R<<2 | X<<1 | B
-//        W = 1 (64 бита) -> 0x48; R = старший бит поля reg; B = rm.
-//    ModRM(reg, rm) для регистров = 0xC0 | (reg&7)<<3 | (rm&7)
+//        W = 1 (64 bits) -> 0x48; R = high bit of the reg field; B = of rm.
+//    ModRM(reg, rm) for registers = 0xC0 | (reg&7)<<3 | (rm&7)
 //
-//  Почему у add «reg = src», а у imul «reg = dst»? У опкода 01 форма
-//  «add r/m64, r64» (приёмник в rm), у 0F AF — «imul r64, r/m64»
-//  (приёмник в reg). Направление задаёт опкод: у add есть и форма 03
-//  «add r64, r/m64» — поэтому одну инструкцию часто можно закодировать
-//  двумя способами. Ассемблер выбирает 01, и мы тоже.
+//  Why is it "reg = src" for add but "reg = dst" for imul? Opcode 01 has
+//  the form "add r/m64, r64" (destination in rm), while 0F AF is
+//  "imul r64, r/m64" (destination in reg). The opcode sets the direction:
+//  add also has the form 03 "add r64, r/m64" — which is why the same
+//  instruction can often be encoded in two ways. The assembler picks 01,
+//  and so do we.
 //
-//  ЗАДАЧА: допишите rex_w, pop, mov_imm64 (REX.B), add, sub, imul так,
-//  чтобы все 15 строк таблицы были «ok».
+//  TASK: complete rex_w, pop, mov_imm64 (REX.B), add, sub, imul so that
+//  all 15 rows of the table are "ok".
 //
 module jit;
 
@@ -75,13 +76,13 @@ fn void Emitter.u64(&self, ulong v)
     for (int i = 0; i < 8; i++) self.byte((int)((v >> (8 * i)) & 0xFF));
 }
 
-// Перезаписать 4 байта по смещению pos (для «заплаток» переходов).
+// Overwrite 4 bytes at offset pos (for jump "patches").
 fn void Emitter.patch32(&self, usz pos, int v)
 {
     for (usz i = 0; i < 4; i++) self.buf[pos + i] = (char)(((uint)v >> (8 * i)) & 0xFF);
 }
 
-// ModRM для «регистр, регистр»: mod = 11.
+// ModRM for "register, register": mod = 11.
 fn void Emitter.modrm_rr(&self, int reg, int rm)
 {
     self.byte(0xC0 | ((reg & 7) << 3) | (rm & 7));
@@ -95,7 +96,7 @@ fn void Emitter.push(&self, int r)
     self.byte(0x50 + (r & 7));
 }
 
-// REX.W с битами R (для поля reg) и B (для поля rm).
+// REX.W with the R bit (for the reg field) and the B bit (for the rm field).
 // REX = 0100 W R X B; W = 1.
 fn void Emitter.rex_w(&self, int reg, int rm)
 {
@@ -132,7 +133,7 @@ fn void Emitter.sub(&self, int dst, int src)
     self.modrm_rr(src, dst);
 }
 
-// imul dst, src  (REX.W 0F AF /r: ModRM.reg = dst, ModRM.rm = src — наоборот!)
+// imul dst, src  (REX.W 0F AF /r: ModRM.reg = dst, ModRM.rm = src — the other way round!)
 fn void Emitter.imul(&self, int dst, int src)
 {
     self.rex_w(dst, src);

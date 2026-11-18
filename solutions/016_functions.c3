@@ -1,39 +1,39 @@
 // =====================================================================
-//  016 · Функции
+//  016 · Functions
 // =====================================================================
 //
-//  Функция объявляется словом `fn`, затем тип результата, имя и
-//  параметры:
+//  A function is declared with the word `fn`, followed by the return
+//  type, the name and the parameters:
 //
 //      fn int add(int a, int b)
 //      {
 //          return a + b;
 //      }
 //
-//  * Тип результата обязателен. Если функция ничего не возвращает —
-//    пишется `void`. Без `fn` и без типа (как `int add(...)` в C или
-//    `fn add(...)`) — ошибка.
-//  * Функция без параметров: `fn void reset()`. Сишное `(void)` не
-//    нужно.
-//  * Параметры передаются ПО ЗНАЧЕНИЮ (копируются). Изменение параметра
-//    внутри функции не влияет на вызывающий код.
-//  * Если функция возвращает значение, КАЖДЫЙ путь выполнения должен
-//    закончиться `return`. В C забытый return — неопределённое
-//    поведение (и часто лишь предупреждение); в C3 — ошибка компиляции
+//  * The return type is required. If the function returns nothing,
+//    write `void`. Leaving out `fn` or the type (like `int add(...)` in
+//    C, or `fn add(...)`) is an error.
+//  * A function with no parameters: `fn void reset()`. The C-style
+//    `(void)` isn't needed.
+//  * Parameters are passed BY VALUE (they are copied). Changing a
+//    parameter inside the function doesn't affect the caller.
+//  * If a function returns a value, EVERY execution path must end with
+//    a `return`. In C a forgotten return is undefined behavior (and
+//    often just a warning); in C3 it's a compile error:
 //    "Missing return statement".
 //
-//  КРАТКАЯ ФОРМА `=>`
-//  Если тело функции — одно выражение, можно написать так:
+//  THE SHORT `=>` FORM
+//  If the function body is a single expression, you can write:
 //
 //      fn int square(int x) => x * x;
 //
-//  Это то же самое, что `{ return x * x; }`.
+//  This is the same as `{ return x * x; }`.
 //
-//  Функции вызываются обычным образом: `add(2, 3)`. Функции из других
-//  модулей — с префиксом модуля, как `io::printn(...)`; функции своего
-//  модуля префикса не требуют.
+//  Functions are called the usual way: `add(2, 3)`. Functions from
+//  other modules take the module prefix, like `io::printn(...)`;
+//  functions from your own module don't need a prefix.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      square(7) = 49
 //      max(3, 9) = 9

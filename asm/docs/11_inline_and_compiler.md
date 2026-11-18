@@ -1,34 +1,34 @@
-# Глава 11. Inline-ассемблер C3 и чтение кода компилятора
+# Chapter 11. C3 inline assembly and reading compiler output
 
-Писать целые функции в `.s`-файлах — хороший способ учиться, но в
-реальных проектах ассемблер чаще встречается в двух других видах:
+Writing whole functions in `.s` files is a good way to learn, but in
+real projects assembly more often shows up in two other forms:
 
-1. **Inline-ассемблер** — несколько инструкций прямо внутри функции на
-   высокоуровневом языке: доступ к инструкции, до которой язык «не
-   дотягивается» (`rdtsc`, `cpuid`, `crc32`, `pdep`), или гарантия
-   конкретной последовательности.
-2. **Чтение вывода компилятора** — гораздо более частая задача. Чтобы
-   понять, почему код медленный, векторизовался ли цикл, убрал ли
-   компилятор проверку границ, — вы открываете дизассемблер. Писать
-   ассемблер приходится редко, читать — постоянно.
+1. **Inline assembly** — a few instructions right inside a function
+   written in a high-level language: access to an instruction the language
+   "can't reach" (`rdtsc`, `cpuid`, `crc32`, `pdep`), or a guarantee of a
+   specific instruction sequence.
+2. **Reading compiler output** — a far more common task. To understand
+   why code is slow, whether a loop got vectorized, whether the compiler
+   removed a bounds check, you open a disassembler. You rarely have to
+   write assembly, but you read it all the time.
 
-Упражнения: `a1101`–`a1105`. В этой главе вы правите `.c3`-файлы.
+Exercises: `a1101`–`a1105`. In this chapter you edit `.c3` files.
 
-## 1. Два вида `asm` в C3
+## 1. Two kinds of `asm` in C3
 
-### Строка
+### String
 
 ```c3
 asm("nop");
 ```
 
-Строка передаётся в LLVM без изменений, как «module-level» вставка внутри
-функции. Компилятор не знает, какие регистры она читает и портит, —
-поэтому годится только для инструкций без операндов и побочных эффектов
-на регистры: `nop`, `pause`, `int3`. Синтаксис — AT&T (по умолчанию в
-LLVM).
+The string is passed to LLVM unchanged, as a "module-level" insertion
+inside the function. The compiler does not know which registers it reads
+and clobbers, so it is only suitable for instructions with no operands
+and no side effects on registers: `nop`, `pause`, `int3`. The syntax is
+AT&T (the LLVM default).
 
-### Блок
+### Block
 
 ```c3
 fn int add(int a, int b)
@@ -43,90 +43,93 @@ fn int add(int a, int b)
 }
 ```
 
-Блок — «понимаемый» компилятором ассемблер. c3c разбирает каждую
-инструкцию, сверяется с таблицей (какие операнды читаются, какие пишутся,
-что портится) и генерирует для LLVM inline-asm с правильными
-ограничениями (constraints) — то, что в GCC вы бы писали вручную
-(`"=r"(r) : "r"(a), "0"(b) : "cc"`), и где так легко ошибиться.
+A block is assembly the compiler "understands". c3c parses each
+instruction, looks it up in a table (which operands are read, which are
+written, what gets clobbered) and generates LLVM inline asm with the
+correct constraints — what in GCC you would write by hand
+(`"=r"(r) : "r"(a), "0"(b) : "cc"`), and where it is so easy to make a
+mistake.
 
-Правила синтаксиса блока:
+Block syntax rules:
 
-| Правило | Пример |
+| Rule | Example |
 |---|---|
-| мнемоника с суффиксом размера AT&T: `b`/`w`/`l`/`q` | `movl`, `addq`, `xaddl` |
-| у части инструкций суффикса нет, размер — по операндам | `popcnt r, x;`, `tzcnt`, `pdep`, `crc32` |
-| порядок операндов **Intel**: приёмник первый | `subq r, b;` → r -= b |
-| регистры с `$` | `$eax`, `$rdx`, `$xmm0` |
-| переменные C3 — по имени | `movq $rax, a;` |
-| память через переменную-указатель | `[p]`, `[p + 8]`, `[p + i * 4 + 4]` |
-| адрес переменной | `&x` |
-| выражение в скобках вычисляется до блока | `movl $eax, (a + 1);` |
-| размер переменной = размер инструкции | `movl` + `ulong` → ошибка |
-| каждая инструкция завершается `;` | |
+| mnemonic with an AT&T size suffix: `b`/`w`/`l`/`q` | `movl`, `addq`, `xaddl` |
+| some instructions have no suffix; size comes from the operands | `popcnt r, x;`, `tzcnt`, `pdep`, `crc32` |
+| **Intel** operand order: destination first | `subq r, b;` → r -= b |
+| registers with `$` | `$eax`, `$rdx`, `$xmm0` |
+| C3 variables by name | `movq $rax, a;` |
+| memory through a pointer variable | `[p]`, `[p + 8]`, `[p + i * 4 + 4]` |
+| address of a variable | `&x` |
+| a parenthesized expression is evaluated before the block | `movl $eax, (a + 1);` |
+| variable size = instruction size | `movl` + `ulong` → error |
+| every instruction ends with `;` | |
 
-### Поддерживаемые инструкции
+### Supported instructions
 
-Полный список для текущей цели печатает
+The full list for the current target is printed by
 
 ```
 c3c compile --list-asm file.c3
 ```
 
-(с колонками «clobbers» и шаблоном аргументов: `rw:` — читается и
-пишется, `w:` — только пишется). В c3c 0.8.5 для x86-64 это примерно:
+(with "clobbers" columns and an argument template: `rw:` — read and
+written, `w:` — written only). In c3c 0.8.5 for x86-64 it is roughly:
 
-* пересылки: `movb/w/l/q`, `movzbl`, `movsbq`, `movslq`, …, `xchg*`, `push*`, `pop*`;
-* арифметика: `add*`, `adc*`, `sub*`, `inc*`, `dec*`, `neg*`, `mul*`,
+* moves: `movb/w/l/q`, `movzbl`, `movsbq`, `movslq`, …, `xchg*`, `push*`, `pop*`;
+* arithmetic: `add*`, `adc*`, `sub*`, `inc*`, `dec*`, `neg*`, `mul*`,
   `div*`, `idiv*`, `mulx`, `adcx`, `adox`;
-* логика: `or*`, `xor*`, `not*`, `andn`, BMI (`blsi`, `blsr`, `blsmsk`,
+* logic: `or*`, `xor*`, `not*`, `andn`, BMI (`blsi`, `blsr`, `blsmsk`,
   `bextr`, `bzhi`, `pdep`, `pext`, `shlx`, `shrx`, `sarx`, `rorx`);
-* подсчёт битов: `popcnt`, `lzcnt`, `tzcnt`; `bswapl`/`bswapq`;
-* атомарные: `xadd*`, `cmpxchg*`, `cmpxchg8b`, `cmpxchg16b`;
-* `cmova*`, `cmovae*`, `cmovb*`, `cmovbe*` (только беззнаковые условия);
-* системные: `cpuid`, `rdtsc`, `rdtscp`, `rdrand`, `rdseed`, `xgetbv`,
+* bit counting: `popcnt`, `lzcnt`, `tzcnt`; `bswapl`/`bswapq`;
+* atomics: `xadd*`, `cmpxchg*`, `cmpxchg8b`, `cmpxchg16b`;
+* `cmova*`, `cmovae*`, `cmovb*`, `cmovbe*` (unsigned conditions only);
+* system: `cpuid`, `rdtsc`, `rdtscp`, `rdrand`, `rdseed`, `xgetbv`,
   `syscall`, `clflush`, `int3`, `hlt`, `nop`;
-* немного SSE/AVX: `addss/sd/ps/pd`, `vadd*`, `crc32`, `pclmulqdq`, AES, SHA;
+* a bit of SSE/AVX: `addss/sd/ps/pd`, `vadd*`, `crc32`, `pclmulqdq`, AES, SHA;
   `vzeroupper`, `vzeroall`.
 
-**Нет**: `and`, `shl`/`shr`/`sar`, `rol`, `imul`, `cmp`, `test`, `lea`,
-`setcc`, переходов, префикса `lock`, барьеров `mfence`/`pause`. Мануал
-честно предупреждает: inline-ассемблер — «work in progress». На практике
-это не страшно: всё перечисленное C3 сам выражает отлично, а в блок
-выносится только то, чего в языке нет.
+**Missing**: `and`, `shl`/`shr`/`sar`, `rol`, `imul`, `cmp`, `test`, `lea`,
+`setcc`, jumps, the `lock` prefix, the `mfence`/`pause` barriers. The
+manual honestly warns: inline assembly is a "work in progress". In
+practice this is not a big deal: C3 expresses everything listed above
+perfectly well on its own, and only what the language lacks goes into a
+block.
 
-### Найденные шероховатости (c3c 0.8.5)
+### Rough edges found (c3c 0.8.5)
 
-Читать таблицу `--list-asm` полезно и для того, чтобы ловить ошибки
-самого компилятора:
+Reading the `--list-asm` table is also useful for catching bugs in the
+compiler itself:
 
-* `cmov*` описаны как `w:r32, r32/mem` — приёмник «только пишется». Но
-  `cmov` пишет приёмник *условно*: если условие ложно, остаётся старое
-  значение, т.е. приёмник ещё и **читается**. Из-за этого на `-O3`
-  компилятор вправе не загружать в регистр начальное значение
-  переменной — и результат станет мусорным. Посмотрите сами:
+* `cmov*` are described as `w:r32, r32/mem` — the destination is "written
+  only". But `cmov` writes the destination *conditionally*: if the
+  condition is false, the old value remains, i.e. the destination is also
+  **read**. Because of this, at `-O3` the compiler is entitled not to load
+  the variable's initial value into the register — and the result becomes
+  garbage. See for yourself:
 
   ```c3
   fn uint umax(uint a, uint b) { uint r = a; asm { movl $eax, a; subl $eax, b; cmovbl r, b; } return r; }
   ```
 
-  в `-O3`-выводе `cmovb ecx, esi` пишет в `ecx`, в который `a` никто не
-  положил. Используйте `cmov` в блоках только с явной инициализацией
-  внутри блока через фиксированный регистр, а лучше — пишите
-  `a < b ? b : a` и доверьтесь компилятору.
-* `cmpxchgl` описан с 16-битными операндами, поэтому `cmpxchgl [p], x`
-  с `int x` не компилируется.
-* Нет `lock`: `xaddl [p], v` в блоке **не атомарен**. Атомарен только
-  `xchg` с памятью — у него `lock` подразумевается всегда. Для атомиков
-  используйте `std::atomic` (глава 13) или `.s`-файл.
+  in the `-O3` output, `cmovb ecx, esi` writes to `ecx`, into which nobody
+  ever put `a`. Use `cmov` in blocks only with explicit initialization
+  inside the block via a fixed register, or better yet, write
+  `a < b ? b : a` and trust the compiler.
+* `cmpxchgl` is described with 16-bit operands, so `cmpxchgl [p], x`
+  with `int x` does not compile.
+* There is no `lock`: `xaddl [p], v` in a block is **not atomic**. Only
+  `xchg` with memory is atomic — it always implies `lock`. For atomics
+  use `std::atomic` (chapter 13) or a `.s` file.
 
-Если нужно что-то за пределами этого подмножества — пишите функцию в
-`.s`-файле и вызывайте её через `extern fn`, как в главах 00–10. Это
-переносимее и проще отлаживать.
+If you need something outside this subset, write the function in a
+`.s` file and call it via `extern fn`, as in chapters 00–10. That is
+more portable and easier to debug.
 
-## 2. Фиксированные регистры
+## 2. Fixed registers
 
-`mul`, `div`, `rdtsc`, `cpuid`, `syscall` работают с конкретными
-регистрами. В блоке это выражается явными пересылками:
+`mul`, `div`, `rdtsc`, `cpuid`, `syscall` work with specific registers.
+In a block this is expressed with explicit moves:
 
 ```c3
 fn ulong muldiv(ulong a, ulong b, ulong c)
@@ -143,32 +146,32 @@ fn ulong muldiv(ulong a, ulong b, ulong c)
 }
 ```
 
-Компилятор видит, что `mulq` портит `rax` и `rdx`, и не разместит там
-ваши переменные. Сравните с GCC-синтаксисом, где это надо было бы
-написать самому: `asm("mulq %2; divq %3" : "=a"(q) : "a"(a), "r"(b), "r"(c) : "rdx", "cc");`.
+The compiler sees that `mulq` clobbers `rax` and `rdx` and will not place
+your variables there. Compare with GCC syntax, where you would have to
+write this yourself: `asm("mulq %2; divq %3" : "=a"(q) : "a"(a), "r"(b), "r"(c) : "rdx", "cc");`.
 
-## 3. Как получить вывод компилятора
+## 3. How to get compiler output
 
 ```
-c3c compile -O3 --emit-asm main.c3      # файлы в ./asm/linux-x64/<модуль>.s
-c3c compile -O3 --emit-llvm main.c3     # LLVM IR — промежуточный уровень
-objdump -d -M intel --no-show-raw-insn ./main | less   # дизассемблер готового бинарника
+c3c compile -O3 --emit-asm main.c3      # files in ./asm/linux-x64/<module>.s
+c3c compile -O3 --emit-llvm main.c3     # LLVM IR — the intermediate level
+objdump -d -M intel --no-show-raw-insn ./main | less   # disassembler for the finished binary
 ```
 
-* `--emit-asm` выдаёт **AT&T-синтаксис** (`movl %edi, %eax` — источник
-  первым, регистры с `%`, константы с `$`, суффиксы размера). Читать его
-  надо уметь: его же выдают GCC/Clang по умолчанию и `gdb`.
-* Имена функций — `модуль.функция` (`main.add`); можно задать своё через
-  `@export("name")`.
-* Между `#APP` и `#NO_APP` — ваш inline-ассемблер.
-* Строки `.loc`, `.cfi_*`, `#DEBUG_VALUE` — отладочная информация, их
-  можно пропускать глазами.
-* Compiler Explorer (godbolt.org) поддерживает C3 — самый удобный
-  способ смотреть вывод интерактивно.
-* `objdump -M intel` переводит в Intel-синтаксис; `-S` вперемешку с
-  исходником (если есть отладочная информация).
+* `--emit-asm` produces **AT&T syntax** (`movl %edi, %eax` — source
+  first, registers with `%`, constants with `$`, size suffixes). You need
+  to be able to read it: GCC/Clang emit it by default, and so does `gdb`.
+* Function names are `module.function` (`main.add`); you can set your own
+  via `@export("name")`.
+* Between `#APP` and `#NO_APP` is your inline assembly.
+* `.loc`, `.cfi_*`, `#DEBUG_VALUE` lines are debug info; your eyes can
+  skip them.
+* Compiler Explorer (godbolt.org) supports C3 — the most convenient way
+  to view the output interactively.
+* `objdump -M intel` converts to Intel syntax; `-S` interleaves it with
+  the source (if debug info is present).
 
-### Перевод AT&T ↔ Intel
+### Translating AT&T ↔ Intel
 
 | AT&T | Intel |
 |---|---|
@@ -182,22 +185,22 @@ objdump -d -M intel --no-show-raw-insn ./main | less   # дизассембле�
 | `cltq` / `cqto` | `cdqe` / `cqo` |
 | `vfmadd231ps %ymm2, %ymm1, %ymm0` | `vfmadd231ps ymm0, ymm1, ymm2` |
 
-Обратите внимание на `cmp`: в AT&T операнды переставлены, поэтому
-`cmpq %rsi, %rdi; jl` значит «если rdi < rsi».
+Note `cmp`: in AT&T the operands are swapped, so
+`cmpq %rsi, %rdi; jl` means "if rdi < rsi".
 
-## 4. -O0 против -O3
+## 4. -O0 versus -O3
 
-Функция `fn int m3(int x, int y) => x * 9 + y * 4 - 7;`
+The function `fn int m3(int x, int y) => x * 9 + y * 4 - 7;`
 
-`-O0` (Intel-синтаксис):
+`-O0` (Intel syntax):
 
 ```asm
 m3:
     push rbp
     mov  rbp, rsp
-    mov  dword ptr [rbp - 4], edi     ; аргументы сохраняются в стек
+    mov  dword ptr [rbp - 4], edi     ; arguments are saved to the stack
     mov  dword ptr [rbp - 8], esi
-    imul eax, dword ptr [rbp - 4], 9  ; и читаются обратно
+    imul eax, dword ptr [rbp - 4], 9  ; and read back
     mov  ecx, dword ptr [rbp - 8]
     shl  ecx, 2
     add  eax, ecx
@@ -216,86 +219,87 @@ m3:
     ret
 ```
 
-Что видно:
+What we see:
 
-* на `-O0` каждая переменная живёт в памяти (это нужно отладчику —
-  можно поменять её значение в gdb), стековый кадр через `rbp`;
-* на `-O3` — только регистры, никакого кадра, умножение заменено `lea`;
-* `-O0` — честный перевод «строка за строкой», `-O3` — вычисление того же
-  результата любым способом.
+* at `-O0` every variable lives in memory (the debugger needs this — you
+  can change its value in gdb), with a stack frame through `rbp`;
+* at `-O3` — registers only, no frame, multiplication replaced by `lea`;
+* `-O0` is an honest "line by line" translation; `-O3` computes the same
+  result by any means available.
 
-У c3c уровни `-O0`/`-O1` — «безопасные» (проверки границ, переполнения
-сдвигов, выравнивания, контракты), `-O2` и выше — без проверок. Поэтому
-при сравнении кода C3 с кодом C учитывайте, что в «безопасном» режиме
-появятся сравнения и вызовы паники. (Кстати, именно проверка выравнивания
-поймала бы в `a1104` разыменование `ulong*` по нечётному адресу — для
-невыровненного чтения в C3 есть `mem::load(ptr, align)`.)
+In c3c, the `-O0`/`-O1` levels are "safe" (bounds checks, shift overflow,
+alignment, contracts), and `-O2` and above have no checks. So when
+comparing C3 code with C code, keep in mind that in "safe" mode you will
+see comparisons and panic calls. (Incidentally, it is exactly the
+alignment check that would have caught the `ulong*` dereference at an
+odd address in `a1104` — for unaligned reads C3 has
+`mem::load(ptr, align)`.)
 
-## 5. Типичные паттерны оптимизатора
+## 5. Typical optimizer patterns
 
-| Исходник | Что вы увидите | Почему |
+| Source | What you will see | Why |
 |---|---|---|
-| `x / 10` (uint) | `mov eax, 0xCCCCCCCD; imul rax, rcx; shr rax, 35` | деление ~25–40 тактов, умножение 3 |
-| `x % 10` | частное × 10 через два `lea`, затем `sub` | |
-| `x / 4` (int) | `lea eax,[rdi+3]; test edi,edi; cmovns eax,edi; sar eax,2` | `sar` округляет вниз, C3 — к нулю |
-| `x * 9`, `x * 5` | `lea eax, [rdi + rdi*8]` | `lea` — 1 такт |
-| `x < 0 ? -x : x` | `mov eax,edi; neg eax; cmovs eax,edi` | без ветвлений |
+| `x / 10` (uint) | `mov eax, 0xCCCCCCCD; imul rax, rcx; shr rax, 35` | division is ~25–40 cycles, multiplication 3 |
+| `x % 10` | quotient × 10 via two `lea`s, then `sub` | |
+| `x / 4` (int) | `lea eax,[rdi+3]; test edi,edi; cmovns eax,edi; sar eax,2` | `sar` rounds down, C3 rounds toward zero |
+| `x * 9`, `x * 5` | `lea eax, [rdi + rdi*8]` | `lea` is 1 cycle |
+| `x < 0 ? -x : x` | `mov eax,edi; neg eax; cmovs eax,edi` | branchless |
 | `a < b` (bool) | `cmp; setl al` | |
-| `return f(x);` | `jmp f` | хвостовой вызов |
-| цикл суммы int | `vpaddd` ×4, развёртка, хвост | автовекторизация (глава 10) |
-| `memset`/обнуление массива | `rep stosb` или вызов `memset`, или `vmovups` | |
-| `switch` с плотными метками | `jmp [rip + table + rax*8]` | таблица переходов |
-| неиспользуемый результат | ничего | удаление мёртвого кода |
+| `return f(x);` | `jmp f` | tail call |
+| int sum loop | `vpaddd` ×4, unrolling, tail | auto-vectorization (chapter 10) |
+| `memset`/zeroing an array | `rep stosb`, a call to `memset`, or `vmovups` | |
+| `switch` with dense labels | `jmp [rip + table + rax*8]` | jump table |
+| unused result | nothing | dead code elimination |
 
-Магические числа для деления: `x / d = (x * M) >> s`, где
-`M = ceil(2^s / d)` подобрано так, чтобы результат был точным для всех
-32-битных `x`. Для `d = 10`: `2^35 / 10 = 3435973836.8`, `M = 3435973837 =
-0xCCCCCCCD`. Подробности — Hacker's Delight, гл. 10, и libdivide.
+Magic numbers for division: `x / d = (x * M) >> s`, where
+`M = ceil(2^s / d)` is chosen so that the result is exact for all
+32-bit `x`. For `d = 10`: `2^35 / 10 = 3435973836.8`, `M = 3435973837 =
+0xCCCCCCCD`. For details see Hacker's Delight, ch. 10, and libdivide.
 
-### Ещё признаки, на которые стоит смотреть
+### More signs worth looking for
 
-* `call` внутри горячего цикла — функция не встроилась (inline);
-* `ud2`/вызов паники после сравнения — проверка границ (в безопасном режиме);
-* `movaps [rsp + ...]` в прологе — сохранение векторных регистров;
-* `vzeroupper` перед `ret` — функция трогала ymm;
-* много `mov` в/из стека в цикле — нехватка регистров (spilling);
-* `cmov` вместо `jcc` — компилятор решил, что ветка непредсказуема или
-  дешёвая (глава 13).
+* a `call` inside a hot loop — the function was not inlined;
+* `ud2`/a panic call after a comparison — a bounds check (in safe mode);
+* `movaps [rsp + ...]` in the prologue — saving vector registers;
+* `vzeroupper` before `ret` — the function touched ymm;
+* lots of `mov`s to/from the stack inside a loop — register shortage (spilling);
+* `cmov` instead of `jcc` — the compiler decided the branch is
+  unpredictable or cheap (chapter 13).
 
-## 6. Когда inline-ассемблер — плохая идея
+## 6. When inline assembly is a bad idea
 
-* Компилятор не умеет оптимизировать сквозь `asm`-блок: не переставит,
-  не векторизует, не свернёт константы. Короткая функция с `asm` может
-  оказаться медленнее аналога на C3.
-* Inline-ассемблер непереносим (x86 vs ARM) — нужна версия на чистом C3
-  для других платформ (`$if env::X86_64:` … `$else` … `$endif`).
-* Для большинства «особых» инструкций в C3 уже есть встроенные функции:
+* The compiler cannot optimize across an `asm` block: it will not reorder,
+  vectorize, or constant-fold through it. A short function with `asm` can
+  end up slower than its C3 equivalent.
+* Inline assembly is not portable (x86 vs ARM) — you need a pure C3
+  version for other platforms (`$if env::X86_64:` … `$else` … `$endif`).
+* For most "special" instructions C3 already has built-in functions:
   `x.popcount()`, `x.clz()`, `x.ctz()`, `$$sysclock()` (rdtsc),
-  `$$prefetch`, `$$fma`, атомики `std::atomic`, вектора `float[<8>]`.
-  Они видимы оптимизатору — используйте их в первую очередь.
+  `$$prefetch`, `$$fma`, the `std::atomic` atomics, `float[<8>]` vectors.
+  They are visible to the optimizer — reach for them first.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Чем `asm("...")` отличается от `asm { ... }` с точки зрения компилятора?
-2. В каком порядке записываются операнды в блоке `asm` C3? А в AT&T-выводе
-   `--emit-asm`?
-3. Почему `movl r, x;` не компилируется, если `x` — `ulong`?
-4. Как в блоке `asm` вызвать `rdtsc` и получить 64-битный результат?
-5. Почему `xaddl [p], v` в блоке `asm` C3 не атомарен, а `xchgl [p], v` атомарен?
-6. Что не так с описанием `cmov*` в таблице `--list-asm`, и чем это грозит
-   на `-O3`?
-7. Как по ассемблеру опознать деление на 10? Знаковое деление на 4?
-8. Почему на `-O0` все переменные лежат в стеке?
+1. How does `asm("...")` differ from `asm { ... }` from the compiler's point of view?
+2. In what order are operands written in a C3 `asm` block? And in the AT&T
+   output of `--emit-asm`?
+3. Why does `movl r, x;` not compile if `x` is a `ulong`?
+4. How do you call `rdtsc` in an `asm` block and get a 64-bit result?
+5. Why is `xaddl [p], v` in a C3 `asm` block not atomic, while `xchgl [p], v` is?
+6. What is wrong with the description of `cmov*` in the `--list-asm` table,
+   and what can that lead to at `-O3`?
+7. How do you recognize division by 10 in assembly? Signed division by 4?
+8. Why do all variables live on the stack at `-O0`?
 
-## Что почитать
+## Further reading
 
-* C3 manual, раздел «Inline Assembly» (`./.c3c/c3/MANUAL.md`, 10_1).
-* Matt Godbolt, «What Has My Compiler Done for Me Lately?» (CppCon 2017) и
-  сам Compiler Explorer — https://godbolt.org.
-* GCC manual, «Extended Asm» — чтобы оценить, какую работу за вас делает
-  c3c; LLVM LangRef, «Inline Assembler Expressions».
-* Henry S. Warren, *Hacker's Delight*, гл. 10 «Integer Division by Constants».
-* Agner Fog, «Optimizing software in C++», гл. про то, что умеют
-  оптимизаторы; «Optimizing subroutines in assembly language», гл. 3 (inline asm).
-* Denis Bakhvalov, «Performance Analysis and Tuning on Modern CPUs» —
-  приёмы чтения ассемблера при профилировании.
+* C3 manual, "Inline Assembly" section (`./.c3c/c3/MANUAL.md`, 10_1).
+* Matt Godbolt, "What Has My Compiler Done for Me Lately?" (CppCon 2017) and
+  Compiler Explorer itself — https://godbolt.org.
+* GCC manual, "Extended Asm" — to appreciate how much work c3c does for
+  you; LLVM LangRef, "Inline Assembler Expressions".
+* Henry S. Warren, *Hacker's Delight*, ch. 10 "Integer Division by Constants".
+* Agner Fog, "Optimizing software in C++", the chapter on what optimizers
+  can do; "Optimizing subroutines in assembly language", ch. 3 (inline asm).
+* Denis Bakhvalov, "Performance Analysis and Tuning on Modern CPUs" —
+  techniques for reading assembly while profiling.

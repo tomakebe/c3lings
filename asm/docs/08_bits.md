@@ -1,71 +1,73 @@
-# Глава 08. Битовые операции
+# Chapter 08. Bit Operations
 
-До сих пор мы считали числа «числами». В этой главе мы посмотрим на них как
-на **массивы из 64 битов** — и увидим, что x86 умеет обрабатывать такие
-массивы целиком за один такт. Битовые трюки — фундамент для хеш-функций,
-битсетов, масок компонентов в ECS, аллокаторов, сжатия, шахматных
-движков, пространственных структур (коды Мортона) и SIMD-кода из следующих
-глав.
+So far we have treated numbers as "numbers". In this chapter we look at them
+as **arrays of 64 bits** — and see that x86 can process such arrays as a
+whole in a single cycle. Bit tricks are the foundation of hash functions,
+bitsets, component masks in an ECS, allocators, compression, chess engines,
+spatial structures (Morton codes) and the SIMD code of the following
+chapters.
 
-Упражнения: `a0801`–`a0805`.
+Exercises: `a0801`–`a0805`.
 
-## 1. Логические операции (повторение)
+## 1. Logical operations (recap)
 
-| Инструкция | Действие | Флаги |
+| Instruction | Action | Flags |
 |---|---|---|
-| `and dst, src` | `dst &= src` | ZF/SF/PF по результату, CF=OF=0 |
-| `or dst, src` | `dst \|= src` | так же |
-| `xor dst, src` | `dst ^= src` | так же |
-| `not dst` | `dst = ~dst` | **не меняет** флаги |
-| `test a, b` | `a & b`, результат выбрасывается | как `and` |
+| `and dst, src` | `dst &= src` | ZF/SF/PF from the result, CF=OF=0 |
+| `or dst, src` | `dst \|= src` | same |
+| `xor dst, src` | `dst ^= src` | same |
+| `not dst` | `dst = ~dst` | **does not change** flags |
+| `test a, b` | `a & b`, result discarded | like `and` |
 
-`xor eax, eax` — каноническое обнуление: короче `mov eax, 0` и распознаётся
-процессором как «разрыв зависимости» (register renaming просто выдаёт
-новый нулевой регистр, инструкция даже не доходит до ALU).
+`xor eax, eax` is the canonical zeroing idiom: it is shorter than `mov eax, 0`
+and the processor recognizes it as a "dependency-breaking" instruction
+(register renaming just hands out a fresh zero register; the instruction
+never even reaches an ALU).
 
-Напоминание: запись в 32-битный регистр (`eax`) обнуляет старшие 32 бита
-`rax`, а запись в 8/16-битный (`al`, `ax`) — **нет**, старые биты остаются.
+Reminder: writing a 32-bit register (`eax`) zeroes the upper 32 bits of
+`rax`, but writing an 8/16-bit one (`al`, `ax`) does **not** — the old bits
+stay.
 
-## 2. Сдвиги
+## 2. Shifts
 
-| Инструкция | Действие | Аналог в C3 |
+| Instruction | Action | C3 equivalent |
 |---|---|---|
-| `shl dst, k` / `sal` | влево, справа нули | `x << k` |
-| `shr dst, k` | вправо, слева нули | `x >> k` для беззнаковых |
-| `sar dst, k` | вправо, слева копия знакового бита | `x >> k` для знаковых |
-| `shld dst, src, k` | сдвиг dst влево, освободившиеся биты берутся из src | 128-битные сдвиги |
-| `shrd dst, src, k` | то же вправо | |
+| `shl dst, k` / `sal` | left, zeros shifted in from the right | `x << k` |
+| `shr dst, k` | right, zeros shifted in from the left | `x >> k` for unsigned |
+| `sar dst, k` | right, copies of the sign bit shifted in from the left | `x >> k` for signed |
+| `shld dst, src, k` | shift dst left, vacated bits are taken from src | 128-bit shifts |
+| `shrd dst, src, k` | same, to the right | |
 
-Счётчик `k` — непосредственная константа или регистр **`cl`**, и больше
-ничего. Аппаратура маскирует счётчик: для 64-битных операндов берётся
-`k & 63`, для 32-битных — `k & 31`. Поэтому `x << 64` на железе — это `x`,
-а не 0. В C3 сдвиг на ширину типа и больше — ошибка (в безопасном режиме
-паника), именно потому, что разные процессоры ведут себя по-разному
-(ARM, например, даёт 0).
+The count `k` is an immediate constant or the register **`cl`**, and
+nothing else. The hardware masks the count: for 64-bit operands it uses
+`k & 63`, for 32-bit ones `k & 31`. So `x << 64` on the hardware is `x`,
+not 0. In C3, shifting by the type width or more is an error (a panic in
+safe mode) precisely because different processors behave differently
+(ARM, for example, gives 0).
 
-`sar` округляет к минус бесконечности: `-7 sar 1 = -4`, хотя `-7 / 2 = -3`
-в C3. Поэтому компилятор, деля знаковое число на 2, генерирует
-поправку:
+`sar` rounds toward minus infinity: `-7 sar 1 = -4`, whereas `-7 / 2 = -3`
+in C3. That is why the compiler, when dividing a signed number by 2,
+generates a correction:
 
 ```asm
 ; long div2(long x) => x / 2;
 mov  rax, rdi
-shr  rax, 63        ; rax = 1, если x < 0
+shr  rax, 63        ; rax = 1 if x < 0
 add  rax, rdi       ; x + (x < 0)
 sar  rax, 1
 ```
 
-**Флаги и счётчик 0.** Если счётчик равен нулю, флаги не меняются. Это
-значит, что `shl rax, cl` зависит от предыдущего значения флагов — у
-процессора лишняя зависимость, и на Intel такой сдвиг стоит 2–3 мкоп.
-BMI2 добавляет `shlx`/`shrx`/`sarx dst, src, cnt`: счётчик в любом
-регистре, флаги не трогаются, одна мкоп. Компиляторы с `-march=haswell`
-и выше используют именно их.
+**Flags and a count of 0.** If the count is zero, the flags are not
+changed. This means `shl rax, cl` depends on the previous value of the
+flags — an extra dependency for the processor, and on Intel such a shift
+costs 2–3 uops. BMI2 adds `shlx`/`shrx`/`sarx dst, src, cnt`: count in any
+register, flags untouched, one uop. Compilers targeting `-march=haswell`
+and above use exactly these.
 
-### Умножение сдвигами и `lea`
+### Multiplication with shifts and `lea`
 
-Компиляторы любят заменять умножение на константу комбинацией `lea` и
-сдвигов:
+Compilers like to replace multiplication by a constant with a combination
+of `lea` and shifts:
 
 ```asm
 lea rax, [rdi + rdi*4]   ; x * 5
@@ -74,48 +76,49 @@ lea rax, [rax + rax*4]   ; (x*5)*5 = x * 25
 shl rax, 4               ; x * 16
 ```
 
-`imul` стоит 3 такта задержки, `lea` с двумя компонентами — 1. Деление на
-константу компилятор заменяет умножением на «магическое» число — это мы
-разберём в главе 11.
+`imul` has 3 cycles of latency, a two-component `lea` has 1. Division by a
+constant is replaced by the compiler with multiplication by a "magic"
+number — we will look at that in chapter 11.
 
-## 3. Вращения
+## 3. Rotations
 
-| Инструкция | Действие |
+| Instruction | Action |
 |---|---|
-| `rol dst, k` | циклический сдвиг влево |
-| `ror dst, k` | циклический сдвиг вправо |
-| `rcl`/`rcr` | вращение через флаг CF (65-битное) — медленные, почти не нужны |
-| `rorx dst, src, imm` | BMI2: вращение без флагов, в любой регистр |
+| `rol dst, k` | rotate left |
+| `ror dst, k` | rotate right |
+| `rcl`/`rcr` | rotate through the CF flag (65-bit) — slow, rarely needed |
+| `rorx dst, src, imm` | BMI2: flagless rotation, into any register |
 
-В C3 нет оператора вращения, но идиома `(x << n) | (x >> (64 - n))`
-(или `(x << n) | (x >> (-n & 63))`, чтобы не было сдвига на 64)
-распознаётся LLVM и превращается в `rol`. Вращения — основа хешей
-(xxHash, wyhash, SipHash) и генераторов псевдослучайных чисел
+C3 has no rotate operator, but the idiom `(x << n) | (x >> (64 - n))`
+(or `(x << n) | (x >> (-n & 63))`, to avoid a shift by 64) is recognized
+by LLVM and turned into `rol`. Rotations are the basis of hashes
+(xxHash, wyhash, SipHash) and pseudo-random number generators
 (xoshiro256**: `rotl(s1 * 5, 7) * 9`).
 
-`bswap r32/r64` — смежная операция: разворот порядка **байтов**
-(little-endian <-> big-endian). Нужна при разборе сетевых протоколов и
-форматов файлов. Для 16-битных значений — `rol ax, 8`. Есть ещё `movbe` —
-загрузка/сохранение с разворотом.
+`bswap r32/r64` is a related operation: it reverses the order of **bytes**
+(little-endian <-> big-endian). You need it when parsing network protocols
+and file formats. For 16-bit values use `rol ax, 8`. There is also `movbe` —
+a load/store with byte reversal.
 
-## 4. Битовые тесты
+## 4. Bit tests
 
-| Инструкция | Действие |
+| Instruction | Action |
 |---|---|
-| `bt  x, i` | CF := бит i |
-| `bts x, i` | CF := бит i; бит := 1 |
-| `btr x, i` | CF := бит i; бит := 0 |
-| `btc x, i` | CF := бит i; бит инвертируется |
+| `bt  x, i` | CF := bit i |
+| `bts x, i` | CF := bit i; bit := 1 |
+| `btr x, i` | CF := bit i; bit := 0 |
+| `btc x, i` | CF := bit i; bit is inverted |
 
-С регистром индекс берётся по модулю ширины. С памятью и регистровым
-индексом — **битовая строка**: `bt [rdi], rsi` проверяет бит `rsi` в
-памяти, начинающейся с `rdi`, сколь угодно далеко (индекс знаковый, можно
-даже назад!). Это удобно, но такая форма микрокодирована (~10 мкоп на
-Intel) — компиляторы её не используют, а вычисляют `[rdi + (i >> 6)*8]` и
-`i & 63` вручную, а затем делают `bt` с регистром. Форма
-`lock bts [mem], imm` — атомарный «test-and-set» одного бита (глава 13).
+With a register operand, the index is taken modulo the width. With a memory
+operand and a register index, it is a **bit string**: `bt [rdi], rsi`
+tests bit `rsi` of the memory starting at `rdi`, arbitrarily far away (the
+index is signed — it can even go backwards!). This is convenient, but this
+form is microcoded (~10 uops on Intel) — compilers don't use it; instead
+they compute `[rdi + (i >> 6)*8]` and `i & 63` by hand and then do `bt` on
+a register. The form `lock bts [mem], imm` is an atomic "test-and-set" of a
+single bit (chapter 13).
 
-Результат во флаге CF. Превратить его в число:
+The result lands in the CF flag. To turn it into a number:
 
 ```asm
 bt    rdi, rsi
@@ -123,173 +126,176 @@ setc  al          ; al = CF
 movzx eax, al
 ```
 
-Или сразу использовать в переходе: `jc bit_is_set`. Или в арифметике:
-`adc rax, 0` прибавит CF.
+Or use it directly in a jump: `jc bit_is_set`. Or in arithmetic:
+`adc rax, 0` adds CF.
 
-## 5. Подсчёт битов
+## 5. Counting bits
 
-| Инструкция | Расширение | Результат | Для 0 |
+| Instruction | Extension | Result | For 0 |
 |---|---|---|---|
-| `popcnt d, s` | POPCNT | число единиц | 0 |
-| `lzcnt d, s` | ABM/LZCNT | число ведущих нулей | ширина, CF=1 |
-| `tzcnt d, s` | BMI1 | число хвостовых нулей | ширина, CF=1 |
-| `bsr d, s` | 386 | индекс старшего единичного бита | d не определён, ZF=1 |
-| `bsf d, s` | 386 | индекс младшего единичного бита | d не определён, ZF=1 |
+| `popcnt d, s` | POPCNT | number of ones | 0 |
+| `lzcnt d, s` | ABM/LZCNT | number of leading zeros | width, CF=1 |
+| `tzcnt d, s` | BMI1 | number of trailing zeros | width, CF=1 |
+| `bsr d, s` | 386 | index of the highest set bit | d undefined, ZF=1 |
+| `bsf d, s` | 386 | index of the lowest set bit | d undefined, ZF=1 |
 
-Соответствующие функции в C3: `x.popcount()`, `x.clz()`, `x.ctz()` (модуль `std::bits`,
-возвращают `int`; компилируются в эти инструкции при подходящем целевом CPU).
+The corresponding functions in C3: `x.popcount()`, `x.clz()`, `x.ctz()` (module `std::bits`,
+they return `int`; compiled into these instructions on a suitable target CPU).
 
-Классические применения:
+Classic uses:
 
-* `floor(log2(x)) = 63 - lzcnt(x)` — номер «размерного класса» в аллокаторе;
-* `next_pow2(x) = 1 << (64 - lzcnt(x - 1))` — размер хеш-таблицы;
-* `tzcnt` — «первый свободный слот» в битсете (после `not`);
-* `popcnt` — расстояние Хэмминга (`popcnt(a ^ b)`), ранг в сжатых
-  структурах (rank/select), число компонентов в маске.
+* `floor(log2(x)) = 63 - lzcnt(x)` — the "size class" number in an allocator;
+* `next_pow2(x) = 1 << (64 - lzcnt(x - 1))` — hash table size;
+* `tzcnt` — "first free slot" in a bitset (after `not`);
+* `popcnt` — Hamming distance (`popcnt(a ^ b)`), rank in succinct
+  structures (rank/select), number of components in a mask.
 
-### Ловушки
+### Pitfalls
 
-1. **`tzcnt` = `rep bsf`, `lzcnt` = `rep bsr`.** На процессоре без
-   BMI1/LZCNT префикс `rep` игнорируется, и инструкция молча выполняется
-   как `bsf`/`bsr` — с *другим* результатом (индекс вместо количества
-   нулей у `lzcnt`!). Перед использованием проверяйте `cpuid` (на Linux
-   флаги видны в `/proc/cpuinfo`: `popcnt`, `abm`, `bmi1`, `bmi2`).
-2. **Ложная зависимость.** На Intel Sandy Bridge — Skylake `popcnt`,
-   `lzcnt`, `tzcnt` ждали предыдущего значения регистра-приёмника. Вот
-   почему GCC и Clang пишут `xor eax, eax` перед `popcnt rax, rdi`.
-   Подробнее — в главе 14 про цепочки зависимостей.
-3. `bsf`/`bsr` на нуле: Intel официально «undefined», фактически AMD и
-   Intel оставляют приёмник нетронутым — на это полагаются, но лучше не
-   надо.
+1. **`tzcnt` = `rep bsf`, `lzcnt` = `rep bsr`.** On a processor without
+   BMI1/LZCNT the `rep` prefix is ignored, and the instruction silently
+   executes as `bsf`/`bsr` — with a *different* result (an index instead
+   of a zero count for `lzcnt`!). Check `cpuid` before using them (on
+   Linux the flags are visible in `/proc/cpuinfo`: `popcnt`, `abm`, `bmi1`, `bmi2`).
+2. **False dependency.** On Intel Sandy Bridge through Skylake, `popcnt`,
+   `lzcnt`, `tzcnt` waited for the previous value of the destination
+   register. That is why GCC and Clang emit `xor eax, eax` before
+   `popcnt rax, rdi`. More on this in chapter 14 on dependency chains.
+3. `bsf`/`bsr` on zero: Intel officially says "undefined"; in practice AMD
+   and Intel leave the destination untouched — people rely on this, but
+   better not to.
 
-## 6. BMI1 и BMI2
+## 6. BMI1 and BMI2
 
-Bit Manipulation Instructions — набор трёхоперандных (VEX) инструкций,
-которые не портят источники:
+Bit Manipulation Instructions — a set of three-operand (VEX) instructions
+that don't clobber their sources:
 
-| Инструкция | Формула | Применение |
+| Instruction | Formula | Use |
 |---|---|---|
-| `andn d, a, b` | `~a & b` | сброс битов по маске |
-| `blsr d, s` | `s & (s - 1)` | сбросить младший единичный бит |
-| `blsi d, s` | `s & -s` | выделить младший бит |
-| `blsmsk d, s` | `s ^ (s - 1)` | маска до младшего бита включительно |
-| `bextr d, s, ctl` | `(s >> start) & ((1<<len)-1)` | битовое поле (`ctl = start \| len<<8`) |
-| `bzhi d, s, n` | `s & ((1<<n)-1)` | обнулить биты начиная с n |
-| `pdep d, s, mask` | разложить биты по маске | коды Мортона, распаковка |
-| `pext d, s, mask` | собрать биты по маске | упаковка, «gather» битов |
-| `shlx/shrx/sarx` | сдвиги без флагов | |
-| `rorx d, s, imm` | вращение без флагов | |
-| `mulx hi, lo, s` | `rdx * s` → hi:lo без флагов | длинная арифметика |
+| `andn d, a, b` | `~a & b` | clear bits by mask |
+| `blsr d, s` | `s & (s - 1)` | clear the lowest set bit |
+| `blsi d, s` | `s & -s` | isolate the lowest set bit |
+| `blsmsk d, s` | `s ^ (s - 1)` | mask up to and including the lowest set bit |
+| `bextr d, s, ctl` | `(s >> start) & ((1<<len)-1)` | bit field (`ctl = start \| len<<8`) |
+| `bzhi d, s, n` | `s & ((1<<n)-1)` | zero the bits starting at n |
+| `pdep d, s, mask` | deposit bits according to the mask | Morton codes, unpacking |
+| `pext d, s, mask` | extract bits according to the mask | packing, bit "gather" |
+| `shlx/shrx/sarx` | flagless shifts | |
+| `rorx d, s, imm` | flagless rotation | |
+| `mulx hi, lo, s` | `rdx * s` → hi:lo without flags | multi-precision arithmetic |
 
-### Перебор единичных битов
+### Iterating over set bits
 
-Самый полезный приём главы:
+The most useful technique of the chapter:
 
 ```asm
-; rdi = маска; для каждого установленного бита i ...
+; rdi = mask; for each set bit i ...
     test rdi, rdi
     jz   done
 next:
-    tzcnt rcx, rdi        ; i = индекс младшего бита
-    ...                   ; обработать i
-    blsr  rdi, rdi        ; выбросить его; ZF=1, если больше нет
+    tzcnt rcx, rdi        ; i = index of the lowest set bit
+    ...                   ; process i
+    blsr  rdi, rdi        ; drop it; ZF=1 if there are no more
     jnz   next
 done:
 ```
 
-Итераций столько, сколько единиц, а не 64. Именно так перебираются
-архетипы в ECS, занятые слоты в пуле объектов, совпадения после SIMD-
-сравнения (`pmovmskb` + `tzcnt` в главе 10).
+There are as many iterations as there are ones, not 64. This is exactly
+how archetypes in an ECS, occupied slots in an object pool, and matches
+after a SIMD comparison (`pmovmskb` + `tzcnt` in chapter 10) are iterated.
 
 ### pdep/pext
 
 ```
 pext:  src  = 1 0 1 1 0 1 1 0
        mask = 1 1 0 0 1 0 1 0
-       биты src на местах единиц маски: 1 0 . . 0 . 1 .  → 0b1001 (плотно)
+       src bits at the positions of mask ones: 1 0 . . 0 . 1 .  → 0b1001 (packed)
 
 pdep:  src  = ....1001
        mask = 1 1 0 0 1 0 1 0
-       младшие биты src раскладываются по единицам: 1 0 0 0 0 0 1 0
+       low bits of src are spread over the ones: 1 0 0 0 0 0 1 0
 ```
 
-Код Мортона (чередование битов x и y) — две `pdep`:
+A Morton code (interleaving the bits of x and y) is two `pdep`s:
 
 ```asm
 mov  ecx, 0x55555555
-pdep eax, edi, ecx      ; x → чётные биты
+pdep eax, edi, ecx      ; x → even bits
 mov  ecx, 0xAAAAAAAA
-pdep edx, esi, ecx      ; y → нечётные биты
+pdep edx, esi, ecx      ; y → odd bits
 or   eax, edx
 ```
 
-**Важно:** на AMD Zen 1 и Zen 2 (Ryzen 1000–4000, в том числе мобильные
-5x00U на Zen 2) `pdep`/`pext` реализованы микрокодом и стоят от ~18 до
-~300 тактов в зависимости от числа единиц в маске. На Intel Haswell+ и
-AMD Zen 3+ — 3 такта. Поэтому зрелые библиотеки (simdjson, например)
-выбирают реализацию не только по `cpuid`, но и по семейству процессора.
-Это хороший пример того, что «есть инструкция» и «инструкция быстрая» —
-разные вещи; таблицы на uops.info помогут.
+**Important:** on AMD Zen 1 and Zen 2 (Ryzen 1000–4000, including the
+mobile 5x00U parts on Zen 2) `pdep`/`pext` are implemented in microcode and
+cost from ~18 to ~300 cycles depending on the number of ones in the mask.
+On Intel Haswell+ and AMD Zen 3+ they take 3 cycles. That is why mature
+libraries (simdjson, for example) choose the implementation not only by
+`cpuid` but also by processor family. A good example of how "the
+instruction exists" and "the instruction is fast" are different things;
+the tables at uops.info will help.
 
-## 7. Что генерирует компилятор
+## 7. What the compiler generates
 
-Попробуйте сами (`c3c compile -O3 --emit-asm file.c3`, результат в
+Try it yourself (`c3c compile -O3 --emit-asm file.c3`, the output goes to
 `asm/linux-x64/`):
 
-| C3 | Типичный вывод (`-O3`, x86-64 baseline) |
+| C3 | Typical output (`-O3`, x86-64 baseline) |
 |---|---|
-| `x & (x - 1)` | `lea rax,[rdi-1]; and rax,rdi` (с BMI1 — `blsr`) |
-| `(x << 7) \| (x >> 57)` | `rol rax, 7` или эквивалентный `shld rax, rax, 7` (так делает LLVM в c3c) |
-| `x.popcount()` | `popcnt` (если целевой CPU без POPCNT — длинная «SWAR»-последовательность сдвигов и масок) |
-| `x % 8` (беззнаковое) | `and eax, 7` |
-| `x / 8` (знаковое) | `lea rax,[rdi+7]; test rdi,rdi; cmovns rax,rdi; sar rax,3` (поправка округления) |
-| `(x >> 3) & 0x1F` | `shr` + `and` (с BMI1 иногда `bextr`) |
+| `x & (x - 1)` | `lea rax,[rdi-1]; and rax,rdi` (with BMI1 — `blsr`) |
+| `(x << 7) \| (x >> 57)` | `rol rax, 7` or the equivalent `shld rax, rax, 7` (that's what LLVM does in c3c) |
+| `x.popcount()` | `popcnt` (if the target CPU lacks POPCNT — a long "SWAR" sequence of shifts and masks) |
+| `x % 8` (unsigned) | `and eax, 7` |
+| `x / 8` (signed) | `lea rax,[rdi+7]; test rdi,rdi; cmovns rax,rdi; sar rax,3` (rounding correction) |
+| `(x >> 3) & 0x1F` | `shr` + `and` (with BMI1 sometimes `bextr`) |
 
-Важно: набор доступных компилятору инструкций определяется целевым
-процессором. В c3c это флаг `--x86cpu=<baseline|ssse3|sse4|avx1|avx2-v1|avx2-v2|avx512|native>`
-(в GCC/Clang — `-march=x86-64-v3`, `-march=native`). Например,
-`x & (x - 1)` с `--x86cpu=avx2-v2` превращается в одну `blsr`. В
-ассемблерном файле вы вольны использовать любые инструкции, которые есть
-у вашего процессора, — но тогда за проверку `cpuid` отвечаете вы.
+Important: the set of instructions available to the compiler is
+determined by the target processor. In c3c that's the flag
+`--x86cpu=<baseline|ssse3|sse4|avx1|avx2-v1|avx2-v2|avx512|native>`
+(in GCC/Clang — `-march=x86-64-v3`, `-march=native`). For example,
+`x & (x - 1)` with `--x86cpu=avx2-v2` becomes a single `blsr`. In an
+assembly file you are free to use any instruction your processor has —
+but then checking `cpuid` is your responsibility.
 
-## 8. Подводные камни
+## 8. Pitfalls
 
-* Счётчик сдвига — только `cl`. `shl rax, rsi` не существует.
-* Сдвиг по модулю ширины: «сдвинуть на 64» = «не сдвигать».
-* `setcc` пишет только 8-битный регистр — обнуляйте старшие биты
-  (`movzx` или `xor eax, eax` *до* сравнения, иначе `xor` испортит флаги).
-* `bt` с памятью и регистром — битовая строка, может выйти за пределы
-  «слова» (и за пределы вашего массива, если индекс не проверен).
-* Константы больше 32 бит нельзя использовать непосредственно в `and`/
-  `or`/`pdep`: грузите их в регистр `mov rcx, imm64` (в GNU as —
-  `movabs rcx, ...` или просто `mov rcx, ...`).
-* Проверяйте поддержку расширений: `grep -o -w bmi2 /proc/cpuinfo`.
+* The shift count can only be `cl`. `shl rax, rsi` does not exist.
+* Shifts are modulo the width: "shift by 64" = "don't shift".
+* `setcc` writes only an 8-bit register — zero the upper bits
+  (`movzx`, or `xor eax, eax` *before* the comparison, otherwise `xor`
+  will clobber the flags).
+* `bt` with memory and a register is a bit string; it can go beyond the
+  "word" (and beyond your array, if the index isn't checked).
+* Constants wider than 32 bits cannot be used directly in `and`/
+  `or`/`pdep`: load them into a register with `mov rcx, imm64` (in GNU as —
+  `movabs rcx, ...` or just `mov rcx, ...`).
+* Check extension support: `grep -o -w bmi2 /proc/cpuinfo`.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Чем отличаются `shr` и `sar`? Что получится при `sar` числа -1 на любое
-   количество битов?
-2. Почему `x / 2` для знакового `long` компилируется не в один `sar`?
-3. Какое значение даст `shl rax, cl` при `cl = 70`?
-4. Что вернёт `tzcnt` для нуля и что `bsf`? Почему опасно исполнять
-   `tzcnt` на процессоре без BMI1?
-5. Как перебрать все установленные биты 64-битной маски за число
-   итераций, равное числу единиц?
-6. Запишите формулу `next_pow2` через `lzcnt`. Где нужна осторожность?
-7. Что делают `pdep` и `pext`? Как с их помощью закодировать и
-   раскодировать код Мортона?
-8. Почему перед `popcnt rax, rdi` компилятор иногда ставит `xor eax, eax`?
+1. How do `shr` and `sar` differ? What do you get from `sar` of -1 by any
+   number of bits?
+2. Why does `x / 2` for a signed `long` not compile to a single `sar`?
+3. What value does `shl rax, cl` give when `cl = 70`?
+4. What does `tzcnt` return for zero, and what does `bsf`? Why is it
+   dangerous to execute `tzcnt` on a processor without BMI1?
+5. How do you iterate over all set bits of a 64-bit mask in a number of
+   iterations equal to the number of ones?
+6. Write the `next_pow2` formula using `lzcnt`. Where do you need to be careful?
+7. What do `pdep` and `pext` do? How can you use them to encode and
+   decode a Morton code?
+8. Why does the compiler sometimes put `xor eax, eax` before `popcnt rax, rdi`?
 
-## Что почитать
+## Further reading
 
 * Intel® 64 and IA-32 Architectures Software Developer's Manual, Vol. 2 —
-  описания `BT`, `BTS`, `LZCNT`, `TZCNT`, `PDEP`, `PEXT`, `SHLX`.
-* Henry S. Warren, *Hacker's Delight* (2-е изд.) — библия битовых трюков.
+  descriptions of `BT`, `BTS`, `LZCNT`, `TZCNT`, `PDEP`, `PEXT`, `SHLX`.
+* Henry S. Warren, *Hacker's Delight* (2nd ed.) — the bible of bit tricks.
 * Sean Eron Anderson, *Bit Twiddling Hacks* —
   https://graphics.stanford.edu/~seander/bithacks.html
-* Agner Fog, *Instruction tables* — задержки и пропускная способность,
-  обратите внимание на `PDEP`/`PEXT` для Zen 2 и Zen 3.
-* https://uops.info — точные измерения для всех микроархитектур.
-* Daniel Lemire's blog (lemire.me/blog) — много статей про `popcnt`,
-  битсеты и перебор битов («Iterating over set bits quickly»).
-* Wikipedia: «Z-order curve» — коды Мортона.
+* Agner Fog, *Instruction tables* — latencies and throughput;
+  pay attention to `PDEP`/`PEXT` on Zen 2 and Zen 3.
+* https://uops.info — precise measurements for all microarchitectures.
+* Daniel Lemire's blog (lemire.me/blog) — many articles on `popcnt`,
+  bitsets and bit iteration ("Iterating over set bits quickly").
+* Wikipedia: "Z-order curve" — Morton codes.

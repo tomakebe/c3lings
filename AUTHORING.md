@@ -1,173 +1,173 @@
-# Руководство для авторов упражнений c3lings
+# Guide for c3lings exercise authors
 
-Этот файл — для тех, кто пишет упражнения. Ученику он не нужен.
+This file is for people writing exercises. Learners don't need it.
 
-## Целевая версия
+## Target version
 
-Курс написан под **c3c 0.8.5** (`./.c3c/c3/c3c`, ставится через `tools/get-c3c.sh`).
-Справочник по языку: `./.c3c/c3/MANUAL.md` (17 тыс. строк, ищите grep'ом по заголовкам),
-исходники стандартной библиотеки: `./.c3c/c3/lib/std/`, история изменений: `./.c3c/c3/releasenotes.md`.
+The course targets **c3c 0.8.5** (`./.c3c/c3/c3c`, installed with `tools/get-c3c.sh`).
+Language reference: `./.c3c/c3/MANUAL.md` (17k lines, grep for headings),
+standard library sources: `./.c3c/c3/lib/std/`, change history: `./.c3c/c3/releasenotes.md`.
 
-C3 быстро меняется, и многое из того, что вы помните о нём, может быть устаревшим.
-**Ни одну конструкцию не используйте, не проверив её компилятором.** Для экспериментов
-используйте отдельную временную папку, а не каталог курса.
+C3 changes quickly, and much of what you remember about it may be out of date.
+**Never use a construct without checking it with the compiler first.** Experiment in a separate
+temporary directory, not in the course directory.
 
-## Структура
+## Layout
 
 ```
-exercises/NNN_name.c3            упражнение по языку (или каталог NNN_name/ с несколькими .c3)
-engine/exercises/eCCNN_name.c3   упражнение по движкам (CC = номер главы, NN = номер в главе)
-engine/docs/CC_topic.md          теоретическая глава по движкам
-asm/exercises/aCCNN_name/        упражнение по ассемблеру: каталог с .c3-драйвером и .s-файлами
-asm/docs/CC_topic.md             теоретическая глава по ассемблеру
-solutions/<name>.c3              эталонное решение (или каталог)
-checks/<name>.out                точный ожидаемый stdout (обязателен, если не mode=test)
-checks/<name>.flags              (необязательно) доп. флаги компилятора, одной строкой, напр. `-D DEBUG_DRAW`
-checks/<name>.mode               (необязательно) `test` — упражнение запускается через `c3c compile-test`,
-                                 успех = все @test прошли; .out тогда не нужен
-checks/<name>.in                 (необязательно) stdin для программы
-hints/<name>.md                  подсказка (на русском), показывается по `./c3lings hint N`
+exercises/NNN_name.c3            language exercise (or a directory NNN_name/ with several .c3 files)
+engine/exercises/eCCNN_name.c3   engine exercise (CC = chapter number, NN = number within the chapter)
+engine/docs/CC_topic.md          engine theory chapter
+asm/exercises/aCCNN_name/        assembly exercise: a directory with a .c3 driver and .s files
+asm/docs/CC_topic.md             assembly theory chapter
+solutions/<name>.c3              reference solution (or a directory)
+checks/<name>.out                exact expected stdout (required unless mode=test)
+checks/<name>.flags              (optional) extra compiler flags on one line, e.g. `-D DEBUG_DRAW`
+checks/<name>.mode               (optional) `test` — the exercise runs via `c3c compile-test`,
+                                 success = all @test functions pass; no .out needed then
+checks/<name>.in                 (optional) stdin for the program
+hints/<name>.md                  hint, shown by `./c3lings hint N`
 ```
 
-`<name>` — имя файла без `.c3`, например `001_hello` или `e0301_vec_math`.
+`<name>` is the file name without `.c3`, e.g. `001_hello` or `e0301_vec_math`.
 
-## Как раннер проверяет
+## How the runner checks
 
-1. Файлы `*.s`/`*.S` из каталога упражнения ассемблируются `cc -c -g` в `.build/`, затем
-   `c3c compile -q <flags> -o .build/<name> <все .c3 файлы> <объектники>`.
-2. Запуск с таймаутом 10 с, stdin = `/dev/null` (или `.in`), рабочий каталог `.build/`.
-3. Код выхода должен быть 0, stdout должен совпасть с `.out` (хвостовые пробелы в строках игнорируются).
+1. `*.s`/`*.S` files in the exercise directory are assembled with `cc -c -g` into `.build/`, then
+   `c3c compile -q <flags> -o .build/<name> <all .c3 files> <object files>`.
+2. The program runs with a 10 s timeout, stdin = `/dev/null` (or `.in`), working directory `.build/`.
+3. The exit code must be 0 and stdout must match `.out` (trailing whitespace on lines is ignored).
 
-`./c3lings verify <префикс>` — для каждого упражнения проверяет, что решение ПРОХОДИТ, а
-упражнение в исходном виде НЕ проходит. Каждое ваше упражнение должно давать `ok`.
+`./c3lings verify <prefix>` checks for each exercise that the solution PASSES and the
+exercise as shipped does NOT pass. Every exercise you write must report `ok`.
 
-## Требования к упражнению
+## Exercise requirements
 
-* Всё учебное содержимое — **на русском**. Идентификаторы в коде и вывод программ — на английском (ASCII), чтобы не было проблем с выводом.
-* Шапка-комментарий — это учебник. Объясните концепцию по существу: синтаксис, семантику, отличия от C, подводные камни, зачем это нужно. Тон дружелюбный, как в ziglings/rustlings. В конце шапки — блок `ЗАДАЧА:`, где сказано, что надо сделать (и, если полезно, что программа должна напечатать).
-* Формат шапки — как в `exercises/001_hello.c3`:
+* All teaching content is in **English**. Code identifiers and program output are ASCII.
+* The header comment is the textbook. Explain the concept properly: syntax, semantics, differences from C, pitfalls, why it matters. Friendly tone, like ziglings/rustlings. End the header with a `TASK:` block that says what to do (and, if useful, what the program should print).
+* Header format — as in `exercises/001_hello.c3`:
   ```
   // =====================================================================
-  //  NNN · Заголовок
+  //  NNN · Title
   // =====================================================================
   //
-  //  ...объяснение...
+  //  ...explanation...
   //
-  //  ЗАДАЧА: ...
+  //  TASK: ...
   //
   ```
-* Упражнение должно ломаться ровно там, где проверяется изучаемая концепция. Места для правки помечайте, например, `???` (синтаксическая дыра), `// TODO` или `// <- что-то не так`. Ученик не должен чинить посторонние вещи.
-* Начальные упражнения — маленькие (1–3 правки). Ближе к концу допустимо «реализуйте тело функции», «напишите макрос», «допишите систему». Сложность растёт монотонно.
-* Решение — копия упражнения с исправлениями (комментарии можно оставить как есть).
-* Вывод **детерминирован**: никаких адресов, времени, случайности без фиксированного seed, порядка итерации хеш-таблиц (сортируйте перед печатью), гонок между потоками.
-* Предпочтительно, чтобы программа сама проверяла себя через `assert(...)` и печатала понятный результат. Неправильный ответ => либо падение assert'а, либо несовпадение вывода.
-* Не пишите в файлы за пределами текущего рабочего каталога (это `.build/`). Никакой сети. Никаких внешних библиотек кроме стандартной (и libc).
-* Используйте только stdout для ожидаемого вывода (stderr не проверяется).
-* Подсказка в `hints/<name>.md`: 2–8 строк, наводит на мысль, но не выдаёт решение целиком сразу (можно в конце «Если совсем застряли: …»).
-* Имена файлов: `NNN_snake_case.c3`, английские, короткие.
+* The exercise must break exactly where the concept being taught is tested. Mark the places to fix, e.g. with `???` (a syntax hole), `// TODO` or `// <- something is wrong`. The learner should not have to fix unrelated things.
+* Early exercises are small (1–3 fixes). Towards the end, "implement this function body", "write a macro", "finish the system" is fine. Difficulty rises monotonically.
+* The solution is a copy of the exercise with the fixes applied (comments can stay as they are).
+* Output is **deterministic**: no addresses, time, randomness without a fixed seed, hash map iteration order (sort before printing), or races between threads.
+* Prefer programs that check themselves with `assert(...)` and print a clear result. A wrong answer => either a failed assert or an output mismatch.
+* Don't write files outside the current working directory (that is `.build/`). No network. No external libraries except the standard library (and libc).
+* Use only stdout for expected output (stderr is not checked).
+* Hint in `hints/<name>.md`: 2–8 lines that point the way without giving away the whole solution at once (you can end with "If you are really stuck: …").
+* File names: `NNN_snake_case.c3`, English, short.
 
-## Проверено на 0.8.5 (важные отличия от старых версий C3)
+## Verified on 0.8.5 (important differences from older C3 versions)
 
-* Ошибки: `excuse MY_ERROR;` (раньше `faultdef`), возврат `return MY_ERROR~;`, тип результата `int?`. Печать ошибки через `%s` даёт `module::MY_ERROR`.
-* `sz` — знаковый размер (раньше `isz`), `usz` — беззнаковый. `.len` у массивов и срезов — тоже `sz` (знаковый).
-* Свойства типов через `::` — `Foo::size`, `Foo::alignment`, `Foo::members`, `Enum::values`, `Enum::names`, `Enum::len`, `Enum::from_ordinal(i)`. Старое `int.sizeof` удалено. `$sizeof/$nameof/...` удалены (есть `$reflect(x).size` и т.п.).
-* `$Typeof(x)`, `$Typefrom(...)` (с заглавной буквы).
-* `alias` — синоним (вместо старого `def`), `typedef Meters = int;` — новый отдельный тип (неявное `int -> Meters` запрещено: `(Meters)5`). `typedef Foo = int @inline`/`inline` — см. мануал.
-* `constset Color : int { RED = 1, GREEN = 2 }` — набор констант.
-* Generics: `struct Stack <Type> { ... }`, функция `fn Type my_max(Type a, Type b) <Type> => ...;` (параметры ПОСЛЕ списка аргументов), вызов только с явными параметрами: `my_max{int}(3, 7)`. Тип: `Stack{int}`, `alias IntStack = Stack{int};`. Модуль: `module foo <Type>;`.
-* Лямбды: `alias IntFn = fn int(int); IntFn f = fn int(int x) => x * 2;` или `apply(x, fn (i) => i * i)` с выводом типа из контекста. Не захватывают переменные.
-* Макросы: `macro @twice(#e) { #e; #e; }`; вариадические: `$vaarg.len`, `$vaarg[$i]`, `...$vaarg`. Compile-time: `$for var $i = 0; $i < N; $i++: ... $endfor`, `$foreach $f : Foo::members: ... $endforeach`, `$if ...: ... $else ... $endif`.
-* Имена структур не могут быть полностью в верхнем регистре (`struct P` — ошибка).
-* Методы: `fn double Sq.area(&self)`, `fn int Foo.get(self)`. Интерфейсы: `interface Shape { fn double area(); }`, `struct Sq (Shape) {...}`, реализация с `@dynamic`.
-* Контейнеры: `import std::collections::list, std::collections::map;` `List{int} l; l.push(1); defer l.free();` `HashMap{String,int} m; m.init(mem); m.set("a",1); m.get("a")` возвращает Optional.
-* Память: `mem::new(Foo, {..})`, `mem::new_array(int, n)`, `free(p)`; heap-аллокатор `mem`, временный `tmem`; `@pool() { ... };` — временная арена; `string::tformat("%d", x)`.
-* Потоки: `import std::thread;` `Thread t; t.create(fn int(void* arg) {...}, null)!!; t.join()!!;` `Atomic{int} a; a.add(3); a.load();` (import std::atomic).
-* Вектора: `int[<4>] v = {1,2,3,4}; v.sum(); v.xy * 2;` печатаются как `[<2, 4>]`.
-* `io::printn(double)` печатает `4.000000`; используйте `io::printfn("%.2f", x)` для контроля формата.
-* `io::printfn("%s", struct)` для структур без `to_format` печатает адрес — не используйте это в ожидаемом выводе.
-* Явное отбрасывание Optional-результата: `(void)foo();`.
+* Errors: `excuse MY_ERROR;` (formerly `faultdef`), return with `return MY_ERROR~;`, result type `int?`. Printing a fault with `%s` gives `module::MY_ERROR`.
+* `sz` is the signed size type (formerly `isz`), `usz` the unsigned one. `.len` of arrays and slices is also `sz` (signed).
+* Type properties use `::` — `Foo::size`, `Foo::alignment`, `Foo::members`, `Enum::values`, `Enum::names`, `Enum::len`, `Enum::from_ordinal(i)`. The old `int.sizeof` is gone. `$sizeof/$nameof/...` are gone (use `$reflect(x).size` etc.).
+* `$Typeof(x)`, `$Typefrom(...)` (capitalized).
+* `alias` is a synonym (replacing the old `def`); `typedef Meters = int;` is a new distinct type (implicit `int -> Meters` is not allowed: `(Meters)5`). `typedef Foo = int @inline`/`inline` — see the manual.
+* `constset Color : int { RED = 1, GREEN = 2 }` — a set of constants.
+* Generics: `struct Stack <Type> { ... }`, a function `fn Type my_max(Type a, Type b) <Type> => ...;` (parameters AFTER the argument list), called only with explicit parameters: `my_max{int}(3, 7)`. Type: `Stack{int}`, `alias IntStack = Stack{int};`. Module: `module foo <Type>;`.
+* Lambdas: `alias IntFn = fn int(int); IntFn f = fn int(int x) => x * 2;` or `apply(x, fn (i) => i * i)` with the type inferred from context. They don't capture variables.
+* Macros: `macro @twice(#e) { #e; #e; }`; variadic: `$vaarg.len`, `$vaarg[$i]`, `...$vaarg`. Compile time: `$for var $i = 0; $i < N; $i++: ... $endfor`, `$foreach $f : Foo::members: ... $endforeach`, `$if ...: ... $else ... $endif`.
+* Struct names cannot be all uppercase (`struct P` is an error).
+* Methods: `fn double Sq.area(&self)`, `fn int Foo.get(self)`. Interfaces: `interface Shape { fn double area(); }`, `struct Sq (Shape) {...}`, implementation marked `@dynamic`.
+* Containers: `import std::collections::list, std::collections::map;` `List{int} l; l.push(1); defer l.free();` `HashMap{String,int} m; m.init(mem); m.set("a",1); m.get("a")` returns an Optional.
+* Memory: `mem::new(Foo, {..})`, `mem::new_array(int, n)`, `free(p)`; the heap allocator is `mem`, the temporary one `tmem`; `@pool() { ... };` is a temporary arena; `string::tformat("%d", x)`.
+* Threads: `import std::thread;` `Thread t; t.create(fn int(void* arg) {...}, null)!!; t.join()!!;` `Atomic{int} a; a.add(3); a.load();` (import std::atomic).
+* Vectors: `int[<4>] v = {1,2,3,4}; v.sum(); v.xy * 2;` print as `[<2, 4>]`.
+* `io::printn(double)` prints `4.000000`; use `io::printfn("%.2f", x)` to control the format.
+* `io::printfn("%s", struct)` for structs without `to_format` prints an address — don't use it in expected output.
+* Explicitly discarding an Optional result: `(void)foo();`.
 
-* `$assert cond : "msg";` — разделитель двоеточие (запятая из MANUAL.md не компилируется). `$assert(cond);` тоже работает.
-* `@const` разрешён только на макросах. Compile-time хеш: `macro uint @h(String $s) @const { var $h = 2166136261u; $for var $i = 0; $i < $s.len; $i++: $h = ($h ^ $s[$i]) * 16777619u; $endfor return $h; }` — годится для `const` и меток `case`. Встроенный `@str_hash` использует другой хеш.
-* Элементы `const String[*]` можно индексировать в `$for` (`NAMES[$i]`).
-* `List.len()` возвращает `sz` (знаковый); `&list[i]` повисает после `push`. Индекс-выражение `list[a + b]` требует `(sz)`.
-* Выражение типа int не приводится неявно к параметру `float` (`f(10 + k)` — ошибка, `f(k)` — можно).
-* Если у `if` есть `else`, обе ветки должны быть в фигурных скобках.
-* `%s` печатает имя значения enum.
-* `String.tsplit("\n", skip_empty: true)` внутри `@pool()`; разбор числа: `s.to_int() ?? 0`.
+* `$assert cond : "msg";` — the separator is a colon (the comma form from MANUAL.md doesn't compile). `$assert(cond);` also works.
+* `@const` is only allowed on macros. A compile-time hash: `macro uint @h(String $s) @const { var $h = 2166136261u; $for var $i = 0; $i < $s.len; $i++: $h = ($h ^ $s[$i]) * 16777619u; $endfor return $h; }` — usable in `const` and `case` labels. The built-in `@str_hash` uses a different hash.
+* Elements of a `const String[*]` can be indexed inside `$for` (`NAMES[$i]`).
+* `List.len()` returns `sz` (signed); `&list[i]` dangles after `push`. An index expression `list[a + b]` needs `(sz)`.
+* An int expression doesn't implicitly convert to a `float` parameter (`f(10 + k)` is an error, `f(k)` is fine).
+* If an `if` has an `else`, both branches must use braces.
+* `%s` prints the name of an enum value.
+* `String.tsplit("\n", skip_empty: true)` inside `@pool()`; parsing a number: `s.to_int() ?? 0`.
 
-* `@assert_leak() { ... };` — встроенная проверка утечек (в safe-режиме печатает отчёт и падает с кодом 132).
-* Память после выхода из `@pool` в safe-режиме заполняется байтами `0xAA` — use-after-pool детерминированно печатает мусор.
-* `DString.append(42)` добавляет символ `'*'`, а не цифры — используйте `appendf("%d", x)`.
-* `DString`/`List`/`HashMap` без `init` при первой записи берут `tmem`.
-* `HashMap` копирует ключи-`String`; `get`, `[]`, `pop()` возвращают Optional; ключи (`tkeys()`) сортируйте перед печатью.
-* `io::fprintfn` сбрасывает буфер после каждой строки, `fprintf`/`File.write` — нет.
-* `String.tokenize(" \n")` делит по подстроке целиком, а не по набору символов.
-* `string::bformat` при нехватке буфера паникует (`BUFFER_EXCEEDED`).
-* `typeid` в рантайме: есть `.size`, `.kind`; `.name` — только во время компиляции. `String` имеет kind `TYPEDEF`. `(int)anyval` — ошибка, нужно `*(int*)anyval`.
-* В switch по типу подтип совпадает с `case` родителя — сначала самый конкретный тип.
-* `io::printn(struct)` печатает `{ x: 1, y: 2 }`, а `printfn("%s", struct)` — адрес. `to_format` у типа с `(Printable)` должен быть `@dynamic`.
-* `==` на структуре без перегрузки — ошибка компиляции. При `==` и `<` доступны все сравнения и `quicksort` без компаратора.
-* Вызов отсутствующего `@optional`-метода интерфейса паникует — проверяйте `if (&s.method)`.
-* Компаратор сортировки возвращает целое (не `bool`); `List` передаётся как `quicksort(&list)`; `quicksort` нестабилен, `mergesort` стабилен; `binarysearch` возвращает индекс вставки.
-* `double d = a / b;` с int — ошибка, пишите `(double)a / b`.
-* `math::sign` только для целых; `math::sqr(5)` — double; `math::round(-2.5)` = -3.
-* `var` вне макросов — ошибка (кроме объявлений с `@safeinfer`).
-* `alloc::new_array(allocator, T, n)` / `alloc::free(allocator, p)` — формы с явным аллокатором. `map.@each(; String k, int v) { ... };` работает.
+* `@assert_leak() { ... };` — built-in leak checking (in safe mode it prints a report and exits with code 132).
+* After leaving `@pool`, memory is filled with `0xAA` bytes in safe mode — use-after-pool deterministically prints garbage.
+* `DString.append(42)` appends the character `'*'`, not digits — use `appendf("%d", x)`.
+* `DString`/`List`/`HashMap` without `init` use `tmem` on the first write.
+* `HashMap` copies `String` keys; `get`, `[]`, `pop()` return Optionals; sort keys (`tkeys()`) before printing.
+* `io::fprintfn` flushes after every line, `fprintf`/`File.write` don't.
+* `String.tokenize(" \n")` splits on the whole substring, not on a set of characters.
+* `string::bformat` panics when the buffer is too small (`BUFFER_EXCEEDED`).
+* `typeid` at run time: has `.size`, `.kind`; `.name` only at compile time. `String` has kind `TYPEDEF`. `(int)anyval` is an error, use `*(int*)anyval`.
+* In a type switch a subtype matches its parent's `case` — put the most specific type first.
+* `io::printn(struct)` prints `{ x: 1, y: 2 }`, while `printfn("%s", struct)` prints an address. `to_format` on a type declared `(Printable)` must be `@dynamic`.
+* `==` on a struct without an overload is a compile error. With `==` and `<` overloaded, all comparisons and `quicksort` without a comparator are available.
+* Calling a missing `@optional` interface method panics — check with `if (&s.method)`.
+* A sort comparator returns an integer (not `bool`); a `List` is passed as `quicksort(&list)`; `quicksort` is unstable, `mergesort` is stable; `binarysearch` returns the insertion index.
+* `double d = a / b;` with ints is an error, write `(double)a / b`.
+* `math::sign` only takes integers; `math::sqr(5)` is a double; `math::round(-2.5)` = -3.
+* `var` outside macros is an error (except declarations with `@safeinfer`).
+* `alloc::new_array(allocator, T, n)` / `alloc::free(allocator, p)` are the explicit-allocator forms. `map.@each(; String k, int v) { ... };` works.
 
-* Optional-аргумент делает весь вызов Optional: `(void)io::printfn("%d", opt);` (при пустом ничего не печатается). `@ok(x)` не сужает тип; `@catch(x) == 0` — ошибка.
-* Пустой fault печатается как `(empty-fault)`. Без строки `module` имя модуля = имя файла (`033_rethrow::WRONG_KEY`).
-* Встроенные faults: `NOT_FOUND`, `NO_MORE_ELEMENT`, `TYPE_MISMATCH`, `CAPACITY_EXCEEDED`, `NOT_IMPLEMENTED`, `TIMEOUT`. `to_int()`: `string::EMPTY_STRING`/`MALFORMED_INTEGER`/`INTEGER_OVERFLOW`.
-* `defer catch` в неoptional-функции компилируется и никогда не выполняется.
-* `@local` ограничен секцией модуля, а не файлом.
-* `typedef` допускает арифметику с литералами, но сравнение с литералом — ошибка (нужен каст или `inline`).
-* Тип указателя на функцию нельзя писать inline в поле/параметре — только через `alias`. Функция как значение — только `&f`.
-* В `<* *>` нельзя `//`-комментарии. Нарушение `@require` с константным аргументом — ошибка компиляции.
-* Вектора: `<`/`>` — ошибка (`.comp_gt(v)`), `==` даёт один `bool`.
-* `foreach (v : arr) v.x = 0;` меняет копию без предупреждения. `int[W][H]` — H строк по W.
-* `enum Foo { A = 200 }` — непонятная ошибка; используйте `constset`.
-* `@init(N)`: меньшее N раньше. `int...` принимает массив только через `...arr`; `any...` требует указателей.
-* `printf`-аргументы проверяются при компиляции; `%x` от `-1` печатает `-1`; `%b` — двоичный; `char` через `%s`/`%d` — число, нужен `%c`.
+* An Optional argument makes the whole call Optional: `(void)io::printfn("%d", opt);` (prints nothing when empty). `@ok(x)` doesn't narrow the type; `@catch(x) == 0` is an error.
+* An empty fault prints as `(empty-fault)`. Without a `module` line, the module name is the file name (`033_rethrow::WRONG_KEY`).
+* Built-in faults: `NOT_FOUND`, `NO_MORE_ELEMENT`, `TYPE_MISMATCH`, `CAPACITY_EXCEEDED`, `NOT_IMPLEMENTED`, `TIMEOUT`. `to_int()`: `string::EMPTY_STRING`/`MALFORMED_INTEGER`/`INTEGER_OVERFLOW`.
+* `defer catch` in a non-optional function compiles and never runs.
+* `@local` is scoped to the module section, not the file.
+* A `typedef` allows arithmetic with literals, but comparing with a literal is an error (needs a cast or `inline`).
+* A function pointer type can't be written inline in a field/parameter — only through `alias`. A function as a value — only `&f`.
+* `//` comments are not allowed inside `<* *>`. Violating `@require` with a constant argument is a compile error.
+* Vectors: `<`/`>` are errors (`.comp_gt(v)`), `==` yields a single `bool`.
+* `foreach (v : arr) v.x = 0;` silently modifies a copy. `int[W][H]` is H rows of W.
+* `enum Foo { A = 200 }` gives a confusing error; use `constset`.
+* `@init(N)`: lower N runs earlier. `int...` takes an array only via `...arr`; `any...` needs pointers.
+* `printf` arguments are checked at compile time; `%x` of `-1` prints `-1`; `%b` is binary; a `char` via `%s`/`%d` prints a number, use `%c`.
 
-* Имя параметра-типа generic не может быть `T` или `A` (заглавные = константный параметр) — используйте `Type`, `Elem`.
-* Generics в модуле группируются по именам параметров: `Box{String}` инстанцирует и `my_max{String}`, если оба `<Type>`.
-* Методы generic-типов пишутся без `<Type>`; метод одной инстанциации — `fn int Stack{int}.sum(&self)`.
-* Нарушение `@require` у generic — всегда жёсткая ошибка; `$assignable` удалён (используйте `$defined(Type x = 1)`).
-* Макрос `macro @show(#e) => io::printfn(...)` возвращает `sz?` — пишите `macro void @show(#e) { ...; }`.
-* Свойства типов только через `::`: `$Typeof(x)::name`, `Dir::from_ordinal(i)`; typeid — `int::typeid`. `Dir::len` в арифметике требует каста.
-* `return` в `@body`-блоке возвращает из объемлющей функции; `break` там — ошибка.
-* Невыровненное поле `@packed`-структуры в printf паникует в safe-режиме — копируйте в локальную переменную.
-* `$echo` печатает в вывод компилятора с префиксом `c3c:`. Compile-time массивы: `$t = $t +++ elem;`.
+* A generic type parameter can't be named `T` or `A` (all caps = constant parameter) — use `Type`, `Elem`.
+* Generics in a module are grouped by parameter names: `Box{String}` also instantiates `my_max{String}` if both use `<Type>`.
+* Methods on generic types are written without `<Type>`; a method for one instantiation — `fn int Stack{int}.sum(&self)`.
+* Violating a generic `@require` is always a hard error; `$assignable` is gone (use `$defined(Type x = 1)`).
+* The macro `macro @show(#e) => io::printfn(...)` returns `sz?` — write `macro void @show(#e) { ...; }`.
+* Type properties only via `::`: `$Typeof(x)::name`, `Dir::from_ordinal(i)`; typeid — `int::typeid`. `Dir::len` in arithmetic needs a cast.
+* `return` inside a `@body` block returns from the enclosing function; `break` there is an error.
+* A misaligned field of a `@packed` struct passed to printf panics in safe mode — copy it into a local first.
+* `$echo` prints to the compiler output with a `c3c:` prefix. Compile-time arrays: `$t = $t +++ elem;`.
 
-* `-D` принимает только имена (`-D NAME=3` — ошибка). На верхнем уровне: `@feat(A | !B)`, `alias T = $feat(X) ? double : float;`.
-* `$$`-builtins в пользовательском коде дают предупреждение — используйте методы std::bits (`x.popcount()`, `clz()`, `rotl(n)`).
-* `@test` без аргументов; тесты идут под tracking-аллокатором (утечка = провал). `compile-test` создаёт `out/` и `build/` в `.build/`.
-* Safe-режим (по умолчанию) паникует с кодом 132: выход за границы, null, деление на 0, сдвиг ≥ ширины, `@require`, `!!` на ошибке. Переполнение целых заворачивается без паники.
-* Встроенный ассемблер C3: список инструкций — `c3c compile --list-asm file.c3`. Мнемоники с AT&T-суффиксами, операнды в порядке Intel. Есть popcnt/lzcnt/tzcnt/BMI/crc32/syscall/cmov*; нет and, shl/shr/sar, imul, cmp, test, lea, setcc, переходов, `lock`, барьеров (поэтому `xaddl` в asm-блоке не атомарен).
-* `io::print`/`printf` не сбрасывают stdout — перед сырым `write`-syscall вызывайте `(void)io::stdout().flush();`.
-* Разыменование невыровненного `ulong*` в safe-режиме паникует — `mem::load(ptr, 1)`. Адрес функции: `(char*)(void*)&fn`.
-* ICE: `*(uint*)&char_array[0] = x;` — используйте `bitcast`.
-* C3 `String` в `%s` C-вариадика: для подстроки используйте `s.zstr_tcopy()`.
-* Атомики: `compare_exchange(&expected, desired, $succ, $fail)` → bool; порядки `RELAXED`/`ACQUIRE`/`RELEASE`; `tlocal` — thread-local.
-* Каналы: `channel::create_buffered{int}(mem, n)` (import std::thread::channel). ThreadPool: `init(mem, n)`, `add_task(fn void(void*), arg)`, `destroy()` ждёт задачи.
-* Allocator: `acquire(sz, AllocInitType, sz)`, `resize(void*, sz, sz)`, `release(void*, bool)`, все `@dynamic`. `TrackingAllocator.print_report()` пишет в stdout — используйте `fprint_report(io::stderr())!!`.
-* `if (try a = f() && try b = g())` — два try через `&&`; `x ?? ERR~!` подменяет ошибку и пробрасывает.
+* `-D` takes names only (`-D NAME=3` is an error). At the top level: `@feat(A | !B)`, `alias T = $feat(X) ? double : float;`.
+* `$$` builtins in user code produce a warning — use std::bits methods (`x.popcount()`, `clz()`, `rotl(n)`).
+* `@test` takes no arguments; tests run under a tracking allocator (a leak = a failure). `compile-test` creates `out/` and `build/` inside `.build/`.
+* Safe mode (the default) panics with code 132 on: out of bounds, null, division by zero, shift ≥ width, `@require`, `!!` on an error. Integer overflow wraps without a panic.
+* C3 inline assembly: list the instructions with `c3c compile --list-asm file.c3`. Mnemonics take AT&T suffixes, operands are in Intel order. popcnt/lzcnt/tzcnt/BMI/crc32/syscall/cmov* exist; and, shl/shr/sar, imul, cmp, test, lea, setcc, jumps, `lock` and fences don't (so `xaddl` in an asm block is not atomic).
+* `io::print`/`printf` don't flush stdout — call `(void)io::stdout().flush();` before a raw `write` syscall.
+* Dereferencing a misaligned `ulong*` panics in safe mode — use `mem::load(ptr, 1)`. A function's address: `(char*)(void*)&fn`.
+* ICE: `*(uint*)&char_array[0] = x;` — use `bitcast`.
+* A C3 `String` passed to `%s` of a C variadic: for a substring use `s.zstr_tcopy()`.
+* Atomics: `compare_exchange(&expected, desired, $succ, $fail)` → bool; orderings `RELAXED`/`ACQUIRE`/`RELEASE`; `tlocal` is thread-local.
+* Channels: `channel::create_buffered{int}(mem, n)` (import std::thread::channel). ThreadPool: `init(mem, n)`, `add_task(fn void(void*), arg)`, `destroy()` waits for the tasks.
+* Allocator: `acquire(sz, AllocInitType, sz)`, `resize(void*, sz, sz)`, `release(void*, bool)`, all `@dynamic`. `TrackingAllocator.print_report()` writes to stdout — use `fprint_report(io::stderr())!!`.
+* `if (try a = f() && try b = g())` — two tries joined with `&&`; `x ?? ERR~!` replaces the error and rethrows.
 
-* Вызов C3-функции из ассемблера: `@export("name")` даёт чистое C-имя (просто `@export` — `module__fn`; без него символ `module.fn`, а неиспользуемая функция выбрасывается).
-* `uint128` через ABI — пара регистров (rdi:rsi, результат rdx:rax). `String`-аргумент приходит как ptr в rdi и len в rsi.
-* Коды выхода: assert — 132, segfault — 139 (с backtrace до строки `.s`), ошибка `div` — 136.
-* `c3c --emit-asm` даёт только AT&T; для Intel — `objdump -d -M intel`. Используйте `compile-only --emit-asm`.
-* `.intel_syntax noprefix` должна идти до любой инструкции; в gdb — `set disassembly-flavor intel`.
+* Calling a C3 function from assembly: `@export("name")` gives a plain C name (bare `@export` gives `module__fn`; without it the symbol is `module.fn`, and an unused function is dropped).
+* `uint128` across the ABI is a register pair (rdi:rsi, result rdx:rax). A `String` argument arrives as ptr in rdi and len in rsi.
+* Exit codes: assert — 132, segfault — 139 (with a backtrace down to the `.s` line), `div` fault — 136.
+* `c3c --emit-asm` only produces AT&T; for Intel use `objdump -d -M intel`. Use `compile-only --emit-asm`.
+* `.intel_syntax noprefix` must come before any instruction; in gdb — `set disassembly-flavor intel`.
 
-* Индекс в `foreach (i, x : arr)` без типа — `sz`; для `usz`-арифметики пишите `foreach (usz i, ...)`. Функции выделения (`alloc::new_array`, `mem::realloc`, `mem::copy`) принимают `sz`.
-* Смешанные знаковые/беззнаковые сравнения и сужение — ошибка; расширение смешанного выражения (`long x = a - b;` с int) требует `(long)a - b`.
-* Имя типа из заглавных и цифр (`alias R4 = ...`) считается константой — пишите `Ring4`.
-* Глобальный массив с литералом-инициализатором должен быть `const` (`const ZString[*] X = {...}`).
-* Enum-значение не выводится в индексе массива: `arr[AssetType.TEXTURE]`.
-* Константы, глобалы и макросы другого модуля требуют префикса (`core::@zone(...)`), типы — нет.
-* `float[<4>]` в структуре выровнен на 4; `typedef X = float[<4>] @simd` — на 16. Крошечные отрицательные числа печатаются как `-0.000` — добавляйте `+ 0.0f` или округляйте.
-* `continue` в trailing-блоке макроса запрещён. Перед разыменованием в заготовках ставьте `assert(p != null)`, иначе segfault (139) вместо понятного падения.
-* `excuse { A, B }` — блочная форма. `c3c dynamic-lib -o libgame a.c3` даёт `libgame.so`; для `dlsym` нужен `@export("name")`. `os::dlopen`/`os::dlsym`/`DylibHandle.close()` работают.
-* `mem::new` отвергает типы с `@align` больше 16 — `mem::new_aligned(T)` / `free_aligned(p)`.
+* An untyped index in `foreach (i, x : arr)` is `sz`; for `usz` arithmetic write `foreach (usz i, ...)`. Allocation functions (`alloc::new_array`, `mem::realloc`, `mem::copy`) take `sz`.
+* Mixed signed/unsigned comparisons and narrowing are errors; widening a mixed expression (`long x = a - b;` with ints) needs `(long)a - b`.
+* A type name made of capitals and digits (`alias R4 = ...`) is treated as a constant — write `Ring4`.
+* A global array with a literal initializer must be `const` (`const ZString[*] X = {...}`).
+* Enum values are not inferred inside an array index: `arr[AssetType.TEXTURE]`.
+* Constants, globals and macros from another module need a prefix (`core::@zone(...)`), types don't.
+* `float[<4>]` inside a struct is 4-aligned; `typedef X = float[<4>] @simd` is 16-aligned. Tiny negative numbers print as `-0.000` — add `+ 0.0f` or round.
+* `continue` inside a macro's trailing block is not allowed. In stubs, put `assert(p != null)` before dereferencing, otherwise you get a segfault (139) instead of a clear failure.
+* `excuse { A, B }` is the block form. `c3c dynamic-lib -o libgame a.c3` produces `libgame.so`; `dlsym` needs `@export("name")`. `os::dlopen`/`os::dlsym`/`DylibHandle.close()` work.
+* `mem::new` rejects types with `@align` above 16 — use `mem::new_aligned(T)` / `free_aligned(p)`.
 
-Если обнаружите ещё что-то неочевидное — допишите сюда.
+If you discover something else non-obvious, add it here.

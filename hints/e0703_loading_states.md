@@ -1,4 +1,4 @@
-request — это обход графа в глубину: проверка `state != UNLOADED` одновременно защищает от повторов и от бесконечной рекурсии на общих зависимостях. `foreach (d : a.deps) self.request(d);` ДО `push(i)`.
-В tick перебирайте по ссылке: `foreach (&a : self.assets) { ... }`, иначе вы будете менять копии.
-Фаза 2: `bool changed = true; while (changed) { changed = false; ... }` — материал может стать LOADED в том же тике, что и его последняя зависимость.
-Фаза 3: `Asset* a = &self.assets[self.queue[self.q_head++]];` пока `in_flight < max_in_flight && q_head < q_tail`.
+request is a depth-first graph traversal: the `state != UNLOADED` check guards both against repeats and against infinite recursion on shared dependencies. `foreach (d : a.deps) self.request(d);` BEFORE `push(i)`.
+In tick, iterate by reference: `foreach (&a : self.assets) { ... }`, otherwise you will be modifying copies.
+Phase 2: `bool changed = true; while (changed) { changed = false; ... }` — a material can become LOADED in the same tick as its last dependency.
+Phase 3: `Asset* a = &self.assets[self.queue[self.q_head++]];` while `in_flight < max_in_flight && q_head < q_tail`.

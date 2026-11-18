@@ -1,2 +1,2 @@
-Компилятор жалуется на конец строки с `io::printn(...)`.
-Каждая инструкция в C3 должна заканчиваться символом `;`.
+The compiler complains about the end of the line with `io::printn(...)`.
+Every statement in C3 must end with a `;` character.

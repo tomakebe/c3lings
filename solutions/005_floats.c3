@@ -1,44 +1,44 @@
 // =====================================================================
-//  005 · Числа с плавающей точкой
+//  005 · Floating-point numbers
 // =====================================================================
 //
-//  Два типа, как в C:
+//  Two types, just like in C:
 //
-//      float    32 бита, ~7 значащих десятичных цифр
-//      double   64 бита, ~16 значащих цифр
+//      float    32 bits, ~7 significant decimal digits
+//      double   64 bits, ~16 significant digits
 //
-//  Литералы:
-//      3.14        double (тип по умолчанию)
-//      3.14f       float (суффикс f)
-//      1.5e3       1500.0 — экспоненциальная запись
-//      1_000.5     подчёркивания разрешены и здесь
+//  Literals:
+//      3.14        double (the default type)
+//      3.14f       float (suffix f)
+//      1.5e3       1500.0 — scientific notation
+//      1_000.5     underscores are allowed here too
 //
-//  ЦЕЛОЧИСЛЕННОЕ ДЕЛЕНИЕ
-//  Если оба операнда целые, деление целочисленное: `7 / 2 == 3`.
-//  В C выражение `double avg = sum / count;` (sum и count — int)
-//  тихо дало бы 3.0 вместо 3.5 — классическая ошибка. C3 тут строже:
-//  неявно расширить результат целочисленного выражения до double он
-//  не даст ("the widening of the expression may be done in more than
-//  one way"), потому что неясно, что вы имели в виду —
-//  `(double)(sum / count)` (3.0) или `(double)sum / count` (3.5).
-//  Нужно написать явное приведение типа: `(тип)выражение`.
+//  INTEGER DIVISION
+//  If both operands are integers, division is integer division:
+//  `7 / 2 == 3`. In C the expression `double avg = sum / count;` (sum and
+//  count being int) would quietly give 3.0 instead of 3.5 — a classic
+//  bug. C3 is stricter here: it won't implicitly widen the result of an
+//  integer expression to double ("the widening of the expression may be
+//  done in more than one way"), because it's unclear what you meant —
+//  `(double)(sum / count)` (3.0) or `(double)sum / count` (3.5).
+//  You need to write an explicit cast: `(type)expression`.
 //
-//  СУЖЕНИЕ
-//  `double -> float` теряет точность, поэтому неявно запрещено:
-//  `float f = some_double;` — ошибка, нужно `(float)some_double`.
-//  А вот `int -> double` или `float -> double` — безопасно и неявно.
+//  NARROWING
+//  `double -> float` loses precision, so it's not allowed implicitly:
+//  `float f = some_double;` is an error, you need `(float)some_double`.
+//  But `int -> double` or `float -> double` is safe and implicit.
 //
-//  СРАВНЕНИЕ
-//  Числа вроде 0.1 не представимы точно в двоичном виде, поэтому
-//  `0.1 + 0.2 == 0.3` — ЛОЖЬ. Сравнивайте с допуском:
-//  `math::abs(a - b) < 1e-9` (нужен `import std::math;`).
+//  COMPARISON
+//  Numbers like 0.1 can't be represented exactly in binary, so
+//  `0.1 + 0.2 == 0.3` is FALSE. Compare with a tolerance:
+//  `math::abs(a - b) < 1e-9` (requires `import std::math;`).
 //
-//  ПЕЧАТЬ
-//  `io::printn(x)` печатает 6 знаков после точки: `3.500000`.
-//  Форматом `%.2f` можно задать количество знаков: `3.50`.
+//  PRINTING
+//  `io::printn(x)` prints 6 digits after the point: `3.500000`.
+//  With the `%.2f` format you can set the number of digits: `3.50`.
 //
-//  ЗАДАЧА: исправьте места, отмеченные `// <-`. Программа должна
-//  напечатать:
+//  TASK: fix the places marked with `// <-`. The program should
+//  print:
 //
 //      average: 3.50
 //      speed: 2.25

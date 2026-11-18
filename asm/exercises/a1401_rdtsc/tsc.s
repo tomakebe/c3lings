@@ -1,31 +1,32 @@
 # =====================================================================
-#  a1401 · Как измерять: rdtsc, rdtscp, lfence
+#  a1401 · How to measure: rdtsc, rdtscp, lfence
 # =====================================================================
 #
-#  Time Stamp Counter — 64-битный счётчик, который на современных CPU
-#  тикает с ПОСТОЯННОЙ частотой (флаги constant_tsc, nonstop_tsc в
-#  /proc/cpuinfo), не зависящей от текущей частоты ядра. То есть это
-#  «очень точные часы», а не счётчик тактов ядра в строгом смысле
-#  (настоящие такты считают через perf: `perf stat -e cycles`).
+#  The Time Stamp Counter is a 64-bit counter that on modern CPUs ticks
+#  at a CONSTANT rate (the constant_tsc and nonstop_tsc flags in
+#  /proc/cpuinfo), independent of the current core frequency. So it is
+#  a "very precise clock" rather than a core cycle counter in the strict
+#  sense (real cycles are counted via perf: `perf stat -e cycles`).
 #
 #      rdtsc      edx:eax = TSC
-#      rdtscp     edx:eax = TSC, ecx = IA32_TSC_AUX (на Linux: номер CPU и узла)
-#                 и ждёт завершения всех ПРЕДЫДУЩИХ инструкций
+#      rdtscp     edx:eax = TSC, ecx = IA32_TSC_AUX (on Linux: CPU and node number)
+#                 and waits for all PRECEDING instructions to complete
 #
-#  Подвох: rdtsc не сериализующая — процессор может выполнить её раньше
-#  или позже соседних инструкций (внеочередное исполнение). Поэтому:
-#      lfence; rdtsc         — замер «начала»: всё до него уже завершено
-#      rdtscp; lfence        — замер «конца»: ничего после не начнётся раньше
+#  The catch: rdtsc is not serializing — the processor may execute it
+#  earlier or later than neighbouring instructions (out-of-order
+#  execution). Therefore:
+#      lfence; rdtsc         — "start" timestamp: everything before it has completed
+#      rdtscp; lfence        — "end" timestamp: nothing after it starts early
 #
-#  Результат собирают в 64 бита:  shl rdx, 32; or rax, rdx.
+#  The result is assembled into 64 bits:  shl rdx, 32; or rax, rdx.
 #
-#  В C3 то же самое даёт $$sysclock(). Но для серьёзных измерений
-#  берите готовые инструменты: perf stat, perf record, uarch-bench,
+#  In C3, $$sysclock() gives you the same thing. But for serious
+#  measurements use ready-made tools: perf stat, perf record, uarch-bench,
 #  nanobench, google benchmark.
 #
-#  ЗАДАЧА:
-#      read_tsc()        — lfence; rdtsc; вернуть 64-битное значение
-#      read_tscp(aux)    — rdtscp; *aux = ecx; вернуть 64-битное значение
+#  TASK:
+#      read_tsc()        — lfence; rdtsc; return the 64-bit value
+#      read_tscp(aux)    — rdtscp; *aux = ecx; return the 64-bit value
 #
     .intel_syntax noprefix
     .text
@@ -34,7 +35,7 @@
 read_tsc:
     lfence
     rdtsc
-    # TODO: собрать edx:eax в rax
+    # TODO: combine edx:eax into rax
     ret
 
 # ulong read_tscp(uint* aux /*rdi*/)

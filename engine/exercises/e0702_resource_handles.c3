@@ -1,45 +1,45 @@
 // =====================================================================
-//  e0702 · Менеджер ресурсов: хендлы, поколения и подсчёт ссылок
+//  e0702 · Resource manager: handles, generations and reference counting
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/07_resources.md (разделы «Хендлы
-//  вместо указателей» и «Время жизни: подсчёт ссылок»).
+//  Read engine/docs/07_resources.md first (sections "Handles
+//  instead of pointers" and "Lifetime: reference counting").
 //
-//  Игровой код не должен держать `Texture*`: ресурс может быть выгружен,
-//  перезагружен (hot reload) или переехать в памяти. Вместо указателя он
-//  держит Handle { index, generation }:
+//  Game code should not hold a `Texture*`: the resource may be unloaded,
+//  reloaded (hot reload) or moved in memory. Instead of a pointer it
+//  holds Handle { index, generation }:
 //
 //      slots:   [0]          [1]          [2]
 //               gen=3        gen=1        gen=2
 //               hero.png     tree.png     (free)
 //
-//      Handle{0, 3} -> валиден
-//      Handle{0, 2} -> устарел: слот уже переиспользован -> STALE_HANDLE
+//      Handle{0, 3} -> valid
+//      Handle{0, 2} -> stale: the slot has been reused -> STALE_HANDLE
 //
-//  generation == 0 зарезервировано под «нулевой» хендл, поэтому живые
-//  слоты всегда имеют generation >= 1.
+//  generation == 0 is reserved for the "null" handle, so live
+//  slots always have generation >= 1.
 //
-//  Ресурсы разделяемые: десять объектов с одной текстурой — одна загрузка.
-//  Менеджер ищет уже загруженный ресурс по ResourceId (хеш пути) и
-//  увеличивает счётчик ссылок. release() уменьшает его.
+//  Resources are shared: ten objects with one texture means one load.
+//  The manager looks up an already loaded resource by ResourceId (path hash) and
+//  increments its reference count. release() decrements it.
 //
-//  Важная деталь из реальных движков: при refcount == 0 ресурс НЕ
-//  выгружается немедленно. Типичный паттерн «смена уровня» — отпустить
-//  всё старое и тут же запросить новое; половина ассетов общая, и
-//  немедленная выгрузка привела бы к выгрузке+загрузке тех же файлов
-//  («thrashing»). Поэтому ресурсы с нулём ссылок остаются загруженными до
-//  явного collect() (раз в кадр/при смене уровня), а acquire() может
-//  «воскресить» их без повторной загрузки.
+//  An important detail from real engines: when refcount == 0 the resource is NOT
+//  unloaded immediately. The typical "level change" pattern is to release
+//  everything old and immediately request the new stuff; half the assets are shared, and
+//  unloading immediately would mean unloading and reloading the same files
+//  ("thrashing"). So resources with zero references stay loaded until an
+//  explicit collect() (once per frame / on level change), and acquire() can
+//  "resurrect" them without reloading.
 //
-//  ЗАДАЧА: реализуйте методы, помеченные TODO:
-//    * acquire(path)  — найти по id или занять свободный слот и «загрузить»;
-//    * get(h)         — проверить хендл, вернуть указатель на данные;
-//    * retain(h)      — +1 ссылка (копирование хендла владельцем);
-//    * release(h)     — -1 ссылка, без выгрузки; повторный release
-//                       «лишнего» хендла должен давать ошибку;
-//    * collect()      — выгрузить все слоты с refcount == 0.
-//  Свободные слоты берутся из стека free_list (последний освобождённый —
-//  первый занятый).
+//  TASK: implement the methods marked TODO:
+//    * acquire(path)  — find by id or take a free slot and "load";
+//    * get(h)         — validate the handle, return a pointer to the data;
+//    * retain(h)      — +1 reference (an owner copies the handle);
+//    * release(h)     — -1 reference, no unloading; releasing
+//                       an "extra" handle must produce an error;
+//    * collect()      — unload all slots with refcount == 0.
+//  Free slots come from the free_list stack (last freed —
+//  first taken).
 //
 import std::io;
 import std::collections::map;
@@ -58,10 +58,10 @@ fn ResourceId path_id(String path)
 struct Handle
 {
     uint index;
-    uint generation;   // 0 => нулевой хендл
+    uint generation;   // 0 => null handle
 }
 
-// «Загруженные данные». В настоящем движке это был бы GPU-объект.
+// "Loaded data". In a real engine this would be a GPU object.
 struct Texture
 {
     int width;
@@ -71,7 +71,7 @@ struct Texture
 struct Slot
 {
     ResourceId id;
-    String path;       // для логов; указывает на строковый литерал
+    String path;       // for logs; points to a string literal
     uint generation;
     uint refcount;
     bool loaded;
@@ -83,9 +83,9 @@ const usz MAX_SLOTS = 4;
 struct TextureManager
 {
     Slot[MAX_SLOTS] slots;
-    uint[MAX_SLOTS] free_list;  // стек индексов свободных слотов
+    uint[MAX_SLOTS] free_list;  // stack of free slot indices
     usz free_count;
-    HashMap{ResourceId, uint} by_id; // id -> индекс слота (только загруженные)
+    HashMap{ResourceId, uint} by_id; // id -> slot index (loaded only)
     int loads;
     int unloads;
 }
@@ -93,7 +93,7 @@ struct TextureManager
 fn void TextureManager.init(&self)
 {
     self.by_id.init(mem);
-    // Слот 0 должен выдаваться первым -> кладём индексы в обратном порядке.
+    // Slot 0 must be handed out first -> push indices in reverse order.
     for (usz i = 0; i < MAX_SLOTS; i++)
     {
         self.slots[i].generation = 1;
@@ -104,7 +104,7 @@ fn void TextureManager.init(&self)
 
 fn void TextureManager.free(&self) => self.by_id.free();
 
-// Имитация загрузки с диска: размер зависит от пути, но детерминирован.
+// Simulated disk load: the size depends on the path but is deterministic.
 fn Texture fake_load(String path) => { (int)path.len * 16, (int)path.len * 8 };
 
 fn void TextureManager.do_load(&self, uint index, String path)
@@ -126,7 +126,7 @@ fn void TextureManager.do_unload(&self, uint index)
     io::printfn("  unload %-10s slot=%d gen=%d", s.path, index, s.generation);
     self.by_id.remove(s.id);
     s.loaded = false;
-    s.generation++;            // все старые хендлы на этот слот протухают
+    s.generation++;            // all old handles to this slot go stale
     s.data = {};
     self.free_list[self.free_count++] = index;
     self.unloads++;
@@ -135,19 +135,19 @@ fn void TextureManager.do_unload(&self, uint index)
 fn Handle? TextureManager.acquire(&self, String path)
 {
     // TODO:
-    //  1. id = path_id(path); если id есть в self.by_id — refcount++ и вернуть
-    //     хендл { index, generation } этого слота (даже если refcount был 0!);
-    //  2. иначе, если free_list пуст -> OUT_OF_SLOTS~;
-    //  3. иначе снять индекс с вершины стека free_list, self.do_load(index, path)
-    //     и вернуть хендл.
+    //  1. id = path_id(path); if id is in self.by_id — refcount++ and return
+    //     that slot's handle { index, generation } (even if refcount was 0!);
+    //  2. otherwise, if free_list is empty -> OUT_OF_SLOTS~;
+    //  3. otherwise pop an index off the top of free_list, self.do_load(index, path)
+    //     and return the handle.
     return OUT_OF_SLOTS~;
 }
 
 fn Slot*? TextureManager.slot_of(&self, Handle h)
 {
-    // TODO: хендл валиден, если generation != 0, index < MAX_SLOTS,
-    //       слот загружен и его generation совпадает с h.generation.
-    //       Иначе STALE_HANDLE~.
+    // TODO: a handle is valid if generation != 0, index < MAX_SLOTS,
+    //       the slot is loaded and its generation matches h.generation.
+    //       Otherwise STALE_HANDLE~.
     return STALE_HANDLE~;
 }
 
@@ -159,19 +159,19 @@ fn Texture*? TextureManager.get(&self, Handle h)
 
 fn void? TextureManager.retain(&self, Handle h)
 {
-    // TODO: найти слот через slot_of (с пробросом ошибки `!`), refcount++
+    // TODO: find the slot via slot_of (propagating the error with `!`), refcount++
 }
 
 fn void? TextureManager.release(&self, Handle h)
 {
-    // TODO: найти слот через slot_of; если refcount уже 0 -> OVER_RELEASE~;
-    //       иначе refcount--. НЕ выгружать здесь — это работа collect().
+    // TODO: find the slot via slot_of; if refcount is already 0 -> OVER_RELEASE~;
+    //       otherwise refcount--. Do NOT unload here — that is collect()'s job.
 }
 
 fn int TextureManager.collect(&self)
 {
-    // TODO: пройти по всем слотам; загруженные с refcount == 0 выгрузить
-    //       через self.do_unload(i). Вернуть число выгруженных.
+    // TODO: walk all slots; unload the loaded ones with refcount == 0
+    //       via self.do_unload(i). Return the number unloaded.
     return 0;
 }
 
@@ -185,7 +185,7 @@ fn void main()
 
     io::printn("level 1:");
     Handle hero = tm.acquire("hero.png")!!;
-    Handle hero2 = tm.acquire("hero.png")!!;     // общий ресурс
+    Handle hero2 = tm.acquire("hero.png")!!;     // shared resource
     Handle tree = tm.acquire("tree.png")!!;
     assert(hero.index == 0 && hero.generation == 1, "first slot must be 0 with gen 1");
     assert(hero.index == hero2.index && hero.generation == hero2.generation,
@@ -194,7 +194,7 @@ fn void main()
     assert(tm.refs(hero) == 2);
     assert(tm.get(tree)!!.width == 8 * 16);
 
-    tm.retain(tree)!!;                           // кто-то скопировал хендл
+    tm.retain(tree)!!;                           // someone copied the handle
     assert(tm.refs(tree) == 2);
 
     io::printn("level switch: release everything, then acquire level 2");
@@ -206,7 +206,7 @@ fn void main()
     assert(tm.unloads == 0, "release must not unload immediately");
     assert(@catch(tm.release(tree)) == OVER_RELEASE, "releasing more than acquired must fail");
 
-    Handle tree_again = tm.acquire("tree.png")!!;   // общий для уровней
+    Handle tree_again = tm.acquire("tree.png")!!;   // shared between levels
     Handle rock = tm.acquire("rock.png")!!;
     assert(tree_again.index == tree.index && tree_again.generation == tree.generation,
            "tree.png had zero refs but was still loaded: it must be resurrected, not reloaded");

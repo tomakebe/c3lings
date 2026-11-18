@@ -1,8 +1,8 @@
-`begin`: если `self.count == MAX_EVENTS` — увеличьте `dropped` и положите в стек `-1`
-(`self.stack[self.depth++] = -1`). Иначе запишите событие с `.begin = self.clock()` и
-`.depth = self.depth` по индексу `self.count++` и положите этот индекс в стек.
+`begin`: if `self.count == MAX_EVENTS` - increment `dropped` and push `-1` onto the stack
+(`self.stack[self.depth++] = -1`). Otherwise write an event with `.begin = self.clock()` and
+`.depth = self.depth` at index `self.count++` and push that index onto the stack.
 
-`end`: `int idx = self.stack[--self.depth];` и, если `idx >= 0`, запишите `end`.
+`end`: `int idx = self.stack[--self.depth];` and, if `idx >= 0`, write `end`.
 
-Макрос: `g_prof.begin(name);` затем `defer g_prof.end();` и только потом `@body();` —
-так end() сработает при любом выходе из тела, включая `return`.
+Macro: `g_prof.begin(name);` then `defer g_prof.end();` and only then `@body();` -
+that way end() fires on any exit from the body, including `return`.

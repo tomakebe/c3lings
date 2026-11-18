@@ -1,54 +1,54 @@
 // =====================================================================
-//  e0706 · Pak-архив, монтирование и менеджер ресурсов поверх него
+//  e0706 · Pak archive, mounting and a resource manager on top of it
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/07_resources.md (раздел «Упакованные
-//  архивы»). Это итоговое упражнение главы: хеши путей (e0701),
-//  хендлы и счётчики ссылок (e0702) и «готовые» бинарные данные (e0705)
-//  собираются в одну систему.
+//  Read engine/docs/07_resources.md first (section "Packed
+//  archives"). This is the chapter's capstone exercise: path hashes (e0701),
+//  handles and reference counts (e0702) and "cooked" binary data (e0705)
+//  come together into one system.
 //
-//  Тысячи мелких файлов на диске — это медленно (каждый open() — поход в
-//  ОС, на консолях/телефонах ещё и проверки подписи) и неудобно (патчи,
-//  моды). Поэтому релизные игры кладут ассеты в большие архивы (.pak у
-//  id Tech и Unreal, .bundle у Unity, .wad у Doom):
+//  Thousands of small files on disk are slow (every open() is a trip to the
+//  OS, plus signature checks on consoles/phones) and inconvenient (patches,
+//  mods). So shipped games put assets into large archives (.pak in
+//  id Tech and Unreal, .bundle in Unity, .wad in Doom):
 //
 //      +------------------+  offset 0
 //      | header (16 B)    |  magic "PAK1", version, count, toc_offset
 //      +------------------+  16
-//      | blob 0           |  каждый blob выровнен по 16 байт
-//      | ...pad...        |  (чтобы данные можно было использовать in-place,
-//      | blob 1           |   SIMD-загрузками или DMA)
+//      | blob 0           |  each blob is aligned to 16 bytes
+//      | ...pad...        |  (so the data can be used in-place,
+//      | blob 1           |   with SIMD loads or DMA)
 //      | ...              |
 //      +------------------+  toc_offset
 //      | TOC: count x 16B |  { ulong path_id; uint offset; uint size; }
-//      +------------------+  отсортировано по path_id -> бинарный поиск
+//      +------------------+  sorted by path_id -> binary search
 //
-//  Имён файлов в архиве нет вообще — только 64-битные id. Рантайм
-//  хеширует путь и ищет его бинарным поиском за O(log n).
+//  The archive has no file names at all — only 64-bit ids. The runtime
+//  hashes the path and finds it with a binary search in O(log n).
 //
-//  Монтирование нескольких архивов: base.pak, потом patch.pak (или мод).
-//  Поиск идёт от ПОСЛЕДНЕГО смонтированного к первому — так патч
-//  «перекрывает» файлы базовой игры, не переписывая гигабайты.
+//  Mounting several archives: base.pak, then patch.pak (or a mod).
+//  The search goes from the LAST mounted archive to the first — that way a patch
+//  "overrides" the base game's files without rewriting gigabytes.
 //
-//  ЗАДАЧА (TODO ниже):
-//    1. build_pak — инструментальная часть: записать header-заглушку,
-//       blob'ы с выравниванием 16, отсортированный TOC, затем дописать
-//       count и toc_offset в header. Одинаковый id у двух файлов ->
+//  TASK (TODO below):
+//    1. build_pak — the tools part: write a placeholder header,
+//       the blobs aligned to 16, the sorted TOC, then fill in
+//       count and toc_offset in the header. The same id for two files ->
 //       DUPLICATE_PATH~.
-//    2. Pak.find — бинарный поиск по TOC; возвращает срез ВНУТРИ архива
-//       (без копирования) или NOT_FOUND~. Считайте шаги в self.probes.
-//    3. Manager.acquire — кэш по id (повторный acquire только
-//       увеличивает refcount и не трогает архивы), иначе поиск по
-//       смонтированным архивам с последнего к первому и занятие слота.
+//    2. Pak.find — binary search over the TOC; returns a slice INSIDE the archive
+//       (no copying) or NOT_FOUND~. Count the steps in self.probes.
+//    3. Manager.acquire — a cache by id (a repeated acquire only
+//       increments refcount and does not touch the archives), otherwise search the
+//       mounted archives from last to first and take a slot.
 //
 import std::io, std::sort;
 import std::collections::list, std::collections::map;
 
 excuse NOT_FOUND, DUPLICATE_PATH, BAD_PAK, STALE_HANDLE, OUT_OF_SLOTS;
 
-typedef ResourceId = inline ulong;   // inline: наследует .hash() для HashMap
+typedef ResourceId = inline ulong;   // inline: inherits .hash() for HashMap
 
-const uint PAK_MAGIC = 0x314B4150;   // 'P','A','K','1' в little-endian
+const uint PAK_MAGIC = 0x314B4150;   // 'P','A','K','1' in little-endian
 const uint PAK_VERSION = 1;
 const usz HEADER_SIZE = 16;
 const usz TOC_ENTRY_SIZE = 16;
@@ -65,7 +65,7 @@ fn ResourceId path_id(String path)
     return (ResourceId)h;
 }
 
-// --------------------------------------------------- байтовые помощники
+// --------------------------------------------------- byte helpers
 fn void put_u32(List{char}* out, uint v)
 {
     for (int i = 0; i < 4; i++) out.push((char)(v >> (8 * i)));
@@ -82,7 +82,7 @@ fn uint get_u32(char[] b, usz at)
     => (uint)b[at] | (uint)b[at + 1] << 8 | (uint)b[at + 2] << 16 | (uint)b[at + 3] << 24;
 fn ulong get_u64(char[] b, usz at) => (ulong)get_u32(b, at) | (ulong)get_u32(b, at + 4) << 32;
 
-// ======================================================= инструменты
+// ======================================================= tools
 struct SourceFile
 {
     String path;
@@ -103,26 +103,26 @@ fn void? build_pak(SourceFile[] files, List{char}* out)
     defer toc.free();
 
     // TODO:
-    //  1. HEADER_SIZE нулевых байт (заглушка заголовка).
-    //  2. Для каждого файла: дополнить out нулями до кратности ALIGN,
-    //     запомнить { path_id(f.path), offset, size } в toc, дописать данные
-    //     (out.push_all(f.data)). После последнего — снова выровнять.
-    //  3. Отсортировать toc.array_view() по id (sort::quicksort с лямбдой-
-    //     компаратором), соседние одинаковые id -> DUPLICATE_PATH~.
-    //  4. toc_offset = текущая длина; записать записи TOC (put_u64 id,
+    //  1. HEADER_SIZE zero bytes (header placeholder).
+    //  2. For each file: pad out with zeros to a multiple of ALIGN,
+    //     record { path_id(f.path), offset, size } in toc, append the data
+    //     (out.push_all(f.data)). After the last one — align again.
+    //  3. Sort toc.array_view() by id (sort::quicksort with a lambda
+    //     comparator), adjacent equal ids -> DUPLICATE_PATH~.
+    //  4. toc_offset = the current length; write the TOC entries (put_u64 id,
     //     put_u32 offset, put_u32 size).
-    //  5. patch_u32 в байты 0, 4, 8, 12: PAK_MAGIC, PAK_VERSION, count, toc_offset.
+    //  5. patch_u32 at bytes 0, 4, 8, 12: PAK_MAGIC, PAK_VERSION, count, toc_offset.
     return DUPLICATE_PATH~;
 }
 
-// ======================================================= рантайм
+// ======================================================= runtime
 struct Pak
 {
     String name;
-    char[] blob;      // весь файл в памяти (в реальности — mmap)
+    char[] blob;      // the whole file in memory (in reality — mmap)
     uint count;
     usz toc;
-    int probes;       // счётчик шагов бинарного поиска (для статистики)
+    int probes;       // binary search step counter (for statistics)
 }
 
 fn void? Pak.mount(&self, String name, char[] blob)
@@ -139,10 +139,10 @@ fn ResourceId Pak.toc_id(&self, usz i) => (ResourceId)get_u64(self.blob, self.to
 
 fn char[]? Pak.find(&self, ResourceId id)
 {
-    // TODO: бинарный поиск по [0, self.count) c помощью self.toc_id(i);
-    //       self.probes++ на каждом шаге. Нашли — прочитать offset и size
-    //       записи (байты +8 и +12 от начала записи) и вернуть
-    //       self.blob[offset:size]. Не нашли — NOT_FOUND~.
+    // TODO: binary search over [0, self.count) using self.toc_id(i);
+    //       self.probes++ on each step. If found — read the entry's offset and size
+    //       (bytes +8 and +12 from the start of the entry) and return
+    //       self.blob[offset:size]. If not found — NOT_FOUND~.
     return NOT_FOUND~;
 }
 
@@ -157,8 +157,8 @@ struct Slot
     ResourceId id;
     uint generation;
     uint refcount;
-    String data;          // смотрит прямо в blob архива
-    String source;        // имя архива, из которого пришёл ресурс
+    String data;          // points straight into the archive blob
+    String source;        // name of the archive the resource came from
 }
 
 const usz MAX_SLOTS = 8;
@@ -170,7 +170,7 @@ struct Manager
     usz pak_count;
     Slot[MAX_SLOTS] slots;
     HashMap{ResourceId, uint} cache;
-    int pak_lookups;      // сколько раз acquire пришлось искать в архивах
+    int pak_lookups;      // how many times acquire had to search the archives
 }
 
 fn void Manager.init(&self)
@@ -192,13 +192,13 @@ fn Handle? Manager.acquire(&self, String path)
 {
     ResourceId id = path_id(path);
     // TODO:
-    //  1. id в self.cache -> refcount++ и вернуть хендл этого слота.
-    //  2. Иначе self.pak_lookups++ и перебрать архивы с ПОСЛЕДНЕГО к первому
-    //     (`for (usz p = self.pak_count; p > 0; p--)`): первый, где find()
-    //     успешен, даёт данные. Занять свободный слот (refcount == 0):
-    //     id, refcount = 1, data, source = pak.name; записать в cache.
-    //     Свободных слотов нет -> OUT_OF_SLOTS~.
-    //  3. Ни в одном архиве нет -> NOT_FOUND~.
+    //  1. id in self.cache -> refcount++ and return that slot's handle.
+    //  2. Otherwise self.pak_lookups++ and walk the archives from the LAST to the first
+    //     (`for (usz p = self.pak_count; p > 0; p--)`): the first one where find()
+    //     succeeds provides the data. Take a free slot (refcount == 0):
+    //     id, refcount = 1, data, source = pak.name; record it in cache.
+    //     No free slots -> OUT_OF_SLOTS~.
+    //  3. Not in any archive -> NOT_FOUND~.
     return NOT_FOUND~;
 }
 
@@ -223,10 +223,10 @@ fn void? Manager.release(&self, Handle h)
     }
 }
 
-// ======================================================= тест
+// ======================================================= test
 fn void main()
 {
-    // --- инструменты: собираем два архива и пишем их на диск ---
+    // --- tools: build two archives and write them to disk ---
     SourceFile[*] base_files = {
         { "textures/hero.tex", "hero texture v1" },
         { "textures/tree.tex", "tree" },
@@ -253,7 +253,7 @@ fn void main()
     out.clear();
     assert(@catch(build_pak(&dup, &out)) == DUPLICATE_PATH, "two paths with the same id must be rejected");
 
-    // --- рантайм: читаем архивы с диска и монтируем ---
+    // --- runtime: read the archives from disk and mount them ---
     char[] base_blob = file::load(mem, "e0706_base.pak")!!;
     defer free(base_blob);
     char[] patch_blob = file::load(mem, "e0706_patch.pak")!!;

@@ -1,3 +1,3 @@
-4x4: скопируйте строки (movdqa), чтобы не потерять их, затем `punpckldq/punpckhdq` для пар строк (a,b) и (c,d), потом `punpcklqdq/punpckhqdq` между результатами — схема в шапке.
-Запись: dst, dst+stride, dst+2*stride, dst+3*stride (stride уже в байтах).
-transpose: блок (bi, bj) src начинается с src + (bi*n + bj)*4 и переходит в dst + (bj*n + bi)*4; оба stride = n. Счётчики и указатели храните в callee-saved регистрах, rsp перед call кратен 16.
+4x4: copy the rows (movdqa) so you don't lose them, then `punpckldq/punpckhdq` on the row pairs (a,b) and (c,d), then `punpcklqdq/punpckhqdq` between the results — see the diagram in the header.
+Stores: dst, dst+stride, dst+2*stride, dst+3*stride (stride is already in bytes).
+transpose: block (bi, bj) of src starts at src + (bi*n + bj)*4 and goes to dst + (bj*n + bi)*4; both strides = n. Keep counters and pointers in callee-saved registers; rsp must be a multiple of 16 before call.

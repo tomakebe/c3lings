@@ -1,42 +1,43 @@
 // =====================================================================
-//  E0105 · Игровой цикл целиком
+//  E0105 · The complete game loop
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/01_game_loop.md (весь, особенно
-//  разделы 7–8).
+//  Read engine/docs/01_game_loop.md first (all of it, especially
+//  sections 7–8).
 //
-//  Соберём всё вместе в переиспользуемый объект GameLoop:
+//  Let's put everything together into a reusable GameLoop object:
 //
-//    * время берётся из интерфейса Clock — в игре это монотонные часы
-//      ОС, в тестах «фальшивые» часы со сценарием длительностей кадров;
-//    * игра — это интерфейс Game с двумя методами: fixed_update(tick, dt)
-//      (симуляция, фиксированный шаг) и render(alpha) (интерполяция);
-//    * тело цикла — run_frame(): его можно вызывать из своего while или
-//      из колбэка платформы (requestAnimationFrame, CADisplayLink);
-//    * защита от спирали смерти: max_frame_us и max_steps (как в E0103,
-//      отброшенное время считаем в dropped_us);
-//    * пауза: симуляция стоит, рендер продолжается, alpha «заморожена»;
-//    * масштаб времени задан ДРОБЬЮ scale_num/scale_den и применяется к
-//      длительности кадра (а не к dt!). Чтобы не терять доли микросекунд
-//      при делении, остаток от деления копится в scale_rem:
+//    * time comes from a Clock interface — in the game it is the OS
+//      monotonic clock, in tests a "fake" clock with a scripted sequence
+//      of frame durations;
+//    * the game is a Game interface with two methods: fixed_update(tick, dt)
+//      (simulation, fixed step) and render(alpha) (interpolation);
+//    * the loop body is run_frame(): it can be called from your own while
+//      loop or from a platform callback (requestAnimationFrame, CADisplayLink);
+//    * spiral-of-death protection: max_frame_us and max_steps (as in E0103,
+//      dropped time is counted in dropped_us);
+//    * pause: the simulation stops, rendering continues, alpha is "frozen";
+//    * time scale is given as a FRACTION scale_num/scale_den and applied to
+//      the frame duration (not to dt!). To avoid losing fractions of a
+//      microsecond in the division, the remainder accumulates in scale_rem:
 //          scaled = frame * num + scale_rem;
 //          acc   += scaled / den;   scale_rem = scaled % den;
-//      Так за любое число кадров игровое время == floor(real * num / den).
+//      This way, over any number of frames, game time == floor(real * num / den).
 //
-//  Подвох первого кадра: часы показывают «аптайм» (здесь 10^9 мкс).
-//  Если last_us начать с нуля, первый кадр окажется длиной в 1000 секунд.
-//  start() должен запомнить текущее время часов.
+//  The first-frame gotcha: the clock reports "uptime" (here 10^9 us).
+//  If last_us starts at zero, the first frame will be 1000 seconds long.
+//  start() must record the clock's current time.
 //
-//  Порядок в run_frame:
+//  Order of operations in run_frame:
 //    1. frame = now - last_us; last_us = now; frames++;
-//    2. обрезать frame до max_frame_us (лишнее -> dropped_us);
-//    3. если paused — frame = 0;
-//    4. масштабировать (с остатком) и добавить в acc_us;
-//    5. не больше max_steps тиков: game.fixed_update(tick, dt_us); tick++;
-//    6. если acc_us всё ещё >= dt_us — отбросить целые шаги (-> dropped_us);
+//    2. clamp frame to max_frame_us (the excess -> dropped_us);
+//    3. if paused — frame = 0;
+//    4. scale (with remainder) and add to acc_us;
+//    5. at most max_steps ticks: game.fixed_update(tick, dt_us); tick++;
+//    6. if acc_us is still >= dt_us — discard whole steps (-> dropped_us);
 //    7. game.render((double)acc_us / dt_us).
 //
-//  ЗАДАЧА: реализуйте GameLoop.start, GameLoop.set_time_scale и
+//  TASK: implement GameLoop.start, GameLoop.set_time_scale and
 //  GameLoop.run_frame.
 //
 import std::io, std::math;
@@ -77,23 +78,23 @@ fn void GameLoop.init(&self, long dt_us, long max_frame_us, int max_steps)
 
 fn void GameLoop.start(&self, Clock clock)
 {
-    // TODO: запомнить текущее время часов, обнулить аккумулятор и остаток масштаба
+    // TODO: record the clock's current time, reset the accumulator and the scale remainder
 }
 
 fn void GameLoop.set_time_scale(&self, long num, long den)
 {
-    // TODO: сохранить дробь num/den, сбросить остаток
+    // TODO: store the num/den fraction, reset the remainder
 }
 
 fn void GameLoop.run_frame(&self, Clock clock, Game game)
 {
-    // TODO: шаги 1–7 из шапки
+    // TODO: steps 1–7 from the header
     game.render(0.0);
 }
 
 // ----------------------------------------------------------------------
-// Фальшивые часы: каждый вызов now_us() сдвигает время на следующий
-// интервал из сценария (по кругу).
+// Fake clock: every call to now_us() advances time by the next
+// interval from the script (cyclically).
 
 struct FakeClock (Clock)
 {
@@ -111,7 +112,7 @@ fn long FakeClock.now_us(&self) @dynamic
 }
 
 // ----------------------------------------------------------------------
-// Тестовая игра: тело летит на 1 единицу за тик, рендер интерполирует.
+// Test game: the body moves 1 unit per tick, rendering interpolates.
 
 struct TestGame (Game)
 {
@@ -150,21 +151,21 @@ fn void report(String phase, GameLoop* loop, TestGame* g)
 
 fn void main()
 {
-    long[] script = { 6_944 };          // 144 Гц
+    long[] script = { 6_944 };          // 144 Hz
     FakeClock clock = { .t = 1_000_000_000, .script = script };
     TestGame game;
     GameLoop loop;
     loop.init(10_000, 250_000, 5);
     loop.start(&clock);
 
-    // 1. Обычная игра: 144 кадра.
+    // 1. Normal play: 144 frames.
     for (int i = 0; i < 144; i++) loop.run_frame(&clock, &game);
     assert(loop.dropped_us == 0, "first frame must not be huge: call clock.now_us() in start()");
     assert(loop.tick == 144 * 6_944 / 10_000);
     assert(game.renders == 144 && game.updates == loop.tick);
     report("normal", &loop, &game);
 
-    // 2. Пауза: рендер идёт, тики стоят, alpha заморожена.
+    // 2. Pause: rendering continues, ticks stop, alpha is frozen.
     long ticks_before = loop.tick;
     double alpha_before = game.last_alpha;
     loop.paused = true;
@@ -175,7 +176,7 @@ fn void main()
     loop.paused = false;
     report("paused", &loop, &game);
 
-    // 3. Замедление в 3 раза: игровое время = floor(real / 3), без потерь.
+    // 3. 3x slow motion: game time = floor(real / 3), nothing lost.
     long sim_before = loop.tick * loop.dt_us + loop.acc_us;
     loop.set_time_scale(1, 3);
     for (int i = 0; i < 100; i++) loop.run_frame(&clock, &game);
@@ -184,17 +185,17 @@ fn void main()
     loop.set_time_scale(1, 1);
     report("slowmo1/3", &loop, &game);
 
-    // 4. Брейкпойнт: следующий кадр длится 3 секунды.
+    // 4. Breakpoint: the next frame lasts 3 seconds.
     script[0] = 3_000_000;
     long ticks_bp = loop.tick;
-    loop.run_frame(&clock, &game);     // этот кадр ещё короткий, но часы ушли на 3 с вперёд
+    loop.run_frame(&clock, &game);     // this frame is still short, but the clock has jumped 3 s ahead
     script[0] = 6_944;
-    loop.run_frame(&clock, &game);     // а этот кадр длится 3 секунды
+    loop.run_frame(&clock, &game);     // and this frame lasts 3 seconds
     assert(loop.tick - ticks_bp <= 2 * 5, "max_steps violated");
     assert(loop.dropped_us > 2_500_000, "a 3 s frame must be mostly dropped");
     report("breakpoint", &loop, &game);
 
-    // 5. Снова нормально.
+    // 5. Back to normal.
     for (int i = 0; i < 50; i++) loop.run_frame(&clock, &game);
     assert(game.updates == loop.tick);
     assert(math::abs(game.last_render - ((double)loop.tick - 1.0 + game.last_alpha)) < 1e-9);

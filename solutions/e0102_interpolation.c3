@@ -1,36 +1,36 @@
 // =====================================================================
-//  E0102 · Интерполяция состояния для рендера
+//  E0102 · Interpolating state for rendering
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/01_game_loop.md (раздел 3).
+//  Read engine/docs/01_game_loop.md first (section 3).
 //
-//  После цикла `while (acc >= DT)` в аккумуляторе остаётся хвост
-//  0 <= acc < DT: реальное время, которое ещё не просимулировано.
-//  Если рисовать просто последнее состояние, то при мониторе 144 Гц и
-//  симуляции 100 Гц объект будет то стоять, то прыгать — дрожание.
+//  After the `while (acc >= DT)` loop the accumulator holds a remainder
+//  0 <= acc < DT: real time that has not been simulated yet.
+//  If you simply draw the latest state, then with a 144 Hz monitor and a
+//  100 Hz simulation the object will alternately stand still and jump — judder.
 //
-//  Решение: хранить ДВА состояния — предыдущее и текущее — и рисовать
+//  The fix: keep TWO states — previous and current — and draw
 //
 //      alpha  = acc / DT                    (0 <= alpha < 1)
 //      render = prev + (curr - prev) * alpha
 //
-//  Цена — задержка на один тик: картинка отстаёт от симуляции на
-//  (1 - alpha) * DT. Зато движение равномерное.
+//  The price is one tick of latency: the image lags the simulation by
+//  (1 - alpha) * DT. In exchange, motion is smooth.
 //
-//  Важная тонкость — ТЕЛЕПОРТ. Если объект мгновенно перенесли, а prev
-//  оставили старым, то в следующих кадрах интерполяция «протащит» его
-//  через всю карту. Телепорт обязан сбросить prev = curr.
+//  An important subtlety is TELEPORTING. If an object is moved instantly but
+//  prev is left untouched, interpolation will "drag" it across the whole map
+//  over the next frames. A teleport must reset prev = curr.
 //
-//  Здесь объект летит со скоростью 100 ед/с, шаг 10 мс, значит ровно
-//  1 единица за тик. Поэтому правильно интерполированная позиция в
-//  момент времени T равна (T / DT) - 1 (отставание на один тик), и
-//  между соседними кадрами 144 Гц объект сдвигается на 0.6944 ед.
+//  Here the object moves at 100 units/s with a 10 ms step, i.e. exactly
+//  1 unit per tick. So the correctly interpolated position at time T is
+//  (T / DT) - 1 (one tick behind), and between consecutive 144 Hz frames
+//  the object moves by 0.6944 units.
 //
-//  ЗАДАЧА: реализуйте
-//    * Body.step     — запомнить prev и сдвинуть x на vel * dt;
-//    * Body.teleport — перенести объект без «протаскивания»;
-//    * Body.render_x — интерполированная позиция для данного alpha;
-//    * compute_alpha — alpha из аккумулятора и шага (в double!).
+//  TASK: implement
+//    * Body.step     — remember prev and advance x by vel * dt;
+//    * Body.teleport — move the object without "dragging";
+//    * Body.render_x — the interpolated position for a given alpha;
+//    * compute_alpha — alpha from the accumulator and the step (in double!).
 //
 import std::io, std::math;
 
@@ -38,7 +38,7 @@ struct Body
 {
     double prev_x;
     double x;
-    double vel;     // единиц в секунду
+    double vel;     // units per second
 }
 
 fn void Body.step(&self, long dt_us)
@@ -63,8 +63,8 @@ fn double compute_alpha(long acc_us, long dt_us)
     return (double)acc_us / (double)dt_us;
 }
 
-const long DT = 10_000;      // 100 Гц
-const long FRAME = 6_944;    // ~144 Гц
+const long DT = 10_000;      // 100 Hz
+const long FRAME = 6_944;    // ~144 Hz
 
 fn void main()
 {
@@ -104,11 +104,11 @@ fn void main()
         last_render = r;
         have_last = true;
     }
-    // Без интерполяции шаги были бы то 0, то 1; с ней — всегда 0.6944.
+    // Without interpolation the steps would be 0 or 1; with it, always 0.6944.
     assert(max_delta - min_delta < 1e-6, "motion is not smooth: deltas in [%.4f, %.4f]", min_delta, max_delta);
     io::printfn("smooth: every frame moves %.4f units", min_delta);
 
-    // Телепорт: ни один кадр не должен показать точку между старым и новым местом.
+    // Teleport: no frame may show a point between the old and the new location.
     b.teleport(1000.0);
     for (int frame = 0; frame < 10; frame++)
     {

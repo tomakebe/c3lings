@@ -1,35 +1,37 @@
 // =====================================================================
-//  E0103 · Спираль смерти
+//  E0103 · The spiral of death
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/01_game_loop.md (раздел 4).
+//  Read engine/docs/01_game_loop.md first (section 4).
 //
-//  Если один тик update стоит дороже, чем DT реального времени, цикл
-//  с аккумулятором попадает в «спираль смерти»: отстали → нужно больше
-//  тиков → кадр длиннее → отстали ещё сильнее. То же происходит после
-//  одного гигантского кадра (загрузка, брейкпойнт, свёрнутое окно).
+//  If a single update tick costs more than DT of real time, the
+//  accumulator loop falls into the "spiral of death": we fall behind ->
+//  we need more ticks -> the frame gets longer -> we fall further behind.
+//  The same happens after one giant frame (loading, a breakpoint, a
+//  minimized window).
 //
-//  Здесь нет настоящих часов: длительность кадра вычисляется по МОДЕЛИ
-//  СТОИМОСТИ — кадр длится RENDER_COST + steps * UPDATE_COST, где steps —
-//  число тиков в этом кадре. Так поведение воспроизводимо до микросекунды.
+//  There is no real clock here: frame duration is computed from a COST
+//  MODEL — a frame lasts RENDER_COST + steps * UPDATE_COST, where steps is
+//  the number of ticks in that frame. This makes behavior reproducible
+//  down to the microsecond.
 //
-//  Наивный цикл (naive_advance) уже написан — запустите и посмотрите,
-//  как растёт число тиков на кадр.
+//  The naive loop (naive_advance) is already written — run it and watch
+//  the number of ticks per frame grow.
 //
-//  Защищённый цикл применяет две защиты:
-//    1. длительность кадра обрезается до max_frame_us; обрезанное
-//       время прибавляется к dropped_us, счётчик clamped_frames++;
-//    2. за кадр выполняется не больше max_steps тиков; если после этого
-//       в аккумуляторе осталось >= dt, лишние ЦЕЛЫЕ шаги отбрасываются
-//       (acc оставляем как acc % dt), отброшенное идёт в dropped_us,
-//       счётчик limited_frames++.
+//  The protected loop applies two safeguards:
+//    1. frame duration is clamped to max_frame_us; the clamped-off time
+//       is added to dropped_us, and clamped_frames++;
+//    2. at most max_steps ticks run per frame; if after that the
+//       accumulator still holds >= dt, the extra WHOLE steps are discarded
+//       (acc is left as acc % dt), the discarded time goes to dropped_us,
+//       and limited_frames++.
 //
-//  Главный инвариант: время не исчезает бесследно —
-//      ticks * dt + acc + dropped == суммарное реальное время.
-//  Отброшенное время — это замедление игры относительно реальности;
-//  его надо считать, чтобы профайлер мог сказать «бюджет превышен».
+//  The main invariant: time never disappears without a trace —
+//      ticks * dt + acc + dropped == total real time.
+//  Dropped time is the game slowing down relative to reality; it must be
+//  counted so the profiler can say "budget exceeded".
 //
-//  ЗАДАЧА: реализуйте ProtectedLoop.advance.
+//  TASK: implement ProtectedLoop.advance.
 //
 import std::io;
 
@@ -45,7 +47,7 @@ struct ProtectedLoop
     int  limited_frames;
 }
 
-// Возвращает число выполненных тиков.
+// Returns the number of ticks executed.
 fn int ProtectedLoop.advance(&self, long frame_us)
 {
     if (frame_us > self.max_frame_us)
@@ -72,7 +74,7 @@ fn int ProtectedLoop.advance(&self, long frame_us)
     return steps;
 }
 
-// Наивная версия — без защит.
+// Naive version — no safeguards.
 fn int naive_advance(long* acc, long dt, long frame_us)
 {
     *acc += frame_us;
@@ -86,7 +88,7 @@ const long RENDER_COST = 2_000;
 
 fn void main()
 {
-    // --- 1. Наивный цикл при UPDATE_COST > DT ---
+    // --- 1. Naive loop with UPDATE_COST > DT ---
     long update_cost = 12_000;
     long acc = 0;
     long frame = DT;
@@ -96,13 +98,13 @@ fn void main()
     {
         int steps = naive_advance(&acc, DT, frame);
         io::printf(" %d", steps);
-        frame = RENDER_COST + steps * update_cost;   // столько длился этот кадр
+        frame = RENDER_COST + steps * update_cost;   // how long this frame took
         last_steps = steps;
     }
     io::printn();
     assert(last_steps >= 5, "the naive loop should be spiralling");
 
-    // --- 2. Защищённый цикл при той же стоимости ---
+    // --- 2. Protected loop at the same cost ---
     ProtectedLoop p = { .dt_us = DT, .max_frame_us = 50_000, .max_steps = 3 };
     long real = 0;
     long worst_frame = 0;
@@ -122,7 +124,7 @@ fn void main()
                 p.ticks, p.dropped_us, p.limited_frames, p.clamped_frames, worst_frame);
     io::printfn("game time runs at %d%% of real time", p.ticks * DT * 100 / real);
 
-    // --- 3. Брейкпойнт: один кадр длиной 5 секунд, обновление дешёвое ---
+    // --- 3. Breakpoint: a single 5-second frame, cheap update ---
     ProtectedLoop q = { .dt_us = DT, .max_frame_us = 100_000, .max_steps = 8 };
     long[] frames = { 16_000, 16_000, 5_000_000, 16_000, 16_000 };
     real = 0;

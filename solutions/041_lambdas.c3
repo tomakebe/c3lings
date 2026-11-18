@@ -1,45 +1,45 @@
 // =====================================================================
-//  041 · Указатели на функции и лямбды
+//  041 · Function pointers and lambdas
 // =====================================================================
 //
-//  В 039 мы объявили тип указателя на функцию через alias. Теперь
-//  разберём, что с ним можно делать.
+//  In 039 we declared a function pointer type with alias. Now let's
+//  see what we can actually do with it.
 //
 //      alias IntOp = fn int(int, int);
 //
-//  * Хранить в переменных, массивах, полях структур:
+//  * Store it in variables, arrays, struct fields:
 //
 //        IntOp[2] ops = { &add, &sub };
 //        struct Button { String label; Action on_click; }
 //
-//    Внимание: прямо написать `fn void() on_click;` в поле структуры
-//    или в параметре нельзя — тип указателя на функцию ВСЕГДА
-//    объявляется через alias.
-//  * Передавать в функции и возвращать из функций.
-//  * Вызывать: `ops[0](2, 3)` — как обычную функцию.
-//  * Указатель может быть `null` (значение по умолчанию!). Вызов
-//    null-указателя — падение программы, так что проверяйте:
+//    Careful: you can't write `fn void() on_click;` directly in a
+//    struct field or a parameter — a function pointer type is ALWAYS
+//    declared through an alias.
+//  * Pass it to functions and return it from functions.
+//  * Call it: `ops[0](2, 3)` — just like a regular function.
+//  * The pointer can be `null` (that's the default value!). Calling a
+//    null pointer crashes the program, so check first:
 //    `if (op == null) ...`.
 //
-//  ЛЯМБДЫ — анонимные функции, записываемые прямо в выражении:
+//  LAMBDAS are anonymous functions written right inside an expression:
 //
-//      IntOp mul = fn int(int a, int b) { return a * b; };  // полная форма
-//      IntOp mul = fn int(int a, int b) => a * b;           // короткая форма
-//      IntOp mul = fn (a, b) => a * b;    // типы выводятся из контекста
+//      IntOp mul = fn int(int a, int b) { return a * b; };  // full form
+//      IntOp mul = fn int(int a, int b) => a * b;           // short form
+//      IntOp mul = fn (a, b) => a * b;    // types inferred from context
 //
-//  Последняя форма работает только там, где компилятор знает, какой
-//  тип нужен: при присваивании в переменную известного типа, при
-//  передаче в параметр, в инициализаторе массива.
+//  The last form only works where the compiler knows which type is
+//  needed: when assigning to a variable of a known type, when passing
+//  to a parameter, in an array initializer.
 //
-//  Главное ограничение: лямбды C3 НЕ ЗАХВАТЫВАЮТ локальные переменные
-//  (это не замыкания). Лямбда — обычная функция без имени, у неё нет
-//  скрытого «окружения». Глобальные переменные и константы ей видны,
-//  а локальные переменные объемлющей функции — нет. Нужен контекст —
-//  передавайте его явно параметром (например, `void* user_data`, как в
-//  C-библиотеках) или используйте глобальные/константы.
+//  The main limitation: C3 lambdas DO NOT CAPTURE local variables
+//  (they aren't closures). A lambda is just an ordinary function
+//  without a name, with no hidden "environment". It can see globals and
+//  constants, but not the local variables of the enclosing function.
+//  Need some context? Pass it explicitly as a parameter (for example,
+//  `void* user_data`, like C libraries do) or use globals/constants.
 //
-//  ЗАДАЧА: маленький калькулятор применяет операции по их символу.
-//  Почините три места, помеченные `// <-`.
+//  TASK: a tiny calculator applies operations by their symbol.
+//  Fix the three spots marked with `// <-`.
 //
 import std::io;
 
@@ -56,7 +56,7 @@ fn int add(int a, int b) => a + b;
 
 OpEntry[3] table = {
     { '+', &add },
-    { '-', fn (a, b) => a - b }, // <- допишите лямбду для вычитания
+    { '-', fn (a, b) => a - b }, // <- write a lambda for subtraction
     { '*', fn int(int a, int b) { return a * b; } },
 };
 
@@ -76,7 +76,7 @@ fn int count_if(int[] values, Pred p)
     return n;
 }
 
-const int THRESHOLD = 10; // <- лямбда не видит локальных переменных
+const int THRESHOLD = 10; // <- a lambda can't see local variables
 
 fn void main()
 {
@@ -85,7 +85,7 @@ fn void main()
     foreach (i, c : program)
     {
         IntOp op = find_op(c);
-        if (op == null) // <- что, если такой операции нет?
+        if (op == null) // <- what if there is no such operation?
         {
             io::printfn("%c: unknown operation", c);
             continue;

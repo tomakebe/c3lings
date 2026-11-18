@@ -1,32 +1,33 @@
 # =====================================================================
-#  a1201 · Системный вызов write
+#  a1201 · The write system call
 # =====================================================================
 #
-#  Всё, что программа делает с внешним миром (файлы, экран, память,
-#  потоки), в итоге идёт через ядро — системные вызовы. libc и стандартная
-#  библиотека C3 — лишь обёртки. На x86-64 Linux вызов делается
-#  инструкцией `syscall`:
+#  Everything a program does with the outside world (files, the screen,
+#  memory, threads) ultimately goes through the kernel — system calls. libc
+#  and the C3 standard library are just wrappers. On x86-64 Linux a call is
+#  made with the `syscall` instruction:
 #
-#      rax  — номер вызова (write = 1, read = 0, exit_group = 231, ...)
-#      rdi, rsi, rdx, r10, r8, r9 — аргументы 1..6
-#           (внимание: 4-й — r10, а НЕ rcx, как в обычных функциях!)
-#      результат — в rax
-#      syscall портит rcx (туда пишется адрес возврата) и r11 (rflags).
-#      Остальные регистры ядро сохраняет.
+#      rax  — call number (write = 1, read = 0, exit_group = 231, ...)
+#      rdi, rsi, rdx, r10, r8, r9 — arguments 1..6
+#           (note: the 4th is r10, NOT rcx as in ordinary functions!)
+#      result — in rax
+#      syscall clobbers rcx (the return address is written there) and r11
+#      (rflags). The kernel preserves all other registers.
 #
 #  ssize_t write(int fd, const void* buf, size_t count)
-#      fd 1 — stdout. Возвращает число записанных байтов.
+#      fd 1 is stdout. Returns the number of bytes written.
 #
-#  Номера вызовов — в /usr/include/asm/unistd_64.h или `ausyscall --dump`.
+#  Call numbers are in /usr/include/asm/unistd_64.h or `ausyscall --dump`.
 #
-#  Аргументы нашей функции sys_write(fd, buf, len) уже лежат в rdi, rsi,
-#  rdx — ровно там, где их ждёт ядро. Осталось номер и сама инструкция.
+#  The arguments of our function sys_write(fd, buf, len) are already in rdi,
+#  rsi, rdx — exactly where the kernel expects them. All that's left is the
+#  number and the instruction itself.
 #
-#  ЗАДАЧА:
-#      sys_write(fd, buf, len)  — прямой вызов write
-#      write_cstr(s)            — записать в stdout строку, оканчивающуюся
-#                                 нулём (длину посчитайте сами), вернуть
-#                                 результат write
+#  TASK:
+#      sys_write(fd, buf, len)  — a direct write call
+#      write_cstr(s)            — write a zero-terminated string to stdout
+#                                 (compute the length yourself), return
+#                                 the result of write
 #
     .intel_syntax noprefix
     .text

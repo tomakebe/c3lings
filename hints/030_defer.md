@@ -1,3 +1,3 @@
-1. Сразу после «open» напишите `defer io::printfn("close %s", name);`, а строку
-   с «close» в конце функции удалите — иначе файл «закроется» дважды.
-2. Последний объявленный defer выполняется первым. Поменяйте две строки местами.
+1. Right after "open", write `defer io::printfn("close %s", name);`, and delete the
+   "close" line at the end of the function — otherwise the file gets "closed" twice.
+2. The last declared defer runs first. Swap the two lines.

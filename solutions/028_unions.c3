@@ -1,10 +1,11 @@
 // =====================================================================
-//  028 · union и анонимные вложенные структуры
+//  028 · Unions and anonymous nested structs
 // =====================================================================
 //
 //  UNION
-//  Все поля union лежат по ОДНОМУ адресу и делят одну память. Размер
-//  union — размер самого большого поля (с учётом выравнивания).
+//  All the fields of a union live at the SAME address and share the
+//  same memory. The size of a union is the size of its largest field
+//  (taking alignment into account).
 //
 //      union FloatBits
 //      {
@@ -12,26 +13,26 @@
 //          uint bits;
 //      }
 //
-//  Записали `f` — прочитали `bits`: получили битовое представление
-//  float. В C3 такое «переосмысление» через union разрешено и
-//  определено (в отличие от C++).
+//  Write `f`, read `bits`: you get the bit representation of the float.
+//  In C3 this kind of "reinterpretation" through a union is allowed and
+//  well-defined (unlike in C++).
 //
-//  Чаще union используют, чтобы хранить ОДНО из нескольких значений,
-//  экономя память, — вместе с полем-«меткой», которое говорит, что
-//  именно там лежит (tagged union).
+//  More often a union is used to store ONE of several values, saving
+//  memory — together with a "tag" field that says what's actually in
+//  there (a tagged union).
 //
-//  АНОНИМНЫЕ ВЛОЖЕННЫЕ СТРУКТУРЫ И ОБЪЕДИНЕНИЯ
-//  Внутри struct/union можно объявить union/struct без имени поля. Тогда
-//  его поля доступны НАПРЯМУЮ, как будто они объявлены во внешней
-//  структуре:
+//  ANONYMOUS NESTED STRUCTS AND UNIONS
+//  Inside a struct/union you can declare a union/struct without a field
+//  name. Its fields are then accessible DIRECTLY, as if they were
+//  declared in the outer struct:
 //
 //      struct Shape
 //      {
 //          ShapeKind kind;
-//          union                    // без имени
+//          union                    // no name
 //          {
-//              int radius;          // для круга
-//              struct               // для прямоугольника
+//              int radius;          // for a circle
+//              struct               // for a rectangle
 //              {
 //                  int w;
 //                  int h;
@@ -40,14 +41,14 @@
 //      }
 //
 //      Shape s;
-//      s.radius = 3;                // не s.something.radius
-//      s.w = 2;                     // w и h делят память с radius!
+//      s.radius = 3;                // not s.something.radius
+//      s.w = 2;                     // w and h share memory with radius!
 //
-//  Инициализация тоже по «плоским» именам: `{ .kind = RECT, .w = 2, .h = 5 }`.
+//  Initialization also uses the "flat" names: `{ .kind = RECT, .w = 2, .h = 5 }`.
 //
-//  Размер типа — свойство `Тип::size`.
+//  The size of a type is the `Type::size` property.
 //
-//  ЗАДАЧА: исправьте три места с `// <-`. Программа должна напечатать:
+//  TASK: fix the three places marked `// <-`. The program should print:
 //
 //      bits of 1.0f: 0x3f800000
 //      FloatBits is 4 bytes
@@ -105,6 +106,6 @@ fn void main()
     io::printfn("circle area ~ %d", area(circle));
     io::printfn("rect area = %d", area(rect));
 
-    // kind (4 байта) + union { int; struct { int; int; } } (8 байт)
+    // kind (4 bytes) + union { int; struct { int; int; } } (8 bytes)
     io::printfn("Shape is %d bytes", Shape::size);
 }

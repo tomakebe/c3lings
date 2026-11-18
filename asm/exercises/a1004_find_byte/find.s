@@ -1,35 +1,35 @@
 # =====================================================================
-#  a1004 · Поиск байта: pcmpeqb + pmovmskb + tzcnt
+#  a1004 · Finding a byte: pcmpeqb + pmovmskb + tzcnt
 # =====================================================================
 #
-#  Так устроены memchr, strlen и парсеры вроде simdjson:
+#  This is how memchr, strlen and parsers like simdjson work:
 #
-#      movd      xmm1, esi        # c в младший байт
+#      movd      xmm1, esi        # c into the low byte
 #      pxor      xmm2, xmm2
-#      pshufb    xmm1, xmm2       # размножить байт 0 на все 16 (SSSE3)
-#                                 # (в AVX2: vpbroadcastb xmm1, xmm1)
-#    цикл:
-#      movdqu    xmm0, [rdi + i]  # 16 байтов строки
-#      pcmpeqb   xmm0, xmm1       # байт = 0xFF там, где совпало, иначе 0x00
-#      pmovmskb  eax, xmm0        # по 1 биту из каждого байта -> 16-битная маска
+#      pshufb    xmm1, xmm2       # broadcast byte 0 to all 16 (SSSE3)
+#                                 # (in AVX2: vpbroadcastb xmm1, xmm1)
+#    loop:
+#      movdqu    xmm0, [rdi + i]  # 16 bytes of the string
+#      pcmpeqb   xmm0, xmm1       # byte = 0xFF where it matched, else 0x00
+#      pmovmskb  eax, xmm0        # 1 bit from each byte -> 16-bit mask
 #      test      eax, eax
-#      jnz       found            # индекс = i + tzcnt(eax)
+#      jnz       found            # index = i + tzcnt(eax)
 #
-#  Тот самый перебор битов маски из главы 08! А для подсчёта — popcnt.
+#  The very same mask bit iteration from chapter 08! And for counting — popcnt.
 #
-#  Хвост: нельзя просто прочитать 16 байтов, если до конца данных
-#  меньше 16 — можно выйти за конец страницы и получить segfault. (Реальные
-#  memchr читают выровненными блоками: выровненный 16-байтный блок никогда
-#  не пересекает границу страницы. Это законно на уровне железа, но
-#  санитайзеры такое не любят.) Мы сделаем просто: блоки по 16, пока
-#  i + 16 <= n, потом скалярный хвост.
+#  The tail: you can't just read 16 bytes if fewer than 16 remain before
+#  the end of the data — you might run past the end of the page and get a
+#  segfault. (Real memchr implementations read aligned blocks: an aligned
+#  16-byte block never crosses a page boundary. That's legal at the
+#  hardware level, but sanitizers don't like it.) We'll keep it simple:
+#  blocks of 16 while i + 16 <= n, then a scalar tail.
 #
-#  Важно: pmovmskb даёт маску в eax, а аргумент c пришёл в sil/esi; сам
-#  c — char, т.е. значимы только младшие 8 бит esi.
+#  Important: pmovmskb puts the mask in eax, while the argument c arrived
+#  in sil/esi; c itself is a char, i.e. only the low 8 bits of esi matter.
 #
-#  ЗАДАЧА:
-#      find_byte(s, n, c)   — индекс первого вхождения c или -1
-#      count_byte(s, n, c)  — количество вхождений
+#  TASK:
+#      find_byte(s, n, c)   — index of the first occurrence of c, or -1
+#      count_byte(s, n, c)  — number of occurrences
 #
     .intel_syntax noprefix
     .text
@@ -39,7 +39,7 @@
 find_byte:
     movd xmm1, edx
     pxor xmm2, xmm2
-    pshufb xmm1, xmm2       # c во всех 16 байтах
+    pshufb xmm1, xmm2       # c in all 16 bytes
     xor eax, eax            # i
     lea rcx, [rsi - 15]
     jmp 2f
@@ -47,7 +47,7 @@ find_byte:
     movdqu xmm0, [rdi + rax]
     pcmpeqb xmm0, xmm1
     pmovmskb r8d, xmm0
-    # TODO: если маска не 0 — ответ rax + tzcnt(маски)
+    # TODO: if the mask is not 0, the answer is rax + tzcnt(mask)
     add rax, 16
 2:
     cmp rax, rcx
@@ -67,7 +67,7 @@ find_byte:
 # long count_byte(char* s, long n, char c)
     .globl count_byte
 count_byte:
-    # TODO: целиком (pcmpeqb, pmovmskb, popcnt + скалярный хвост)
+    # TODO: the whole thing (pcmpeqb, pmovmskb, popcnt + scalar tail)
     xor eax, eax
     ret
 

@@ -1,3 +1,3 @@
-Поле `think` хранит адрес функции модуля v1 — после выгрузки v1 он висячий.
-В `spawn` просто не заполняйте `think` (оставьте только x и behavior).
-В `update_entities` найдите функцию через таблицу текущего модуля: `mod.behaviors[e.behavior](e);`
+The `think` field holds the address of a function in module v1 - after v1 is unloaded it dangles.
+In `spawn` simply don't fill in `think` (keep only x and behavior).
+In `update_entities` look the function up through the current module's table: `mod.behaviors[e.behavior](e);`

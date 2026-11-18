@@ -2,43 +2,43 @@
 //  035 · `defer catch`, `defer try`, `defer (catch err)`
 // =====================================================================
 //
-//  В 030 мы видели `defer` — код, который выполнится при выходе из
-//  области видимости, как бы мы её ни покидали. Вместе с Optional'ами
-//  появляется вопрос: а выходим мы УСПЕШНО или С ОШИБКОЙ?
+//  In 030 we saw `defer` - code that runs when leaving a scope, no
+//  matter how we leave it. With Optionals, a new question appears: are
+//  we leaving SUCCESSFULLY or WITH AN ERROR?
 //
-//  C3 позволяет различать эти случаи:
+//  C3 lets you tell these cases apart:
 //
-//      defer            stmt;  // всегда
-//      defer try        stmt;  // только при выходе БЕЗ ошибки
-//      defer catch      stmt;  // только при выходе С ошибкой
-//      defer (catch err) stmt; // то же, но ошибка доступна как `err`
+//      defer            stmt;  // always
+//      defer try        stmt;  // only when leaving WITHOUT an error
+//      defer catch      stmt;  // only when leaving WITH an error
+//      defer (catch err) stmt; // same, but the error is available as `err`
 //
-//  Тело может быть и блоком: `defer catch { ...; ... }`.
+//  The body can also be a block: `defer catch { ...; ... }`.
 //
-//  «С ошибкой» значит, что функция возвращает пустой Optional — через
-//  `return ERR~;` или через проброс `!`.
+//  "With an error" means the function returns an empty Optional - via
+//  `return ERR~;` or via a `!` rethrow.
 //
-//  Классическое применение — транзакции и откат частично сделанной
-//  работы (в C для этого пишут лесенку `goto cleanup_N`):
+//  The classic use is transactions and rolling back partially done work
+//  (in C, people write a ladder of `goto cleanup_N` for this):
 //
 //      fn void? create_player()
 //      {
 //          Texture* t = load_texture()!;
-//          defer catch free_texture(t);   // если дальше что-то сломается
+//          defer catch free_texture(t);   // in case something breaks later
 //          Sound* s = load_sound()!;
 //          defer catch free_sound(s);
 //          register(t, s)!;
-//      }   // успех: ничего не освобождаем, ресурсы теперь «живут» в игроке
+//      }   // success: we free nothing, the resources now "live" in the player
 //
-//  Как и обычные, все defer'ы выполняются в обратном порядке и только
-//  те, до которых выполнение ДОШЛО. Отсюда ловушка: если `defer catch`
-//  стоит ПОСЛЕ строки с `!`, которая и вернула ошибку, — он не
-//  зарегистрирован и не выполнится. Объявляйте откат сразу же после
-//  действия, которое надо откатывать.
+//  Just like regular defers, they all run in reverse order, and only
+//  the ones that execution actually REACHED. Hence the trap: if a
+//  `defer catch` comes AFTER the line with `!` that returned the error,
+//  it hasn't been registered and won't run. Declare the rollback right
+//  after the action that needs rolling back.
 //
-//  ЗАДАЧА: функция `transfer` переводит деньги между счетами. Если
-//  проверка не прошла, перевод должен быть полностью отменён. Почините
-//  четыре места, помеченные `// <-`.
+//  TASK: the `transfer` function moves money between accounts. If a
+//  check fails, the transfer must be fully undone. Fix the four places
+//  marked with `// <-`.
 //
 import std::io;
 
@@ -64,13 +64,13 @@ fn void? check_limit(Account* a)
 fn void? transfer(Account* from, Account* to, int amount)
 {
     defer (catch err) io::printfn("  %d %s -> %s failed: %s", amount, from.name, to.name, ???); // <-
-    defer catch io::printfn("  %d %s -> %s ok", amount, from.name, to.name); // <- только при успехе
+    defer catch io::printfn("  %d %s -> %s ok", amount, from.name, to.name); // <- only on success
 
     from.balance -= amount;
-    defer from.balance += amount; // <- откат только при ошибке
+    defer from.balance += amount; // <- roll back only on error
     to.balance += amount;
     check_not_negative(from)!;
-    defer catch to.balance -= amount; // <- этот откат не всегда срабатывает
+    defer catch to.balance -= amount; // <- this rollback doesn't always fire
     check_limit(to)!;
 }
 
@@ -81,10 +81,10 @@ fn void main()
 
     io::printn("transfers:");
     (void)transfer(&alice, &bob, 30);   // ok
-    (void)transfer(&bob, &alice, 500);  // у bob нет столько денег
-    (void)transfer(&alice, &bob, 60);   // у bob станет больше лимита
-    (void)transfer(&alice, &bob, 40);   // ok, ровно лимит
-    (void)transfer(&alice, &bob, 31);   // у alice только 30
+    (void)transfer(&bob, &alice, 500);  // bob doesn't have that much money
+    (void)transfer(&alice, &bob, 60);   // bob would go over his limit
+    (void)transfer(&alice, &bob, 40);   // ok, exactly at the limit
+    (void)transfer(&alice, &bob, 31);   // alice only has 30
     (void)transfer(&bob, &alice, 100);  // ok
 
     io::printfn("alice=%d bob=%d", alice.balance, bob.balance);

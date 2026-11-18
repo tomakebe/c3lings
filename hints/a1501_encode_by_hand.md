@@ -1,4 +1,4 @@
-answer: B8 2A 00 00 00 C3. add_args и neg_arg разобраны в шапке почти побайтно.
-add_r8_r9: `mov r/m64, r64` = REX.W 89 /r. Источник r8 идёт в поле reg (номер 8 = 1000b): младшие 3 бита 000 в ModRM, старший — бит R в REX: 0x48 | 0x04 = 0x4C. ModRM = 11 000 000 = C0.
-`add rax, r9` — опкод 01, ModRM 11 001 000 = C8, REX снова 0x4C.
-Проверить: соберите эти инструкции мнемониками и посмотрите `objdump -d`.
+answer: B8 2A 00 00 00 C3. add_args and neg_arg are broken down almost byte by byte in the header.
+add_r8_r9: `mov r/m64, r64` = REX.W 89 /r. The source r8 goes into the reg field (number 8 = 1000b): the low 3 bits 000 go into ModRM, the high bit is the R bit in REX: 0x48 | 0x04 = 0x4C. ModRM = 11 000 000 = C0.
+`add rax, r9` — opcode 01, ModRM 11 001 000 = C8, REX is again 0x4C.
+To check: assemble these instructions with mnemonics and look at `objdump -d`.

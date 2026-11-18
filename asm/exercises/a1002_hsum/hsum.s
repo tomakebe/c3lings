@@ -1,35 +1,35 @@
 # =====================================================================
-#  a1002 · Горизонтальная сумма и «хвост» цикла
+#  a1002 · Horizontal sum and the loop "tail"
 # =====================================================================
 #
-#  Векторизованная сумма массива: держим 4 частичные суммы в одном
-#  регистре и прибавляем по 4 элемента за итерацию:
+#  A vectorized array sum: keep 4 partial sums in one register and add
+#  4 elements per iteration:
 #
 #      acc = {0,0,0,0}
 #      for (i = 0; i + 4 <= n; i += 4) acc += a[i..i+3]
 #
-#  В конце надо сложить 4 элемента acc между собой — «горизонтальная»
-#  операция, которую SIMD не любит. Классика (SSE):
+#  At the end, the 4 elements of acc must be added together — a
+#  "horizontal" operation that SIMD doesn't like. The classic (SSE):
 #
 #      movhlps xmm1, xmm0     # xmm1[0,1] = xmm0[2,3]
 #      addps   xmm0, xmm1     # xmm0[0] = a0+a2, xmm0[1] = a1+a3
 #      movaps  xmm1, xmm0
-#      shufps  xmm1, xmm1, 1  # xmm1[0] = xmm0[1]   (imm: по 2 бита на поле)
+#      shufps  xmm1, xmm1, 1  # xmm1[0] = xmm0[1]   (imm: 2 bits per lane)
 #      addss   xmm0, xmm1     # xmm0[0] = a0+a1+a2+a3
 #
-#  (Есть haddps, но она медленнее этой пары: 3 мкоп, из них 2 перестановки.)
+#  (There is haddps, but it is slower than this pair: 3 uops, 2 of them shuffles.)
 #
-#  Потом — «хвост»: оставшиеся n % 4 элементов скалярно (addss).
-#  Без хвоста функция работает только для n, кратных 4 — частая ошибка.
+#  Then comes the "tail": the remaining n % 4 elements, scalar (addss).
+#  Without the tail the function only works for n divisible by 4 — a common bug.
 #
-#  Заметьте: векторная сумма складывает элементы В ДРУГОМ ПОРЯДКЕ, чем
-#  простой цикл. Для float результат может отличаться в последних битах —
-#  поэтому компилятор не векторизует такой цикл сам без -O5 (fast-math).
-#  В тестах — целые значения, сумма которых точна.
+#  Note: the vector sum adds the elements IN A DIFFERENT ORDER than a
+#  simple loop. For float the result may differ in the last bits — which
+#  is why the compiler won't vectorize such a loop by itself without -O5
+#  (fast-math). The tests use integer values whose sum is exact.
 #
-#  ЗАДАЧА:
-#      hsum4(v)       — сумма 4 float из памяти
-#      sum_f32(a, n)  — сумма n float, n >= 0 любое
+#  TASK:
+#      hsum4(v)       — sum of 4 floats from memory
+#      sum_f32(a, n)  — sum of n floats, any n >= 0
 #
     .intel_syntax noprefix
     .text
@@ -40,7 +40,7 @@ hsum4:
     movups xmm0, [rdi]
     movhlps xmm1, xmm0
     addps xmm0, xmm1
-    # TODO: ещё одна перестановка и сложение
+    # TODO: one more shuffle and add
     ret
 
 # float sum_f32(float* a /*rdi*/, long n /*rsi*/)
@@ -48,7 +48,7 @@ hsum4:
 sum_f32:
     xorps xmm0, xmm0        # acc
     xor eax, eax            # i
-    # TODO: основной цикл по 4, горизонтальная сумма, скалярный хвост
+    # TODO: main loop by 4, horizontal sum, scalar tail
     ret
 
     .section .note.GNU-stack,"",@progbits

@@ -1,64 +1,64 @@
 // =====================================================================
-//  043 · `bitstruct` — битовые поля, сделанные правильно
+//  043 · `bitstruct` — bit fields done right
 // =====================================================================
 //
-//  В C есть битовые поля (`unsigned x : 3;`), но их раскладка в
-//  памяти зависит от компилятора, поэтому для форматов файлов, сетевых
-//  протоколов и регистров железа ими почти не пользуются — пишут
-//  маски и сдвиги вручную: `(v >> 5) & 0x3F`. Это легко перепутать.
+//  C has bit fields (`unsigned x : 3;`), but their memory layout
+//  depends on the compiler, so for file formats, network protocols and
+//  hardware registers people hardly use them — they write masks and
+//  shifts by hand: `(v >> 5) & 0x3F`. That's easy to get wrong.
 //
-//  В C3 вместо этого `bitstruct` — структура с ЯВНОЙ раскладкой битов
-//  внутри одного «несущего» целого (backing type):
+//  C3 has `bitstruct` instead — a struct with an EXPLICIT bit layout
+//  inside a single "backing" integer (the backing type):
 //
-//      bitstruct Rgb565 : ushort     // все поля живут в одном ushort
+//      bitstruct Rgb565 : ushort     // all fields live in one ushort
 //      {
-//          uint b : 0..4;            // биты 0-4 включительно (5 бит)
-//          uint g : 5..10;           // биты 5-10 (6 бит)
-//          uint r : 11..15;          // биты 11-15 (5 бит)
+//          uint b : 0..4;            // bits 0-4 inclusive (5 bits)
+//          uint g : 5..10;           // bits 5-10 (6 bits)
+//          uint r : 11..15;          // bits 11-15 (5 bits)
 //      }
 //
-//  * Диапазон `a..b` — ВКЛЮЧИТЕЛЬНЫЙ: `0..4` — это 5 бит, значения 0..31.
-//  * Тип поля (uint, int, bool, char...) — тип, который вы получаете
-//    при чтении. `int` поле — знаковое: `int t : 0..2` хранит -4..3.
-//  * `bool flag : 7;` — один бит. Если в bitstruct ТОЛЬКО bool'ы,
-//    номера можно не писать — они пойдут по порядку с 0.
-//  * Номера битов не могут выходить за размер несущего типа:
-//    у `char` есть только биты 0..7.
-//  * Размер bitstruct'а равен размеру несущего типа: `Rgb565::size == 2`.
+//  * The range `a..b` is INCLUSIVE: `0..4` is 5 bits, values 0..31.
+//  * The field type (uint, int, bool, char...) is the type you get
+//    when reading. An `int` field is signed: `int t : 0..2` holds -4..3.
+//  * `bool flag : 7;` — a single bit. If a bitstruct has ONLY bools,
+//    you can omit the numbers — they're assigned in order from 0.
+//  * Bit numbers can't go beyond the size of the backing type:
+//    a `char` only has bits 0..7.
+//  * A bitstruct's size equals its backing type's size: `Rgb565::size == 2`.
 //
-//  Работа — как со структурой:
+//  You work with it just like a struct:
 //
 //      Rgb565 c = { .r = 31, .g = 0, .b = 0 };
 //      c.g = 63;
-//      ushort raw = (ushort)c;            // всё целиком как число
-//      Rgb565 d = (Rgb565)raw;            // и обратно
-//      Flags f = { .visible, .solid };    // bool-поле без значения = true
+//      ushort raw = (ushort)c;            // the whole thing as a number
+//      Rgb565 d = (Rgb565)raw;            // and back
+//      Flags f = { .visible, .solid };    // a bool field with no value = true
 //
-//  Для bitstruct'ов работают `&`, `|`, `^`, `~` — как с масками.
-//  Взять адрес поля (`&c.g`) нельзя — у битов нет адреса.
+//  Bitstructs support `&`, `|`, `^`, `~` — just like masks.
+//  You can't take the address of a field (`&c.g`) — bits have no address.
 //
-//  Подвох: если записать в поле КОНСТАНТУ, которая не влезает,
-//  компилятор выдаст ошибку. А вот значение переменной при записи
-//  молча обрезается до нужного числа младших битов.
+//  Gotcha: if you write a CONSTANT that doesn't fit into a field, the
+//  compiler reports an error. But a variable's value is silently
+//  truncated to the right number of low bits when written.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`.
+//  TASK: fix the three spots marked with `// <-`.
 //
 import std::io;
 
-// Цвет в формате RGB565: 5 бит красного, 6 бит зелёного, 5 бит синего.
-bitstruct Rgb565 : char // <- 16 бит не поместятся в char
+// A color in RGB565 format: 5 bits of red, 6 bits of green, 5 bits of blue.
+bitstruct Rgb565 : char // <- 16 bits won't fit into a char
 {
     uint b : 0..4;
-    uint g : 5..9; // <- зелёному нужно 6 бит
+    uint g : 5..9; // <- green needs 6 bits
     uint r : 11..15;
 }
 
 bitstruct Flags : char
 {
-    bool visible;   // бит 0
-    bool selected;  // бит 1
-    bool solid;     // бит 2
-    bool dirty;     // бит 3
+    bool visible;   // bit 0
+    bool selected;  // bit 1
+    bool solid;     // bit 2
+    bool dirty;     // bit 3
 }
 
 fn void main()
@@ -69,11 +69,11 @@ fn void main()
                 (ushort)white, (ushort)green, Rgb565::size);
     assert((ushort)white == 0xFFFF && (ushort)green == 0x07E0);
 
-    Rgb565 c = (Rgb565)(ushort)0xF81F; // пурпурный: красный + синий
+    Rgb565 c = (Rgb565)(ushort)0xF81F; // magenta: red + blue
     io::printfn("r=%d g=%d b=%d", c.r, c.g, c.b);
 
     Flags f = { .visible, .solid };
     Flags mask = { .solid, .dirty };
     io::printfn("flags = %d, common = %d", (char)f, (char)(f & mask));
-    assert((char)f == ???); // <- какое число получится из битов visible и solid?
+    assert((char)f == ???); // <- what number do the visible and solid bits make?
 }

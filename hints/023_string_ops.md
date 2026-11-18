@@ -1,3 +1,3 @@
-1. Метод, убирающий пробельные символы по краям, называется `trim`.
-2. Разделитель — строка `"; "` (точка с запятой и пробел).
-3. `to_int()` может не сработать. Дайте значение по умолчанию: `value.to_int() ?? 0`.
+1. The method that strips whitespace from both ends is called `trim`.
+2. The separator is the string `"; "` (a semicolon and a space).
+3. `to_int()` can fail. Provide a default value: `value.to_int() ?? 0`.

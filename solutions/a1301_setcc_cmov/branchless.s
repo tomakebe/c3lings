@@ -1,35 +1,35 @@
 # =====================================================================
-#  a1301 · Код без ветвлений: cmov и setcc
+#  a1301 · Branchless code: cmov and setcc
 # =====================================================================
 #
-#  Условный переход (jcc) — ставка: процессор УГАДЫВАЕТ направление и
-#  выполняет код дальше, не дожидаясь сравнения. Угадал — переход почти
-#  бесплатен. Не угадал — весь начатый конвейер выбрасывается: ~15-20
-#  тактов штрафа. Для случайных данных (50/50) это очень дорого.
+#  A conditional jump (jcc) is a bet: the processor GUESSES the direction and
+#  keeps executing without waiting for the comparison. Guessed right — the
+#  jump is almost free. Guessed wrong — the whole started pipeline is thrown
+#  away: a ~15-20 cycle penalty. For random data (50/50) that is very costly.
 #
-#  Альтернатива — вычислить результат без перехода:
+#  The alternative is to compute the result without a jump:
 #
-#      cmovCC dst, src   — если условие CC истинно, dst = src (иначе dst не меняется)
-#      setCC  r8         — r8 = условие ? 1 : 0   (только 8-битный регистр!)
+#      cmovCC dst, src   — if condition CC is true, dst = src (otherwise dst is unchanged)
+#      setCC  r8         — r8 = condition ? 1 : 0   (8-bit register only!)
 #
-#  CC — те же условия, что у jcc: e/ne, l/le/g/ge (знаковые), b/be/a/ae
-#  (беззнаковые), s/ns, o/no, p/np.
+#  CC are the same conditions as for jcc: e/ne, l/le/g/ge (signed), b/be/a/ae
+#  (unsigned), s/ns, o/no, p/np.
 #
 #      ; long max(long a, long b)
 #      mov   rax, rdi
 #      cmp   rdi, rsi
-#      cmovl rax, rsi        ; если a < b, взять b
+#      cmovl rax, rsi        ; if a < b, take b
 #
-#  Особенности:
-#    * cmov не умеет непосредственный операнд: `cmovl rax, 0` нельзя —
-#      сначала положите 0 в регистр;
-#    * cmov с памятью ЧИТАЕТ память всегда, даже если условие ложно
-#      (может упасть на плохом указателе!);
-#    * setCC пишет только младший байт: обнулите регистр ЗАРАНЕЕ
-#      (`xor eax, eax` до cmp — после cmp xor испортит флаги) или movzx;
-#    * знак числа: (x > 0) - (x < 0) — два setcc и вычитание.
+#  Details:
+#    * cmov can't take an immediate operand: `cmovl rax, 0` is not allowed —
+#      put 0 in a register first;
+#    * cmov with a memory operand ALWAYS READS the memory, even if the condition
+#      is false (it can crash on a bad pointer!);
+#    * setCC writes only the low byte: zero the register IN ADVANCE
+#      (`xor eax, eax` before cmp — after cmp, xor would clobber the flags) or use movzx;
+#    * sign of a number: (x > 0) - (x < 0) — two setcc and a subtraction.
 #
-#  ЗАДАЧА: напишите функции без единого условного перехода.
+#  TASK: write the functions without a single conditional jump.
 #      bl_max(a, b), bl_abs(x), bl_sign(x) (-1/0/1), bl_clamp(x, lo, hi)
 #
     .intel_syntax noprefix
@@ -47,7 +47,7 @@ bl_max:
     .globl bl_abs
 bl_abs:
     mov rax, rdi
-    neg rax                 # rax = -x, SF = знак -x
+    neg rax                 # rax = -x, SF = sign of -x
     cmovs rax, rdi
     ret
 

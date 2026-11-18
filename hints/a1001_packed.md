@@ -1,3 +1,3 @@
-`addss` — scalar single (один элемент), `addps` — packed single (все четыре).
-Размножение скаляра: `shufps xmm0, xmm0, 0` — все четыре поля берут элемент 0.
-add_arrays: индекс в rax, адреса `[rsi + rax*4]`, загружайте `movups` (не `movaps` — адреса не выровнены, и не `addps xmm0, [mem]` — это тоже требует выравнивания), шаг 4.
+`addss` is scalar single (one element), `addps` is packed single (all four).
+Broadcasting a scalar: `shufps xmm0, xmm0, 0` — all four lanes take element 0.
+add_arrays: index in rax, addresses `[rsi + rax*4]`, load with `movups` (not `movaps` — the addresses are not aligned; and not `addps xmm0, [mem]` — that also requires alignment), step 4.

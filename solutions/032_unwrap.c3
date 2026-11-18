@@ -1,55 +1,55 @@
 // =====================================================================
-//  032 · Распаковка Optional: `if (catch ...)`, `if (try ...)`
+//  032 · Unwrapping Optionals: `if (catch ...)`, `if (try ...)`
 // =====================================================================
 //
-//  В прошлом упражнении мы только «подглядывали» в Optional через
-//  @ok/@catch. Но чтобы ДОСТАТЬ значение, нужна распаковка.
+//  In the previous exercise we only "peeked" into an Optional with
+//  @ok/@catch. But to actually GET the value out, you need unwrapping.
 //
 //  1) `if (catch err = opt) { ... }`
 //
-//     Если Optional пуст, его ошибка (типа `fault`) кладётся в `err`,
-//     и выполняется тело. Имя можно опустить: `if (catch opt) ...`.
-//     Ошибку удобно разбирать через `switch` — case'ы по значениям fault:
+//     If the Optional is empty, its error (of type `fault`) is stored in
+//     `err` and the body runs. The name can be omitted: `if (catch opt) ...`.
+//     A `switch` is a handy way to examine the error - cases on fault values:
 //
 //         if (catch err = value)
 //         {
 //             switch (err)
 //             {
 //                 case NOT_FOUND: ...
-//                 case io::EOF:   ...    // ошибки из других модулей — с префиксом
+//                 case io::EOF:   ...    // errors from other modules need a prefix
 //                 default:        ...
 //             }
 //         }
 //
-//  2) Flow typing (вывод типа по потоку управления) — главная фишка.
-//     Если тело `if (catch ...)` гарантированно ВЫХОДИТ из текущей
-//     области (`return`, `break`, `continue`, ...), то после этого `if`
-//     компилятор ЗНАЕТ, что ошибки нет, и переменная становится обычным
-//     `int` вместо `int?`:
+//  2) Flow typing (inferring types from control flow) is the killer
+//     feature. If the body of `if (catch ...)` is guaranteed to LEAVE the
+//     current scope (`return`, `break`, `continue`, ...), then after that
+//     `if` the compiler KNOWS there is no error, and the variable becomes
+//     a plain `int` instead of `int?`:
 //
 //         int? v = s.to_int();
-//         if (catch err = v) return err~;  // пробросить ошибку дальше
-//         // здесь v — уже просто int!
+//         if (catch err = v) return err~;  // pass the error up
+//         // here v is already just an int!
 //         return v * 2;
 //
-//     Если же из блока catch можно «провалиться» вниз — `v` остаётся
-//     `int?`, и с ним нельзя работать как с числом.
+//     If, however, the catch block can "fall through" downward, `v` stays
+//     an `int?`, and you can't work with it as a number.
 //
-//     Обратите внимание на `return err~;` — пойманную ошибку можно
-//     вернуть дальше тем же суффиксом `~`.
+//     Note the `return err~;` - a caught error can be returned further
+//     with the same `~` suffix.
 //
-//  3) `if (try v = opt) { ... }` — обратная форма: тело выполняется
-//     только если результат ЕСТЬ, и внутри `v` — обычное значение.
-//     Если Optional — уже переменная, можно без нового имени:
-//     `if (try opt) { /* тут opt — обычный int */ }`.
-//     Несколько условий соединяются только через `&&`:
+//  3) `if (try v = opt) { ... }` is the opposite form: the body runs
+//     only if there IS a result, and inside it `v` is a plain value.
+//     If the Optional is already a variable, you can skip the new name:
+//     `if (try opt) { /* here opt is a plain int */ }`.
+//     Multiple conditions can only be joined with `&&`:
 //
 //         if (try a = f() && try b = g()) { ... a + b ... }
 //
-//  Стандартная библиотека тоже возвращает Optional: `String.to_int()`
-//  возвращает `int?` с ошибками вроде `string::MALFORMED_INTEGER`.
+//  The standard library returns Optionals too: `String.to_int()`
+//  returns an `int?` with errors like `string::MALFORMED_INTEGER`.
 //
-//  ЗАДАЧА: почините три места, помеченные `// <-`.
+//  TASK: fix the three places marked with `// <-`.
 //
 import std::io;
 
@@ -62,9 +62,9 @@ fn int? parse_score(String s)
     if (catch err = v)
     {
         io::printfn("  cannot parse '%s'", s);
-        return err~; // <- блок catch должен выйти из функции
+        return err~; // <- the catch block must leave the function
     }
-    // Благодаря flow typing здесь v — обычный int.
+    // Thanks to flow typing, v is a plain int here.
     if (v < 0 || v > 100) return OUT_OF_RANGE~;
     return v;
 }
@@ -85,7 +85,7 @@ fn void main()
             switch (err)
             {
                 case EMPTY_INPUT: empty++;
-                case string::MALFORMED_INTEGER: malformed++; // <- какая ошибка у "abc"?
+                case string::MALFORMED_INTEGER: malformed++; // <- which error does "abc" produce?
                 case OUT_OF_RANGE: out_of_range++;
                 default: unreachable("unexpected fault");
             }
@@ -98,7 +98,7 @@ fn void main()
                 total, empty, malformed, out_of_range);
     assert(total == 200 && empty == 1 && malformed == 1 && out_of_range == 2);
 
-    if (try best = parse_score("100")) // <- выполнить, только если результат есть
+    if (try best = parse_score("100")) // <- run only if there is a result
     {
         io::printfn("best=%d", best);
     }

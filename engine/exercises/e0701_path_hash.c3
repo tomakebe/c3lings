@@ -1,47 +1,47 @@
 // =====================================================================
-//  e0701 · Пути, хеши и ResourceId
+//  e0701 · Paths, hashes and ResourceId
 // =====================================================================
 //
-//  Сначала прочитайте engine/docs/07_resources.md (разделы
-//  «Идентификация ресурса» и «Коллизии»).
+//  Read engine/docs/07_resources.md first (sections
+//  "Resource identity" and "Collisions").
 //
-//  Движок почти никогда не хранит и не сравнивает строки путей во время
-//  игры. Вместо "textures/hero.png" он оперирует 64-битным числом —
-//  ResourceId = FNV-1a(канонический путь). Сравнение — одна инструкция,
-//  ключ хеш-таблицы — 8 байт, а сама строка нужна только в отладке.
+//  An engine almost never stores or compares path strings at run time.
+//  Instead of "textures/hero.png" it works with a 64-bit number —
+//  ResourceId = FNV-1a(canonical path). A comparison is one instruction,
+//  a hash-table key is 8 bytes, and the string itself is only needed for debugging.
 //
-//  Но у хеширования путей есть две ловушки:
+//  But hashing paths has two pitfalls:
 //
-//  1. Один и тот же файл можно записать по-разному:
+//  1. The same file can be written in different ways:
 //         "Textures\\Hero.PNG", "./textures//hero.png",
 //         "textures/old/../hero.png"
-//     Если хешировать как есть — получим ТРИ разных id для одного ассета
-//     и загрузим его трижды. Поэтому перед хешированием путь приводят к
-//     каноническому виду: '\' -> '/', нижний регистр, пустые сегменты и
-//     "." выбрасываются, ".." удаляет предыдущий сегмент.
+//     Hash them as-is and you get THREE different ids for one asset
+//     and load it three times. So before hashing, the path is brought to
+//     canonical form: '\' -> '/', lower case, empty segments and
+//     "." are dropped, ".." removes the previous segment.
 //
-//  2. Коллизии. Разные пути могут дать один хеш. Для 64 бит это крайне
-//     маловероятно, но не невозможно, и узнать об этом нужно в ИНСТРУМЕНТАХ
-//     (при регистрации/сборке), а не по странному багу в релизе. Поэтому
-//     в debug-сборках держат реестр id -> путь и проверяют каждое
-//     добавление.
+//  2. Collisions. Different paths can produce the same hash. With 64 bits this is
+//     extremely unlikely but not impossible, and you want to find out in the TOOLS
+//     (at registration/build time), not from a weird bug in a release. That is why
+//     debug builds keep an id -> path registry and check every
+//     insertion.
 //
-//  FNV-1a (64 бит):
+//  FNV-1a (64-bit):
 //      h = 0xcbf29ce484222325
-//      для каждого байта c:  h = (h ^ c) * 0x100000001b3
-//  (умножение по модулю 2^64 — в C3 беззнаковое переполнение просто
-//  «заворачивается», как в C).
+//      for each byte c:  h = (h ^ c) * 0x100000001b3
+//  (multiplication is modulo 2^64 — in C3 unsigned overflow simply
+//  "wraps around", as in C).
 //
-//  Хеш строкового литерала можно посчитать во время компиляции макросом
-//  с `$for` — тогда `@rid("sounds/jump.wav")` — это просто константа,
-//  и её можно использовать даже в `case` у `switch`.
+//  The hash of a string literal can be computed at compile time by a macro
+//  using `$for` — then `@rid("sounds/jump.wav")` is just a constant,
+//  and you can even use it in a `switch` `case`.
 //
-//  ЗАДАЧА (места помечены TODO):
-//    1. fnv1a64(data) — runtime-хеш.
-//    2. @rid($path) — тот же хеш во время компиляции (через $for).
-//    3. normalize_path(path, out) — каноникализация по правилам выше.
-//    4. Registry.register(path) — нормализовать, хешировать и поймать
-//       коллизию: тот же id, но ДРУГОЙ канонический путь -> ID_COLLISION~.
+//  TASK (spots are marked TODO):
+//    1. fnv1a64(data) — the runtime hash.
+//    2. @rid($path) — the same hash at compile time (via $for).
+//    3. normalize_path(path, out) — canonicalization by the rules above.
+//    4. Registry.register(path) — normalize, hash and catch a
+//       collision: same id but a DIFFERENT canonical path -> ID_COLLISION~.
 //
 import std::io;
 import std::collections::map;
@@ -55,29 +55,29 @@ excuse ID_COLLISION, PATH_TOO_LONG;
 
 fn ulong fnv1a64(char[] data)
 {
-    // TODO: FNV-1a 64: начать с FNV_OFFSET, для каждого байта h = (h ^ c) * FNV_PRIME
+    // TODO: FNV-1a 64: start with FNV_OFFSET, for each byte h = (h ^ c) * FNV_PRIME
     return 0;
 }
 
-// Хеш во время компиляции. Литерал должен быть УЖЕ каноническим.
+// Compile-time hash. The literal must ALREADY be canonical.
 macro ulong @rid(String $path) @const
 {
-    // TODO: то же самое, но compile-time: `var $h = ...;` и `$for ... $endfor`.
-    //       Единственная runtime-инструкция макроса — `return $h;`.
+    // TODO: the same thing, but at compile time: `var $h = ...;` and `$for ... $endfor`.
+    //       The macro's only runtime instruction is `return $h;`.
     return 0ul;
 }
 
 <*
- Пишет канонический путь в out и возвращает срез out.
- Правила: '\' -> '/', A-Z -> a-z, пустые и "." сегменты пропускаются,
- ".." удаляет предыдущий сегмент (если он есть), сегменты соединяются '/'.
+ Writes the canonical path into out and returns a slice of out.
+ Rules: '\' -> '/', A-Z -> a-z, empty and "." segments are skipped,
+ ".." removes the previous segment (if any), segments are joined with '/'.
 *>
 fn String? normalize_path(String path, char[] out)
 {
-    // TODO: разбейте path на сегменты по '/' и '\\', пропустите пустые и ".",
-    //       на ".." откатите n до предыдущего '/', остальные сегменты
-    //       допишите в out через '/' в нижнем регистре.
-    //       Если не помещается в out -> return PATH_TOO_LONG~;
+    // TODO: split path into segments on '/' and '\\', skip empty ones and ".",
+    //       on ".." roll n back to the previous '/', append the remaining segments
+    //       to out separated by '/', in lower case.
+    //       If it does not fit in out -> return PATH_TOO_LONG~;
     if (path.len > out.len) return PATH_TOO_LONG~;
     out[:path.len] = path[..];
     return (String)out[:path.len];
@@ -91,13 +91,13 @@ fn ResourceId? path_id(String path)
 }
 
 // ---------------------------------------------------------------------
-// Реестр id -> канонический путь (живёт в инструментах / debug-сборке).
-// hash_bits позволяет искусственно «обрезать» хеш, чтобы увидеть
-// коллизии своими глазами.
+// Registry id -> canonical path (lives in the tools / debug build).
+// hash_bits lets you artificially "truncate" the hash to see
+// collisions with your own eyes.
 // ---------------------------------------------------------------------
 struct Registry
 {
-    HashMap{ulong, String} names;   // владеет копиями строк
+    HashMap{ulong, String} names;   // owns copies of the strings
     ulong mask;
 }
 
@@ -118,11 +118,11 @@ fn ResourceId? Registry.register(&self, String path)
     char[256] buf;
     String norm = normalize_path(path, &buf)!;
     ulong id = fnv1a64(norm) & self.mask;
-    // TODO: если id уже есть в self.names:
-    //         - тот же канонический путь -> просто вернуть id;
-    //         - другой путь -> ID_COLLISION~.
-    //       Иначе сохранить КОПИЮ строки (norm.copy(mem)) — buf умрёт
-    //       при выходе из функции.
+    // TODO: if id is already in self.names:
+    //         - same canonical path -> just return id;
+    //         - different path -> ID_COLLISION~.
+    //       Otherwise store a COPY of the string (norm.copy(mem)) — buf dies
+    //       when the function returns.
     return (ResourceId)id;
 }
 
@@ -134,7 +134,7 @@ fn void main()
     io::printfn("fnv(\"textures/hero.png\") = %x", fnv1a64("textures/hero.png"));
 
     // --- 2. compile-time id ---
-    ulong jump = @rid("sounds/jump.wav");   // (assert на const проверяется при компиляции)
+    ulong jump = @rid("sounds/jump.wav");   // (an assert on a const is checked at compile time)
     assert(jump == fnv1a64("sounds/jump.wav"), "@rid must equal the runtime hash");
     assert(jump != 0, "@rid is not implemented");
     switch (fnv1a64("sounds/jump.wav"))

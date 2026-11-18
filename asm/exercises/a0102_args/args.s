@@ -1,27 +1,27 @@
 # =====================================================================
-#  a0102 · Аргументы приходят в регистрах
+#  a0102 · Arguments arrive in registers
 # =====================================================================
 #
-#  В System V ABI первые шесть целочисленных (и указательных) аргументов
-#  передаются в регистрах, строго в таком порядке:
+#  In the System V ABI the first six integer (and pointer) arguments
+#  are passed in registers, strictly in this order:
 #
-#      1-й  rdi        4-й  rcx
-#      2-й  rsi        5-й  r8
-#      3-й  rdx        6-й  r9
+#      1st  rdi        4th  rcx
+#      2nd  rsi        5th  r8
+#      3rd  rdx        6th  r9
 #
-#  Мнемоника: «Diane's Silk Dress Costs $8 9» (rDi, rSi, rDx, rCx, r8, r9).
-#  Седьмой и следующие аргументы идут через стек — это глава 05.
+#  Mnemonic: "Diane's Silk Dress Costs $8 9" (rDi, rSi, rDx, rCx, r8, r9).
+#  The seventh and later arguments go on the stack — that's chapter 05.
 #
-#  Все аргументы здесь — `long` (64 бита), поэтому работаем с полными
-#  64-битными регистрами: rdi, а не edi; r9, а не r9d. Результат — в rax.
+#  All arguments here are `long` (64 bits), so we work with the full
+#  64-bit registers: rdi, not edi; r9, not r9d. The result goes in rax.
 #
-#      mov rax, rdi      # скопировать 1-й аргумент в регистр результата
+#      mov rax, rdi      # copy the 1st argument into the result register
 #
-#  Обратите внимание: `mov` копирует, а не перемещает — в rdi значение
-#  остаётся. И `mov` никогда не трогает флаги.
+#  Note: `mov` copies, it doesn't move — the value stays in rdi.
+#  And `mov` never touches the flags.
 #
-#  ЗАДАЧА: каждая функция должна вернуть аргумент, указанный в её имени.
-#  asm_first уже написана как образец. Программа напечатает
+#  TASK: each function must return the argument named in its name.
+#  asm_first is already written as an example. The program will print
 #      first=10 second=20 fourth=40 sixth=60
 #
     .intel_syntax noprefix
@@ -34,7 +34,7 @@ asm_first:
 
     .globl asm_second
 asm_second:
-    mov rax, rdi            # TODO: второй аргумент — не в rdi
+    mov rax, rdi            # TODO: the second argument is not in rdi
     ret
 
     .globl asm_fourth
@@ -44,7 +44,7 @@ asm_fourth:
 
     .globl asm_sixth
 asm_sixth:
-    mov eax, edi            # TODO: и регистр не тот, и ширина не та
+    mov eax, edi            # TODO: both the register and the width are wrong
     ret
 
     .section .note.GNU-stack,"",@progbits

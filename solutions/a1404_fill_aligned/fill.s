@@ -1,37 +1,38 @@
 # =====================================================================
-#  a1404 · Выравнивание: пролог, выровненное тело, хвост
+#  a1404 · Alignment: prologue, aligned body, tail
 # =====================================================================
 #
-#  Загрузки и записи, пересекающие границу кеш-линии (64 байта), стоят
-#  дороже: процессору нужно обратиться к двум линиям. 32-байтная запись
-#  ymm по случайному адресу пересекает границу в половине случаев. А
-#  потоковые («non-temporal») записи vmovntdq и выровненные vmovdqa вообще
-#  требуют адреса, кратного 32.
+#  Loads and stores that cross a cache line boundary (64 bytes) cost
+#  more: the processor has to touch two lines. A 32-byte ymm store to a
+#  random address crosses a boundary half the time. And streaming
+#  ("non-temporal") vmovntdq stores and aligned vmovdqa stores outright
+#  require an address that is a multiple of 32.
 #
-#  Поэтому быстрые memset/memcpy устроены так:
-#    1. ПРОЛОГ: скалярно записываем элементы, пока адрес не станет
-#       кратен 32 (или пока не кончатся элементы);
-#    2. ТЕЛО: выровненные записи vmovdqa по 8 uint32;
-#    3. ХВОСТ: оставшиеся < 8 элементов скалярно.
+#  That is why fast memset/memcpy are structured like this:
+#    1. PROLOGUE: store elements one at a time until the address becomes
+#       a multiple of 32 (or until we run out of elements);
+#    2. BODY: aligned vmovdqa stores of 8 uint32 each;
+#    3. TAIL: the remaining < 8 elements, scalar.
 #
-#      test dil, 31      ; адрес кратен 32? (младшие 5 бит == 0)
+#      test dil, 31      ; is the address a multiple of 32? (low 5 bits == 0)
 #
-#  Значение размножаем на 8 полей: vmovd xmm0, esi; vpbroadcastd ymm0, xmm0.
+#  Broadcast the value to 8 lanes: vmovd xmm0, esi; vpbroadcastd ymm0, xmm0.
 #
-#  Для гигантских заполнений (больше кеша последнего уровня) выгоднее
-#  vmovntdq: данные пишутся мимо кеша и не вытесняют полезное. Тогда в
-#  конце обязателен sfence — non-temporal записи слабо упорядочены.
+#  For huge fills (larger than the last-level cache) vmovntdq is better:
+#  the data is written around the cache and doesn't evict useful lines.
+#  Then an sfence at the end is mandatory — non-temporal stores are
+#  weakly ordered.
 #
-#  ЗАДАЧА: fill_u32(dst /*rdi*/, v /*esi*/, n /*rdx*/) — записать v в
-#  dst[0..n-1]. dst кратен 4, но не обязательно 32. В теле используйте
-#  vmovdqa (если перепутаете с выравниванием — получите segfault, это и
-#  есть проверка). Не забудьте vzeroupper.
+#  TASK: fill_u32(dst /*rdi*/, v /*esi*/, n /*rdx*/) — store v into
+#  dst[0..n-1]. dst is a multiple of 4, but not necessarily of 32. Use
+#  vmovdqa in the body (if you get the alignment wrong you'll get a
+#  segfault — that's the check). Don't forget vzeroupper.
 #
     .intel_syntax noprefix
     .text
     .globl fill_u32
 fill_u32:
-    # 1. пролог
+    # 1. prologue
     jmp 2f
 1:
     mov [rdi], esi
@@ -42,7 +43,7 @@ fill_u32:
     jz 9f
     test dil, 31
     jnz 1b
-    # 2. тело
+    # 2. body
     vmovd xmm0, esi
     vpbroadcastd ymm0, xmm0
     jmp 4f
@@ -54,7 +55,7 @@ fill_u32:
     cmp rdx, 8
     jge 3b
     vzeroupper
-    # 3. хвост
+    # 3. tail
     jmp 6f
 5:
     mov [rdi], esi

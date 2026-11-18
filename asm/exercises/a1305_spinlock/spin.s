@@ -1,19 +1,19 @@
 # =====================================================================
-#  a1305 · Спинлок: xchg, pause и порядок памяти
+#  a1305 · Spinlock: xchg, pause and memory ordering
 # =====================================================================
 #
-#  Простейшая блокировка: 0 — свободно, 1 — занято.
+#  The simplest lock: 0 — free, 1 — taken.
 #
-#  trylock:  атомарно записать 1 и посмотреть, что было:
+#  trylock:  atomically write 1 and look at what was there:
 #      mov  eax, 1
-#      xchg dword ptr [rdi], eax   ; xchg с памятью — всегда атомарный (неявный lock)
-#      ; eax == 0  => мы захватили блокировку
+#      xchg dword ptr [rdi], eax   ; xchg with memory is always atomic (implicit lock)
+#      ; eax == 0  => we acquired the lock
 #
-#  lock: повторять trylock, пока не получится. Но крутить xchg в цикле
-#  плохо: каждый xchg требует ЭКСКЛЮЗИВНОГО владения кеш-линией, и
-#  ждущие ядра гоняют её друг у друга. Правильно — «test and test-and-set»:
-#  ждать, ПРОСТО ЧИТАЯ (линия в общем состоянии, без трафика), и пробовать
-#  xchg только когда увидели 0:
+#  lock: repeat trylock until it succeeds. But spinning on xchg in a loop
+#  is bad: every xchg requires EXCLUSIVE ownership of the cache line, and
+#  the waiting cores keep stealing it from each other. The right way is
+#  "test and test-and-set": wait by JUST READING (the line is in the shared
+#  state, no traffic), and try xchg only after seeing 0:
 #
 #  lock:
 #      mov  eax, 1
@@ -21,23 +21,23 @@
 #      test eax, eax
 #      jz   done
 #  spin:
-#      pause                    ; подсказка CPU: «я в спин-цикле»
-#      cmp  dword ptr [rdi], 0  ; обычное чтение
+#      pause                    ; hint to the CPU: "I'm in a spin loop"
+#      cmp  dword ptr [rdi], 0  ; a plain read
 #      jne  spin
-#      jmp  lock                ; освободилось — снова пробуем захватить
+#      jmp  lock                ; it's free — try to acquire again
 #
-#  `pause` снижает энергопотребление, освобождает ресурсы для второго
-#  гиперпотока ядра и избавляет от штрафа «memory order violation» при
-#  выходе из цикла. (На Skylake+ pause длится ~140 тактов, раньше ~10.)
+#  `pause` reduces power consumption, frees resources for the core's second
+#  hyperthread, and avoids the "memory order violation" penalty when
+#  leaving the loop. (On Skylake+ pause takes ~140 cycles, earlier ~10.)
 #
-#  unlock: просто `mov dword ptr [rdi], 0`. На x86 обычная запись имеет
-#  семантику release: процессор не переставит более ранние чтения и
-#  записи ПОСЛЕ неё (модель памяти TSO). Барьер не нужен! (На ARM нужен
-#  был бы stlr.) Но компилятору C3 об этом знать неоткуда — поэтому
-#  блокировки и пишут на атомиках/ассемблере, а не обычными присваиваниями.
+#  unlock: just `mov dword ptr [rdi], 0`. On x86 a plain store has
+#  release semantics: the processor won't move earlier loads and
+#  stores AFTER it (the TSO memory model). No barrier needed! (On ARM you'd
+#  need stlr.) But the C3 compiler has no way of knowing that — which is why
+#  locks are written with atomics/assembly rather than plain assignments.
 #
-#  ЗАДАЧА: напишите spin_trylock (1 — захватили, 0 — занято), spin_lock
-#  (test-and-test-and-set с pause), spin_unlock.
+#  TASK: write spin_trylock (1 — acquired, 0 — taken), spin_lock
+#  (test-and-test-and-set with pause), spin_unlock.
 #
     .intel_syntax noprefix
     .text

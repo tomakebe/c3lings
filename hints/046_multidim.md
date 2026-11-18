@@ -1,4 +1,4 @@
-1. В C3 размеры пишутся «изнутри наружу»: `char[ДЛИНА_СТРОКИ][ЧИСЛО_СТРОК]`.
-   Нужно HEIGHT строк по WIDTH символов.
-2. Индексация — «снаружи внутрь»: `m[строка][столбец]`.
-3. Строка 1 — это `{ 5, 6, 7, 8 }`. Какой у неё элемент с индексом 2?
+1. In C3 the sizes are written "inside out": `char[ROW_LENGTH][ROW_COUNT]`.
+   You need HEIGHT rows of WIDTH characters.
+2. Indexing goes "outside in": `m[row][column]`.
+3. Row 1 is `{ 5, 6, 7, 8 }`. What is its element at index 2?

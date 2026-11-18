@@ -1,43 +1,43 @@
 // =====================================================================
-//  011 · while, do-while и do-блок
+//  011 · while, do-while and the do block
 // =====================================================================
 //
-//  WHILE — проверяет условие ПЕРЕД каждой итерацией (может не
-//  выполниться ни разу):
+//  WHILE checks the condition BEFORE every iteration (so the body may
+//  never run at all):
 //
 //      while (n > 0)
 //      {
 //          n--;
 //      }
 //
-//  DO-WHILE — проверяет условие ПОСЛЕ итерации, поэтому тело
-//  выполняется хотя бы один раз. Как и в C, после `while (...)` нужна
-//  точка с запятой:
+//  DO-WHILE checks the condition AFTER the iteration, so the body
+//  runs at least once. Just like in C, you need a semicolon after
+//  `while (...)`:
 //
 //      do
 //      {
 //          tries++;
 //      } while (tries < 3);
 //
-//  `break` выходит из цикла, `continue` переходит к следующей проверке
-//  условия.
+//  `break` leaves the loop, `continue` jumps to the next check of the
+//  condition.
 //
-//  DO-БЛОК БЕЗ WHILE — особенность C3. Это блок, который выполняется
-//  ровно один раз, но из него можно выйти по `break`:
+//  A DO BLOCK WITHOUT WHILE is a C3 specialty. It is a block that runs
+//  exactly once, but you can jump out of it with `break`:
 //
 //      do
 //      {
 //          if (x < 0) { error = "negative"; break; }
 //          if (x > 100) { error = "too big"; break; }
 //          error = "none";
-//      };              // <- точка с запятой ОБЯЗАТЕЛЬНА
+//      };              // <- the semicolon is REQUIRED
 //
-//  Это заменяет сишный приём `do { ... } while (0)` и многие случаи,
-//  где в C писали `goto`: цепочка проверок, после первой неудачной —
-//  выход. Без `;` компилятор решит, что вы забыли `while`
-//  ("Expected 'while'").
+//  This replaces the C trick `do { ... } while (0)` and many of the
+//  cases where C code would reach for `goto`: a chain of checks where
+//  you bail out after the first failure. Without the `;` the compiler
+//  assumes you forgot the `while` ("Expected 'while'").
 //
-//  ЗАДАЧА: исправьте места с `// <-`. Программа должна напечатать:
+//  TASK: fix the places marked `// <-`. The program should print:
 //
 //      collatz(6) takes 8 steps
 //      menu shown 1 time(s)
@@ -47,12 +47,12 @@
 //
 import std::io;
 
-// Гипотеза Коллатца: если n чётное — делим на 2, иначе n = 3n + 1.
-// Считаем шаги, пока не дойдём до 1.
+// The Collatz conjecture: if n is even, divide it by 2, otherwise n = 3n + 1.
+// Count the steps until we reach 1.
 fn int collatz_steps(int n)
 {
     int steps = 0;
-    while (???)                         // <- пока n не равно 1
+    while (???)                         // <- while n is not equal to 1
     {
         if (n % 2 == 0)
         {
@@ -83,7 +83,7 @@ fn String check_age(int age)
             break;
         }
         status = "valid";
-    }                                   // <- do-блок без while
+    }                                   // <- a do block without while
     return status;
 }
 
@@ -95,7 +95,7 @@ fn void main()
     bool want_more = false;
     do
     {
-        shown++;                        // тело выполнится хотя бы раз
+        shown++;                        // the body runs at least once
     } while (want_more);
     io::printfn("menu shown %d time(s)", shown);
 

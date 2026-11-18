@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # c3lings — runner for the C3 + game engine architecture course.
 #
-#   ./c3lings              проверить упражнения по порядку, остановиться на первом нерешённом
-#   ./c3lings watch        то же самое, но перепроверять автоматически при каждом сохранении
-#   ./c3lings run <N>      собрать и запустить одно упражнение (N = номер/префикс, напр. 042 или e105)
-#   ./c3lings hint <N>     показать подсказку к упражнению
-#   ./c3lings list         список всех упражнений и их статус
-#   ./c3lings reset        сбросить кэш прогресса (всё будет перепроверено)
-#   ./c3lings verify [N..] (для авторов) все решения проходят, все упражнения падают
+#   ./c3lings              check exercises in order, stop at the first unsolved one
+#   ./c3lings watch        same, but re-check automatically on every save
+#   ./c3lings run <N>      build and run one exercise (N = number/prefix, e.g. 042 or e105)
+#   ./c3lings hint <N>     show the hint for an exercise
+#   ./c3lings list         list all exercises and their status
+#   ./c3lings reset        clear the progress cache (everything is re-checked)
+#   ./c3lings verify [N..] (authors) every solution passes, every exercise fails
 #
-# Переменные окружения:  C3C=/path/to/c3c   (по умолчанию ./.c3c/c3/c3c, затем c3c из PATH)
+# Environment:  C3C=/path/to/c3c   (default: ./.c3c/c3/c3c, then c3c from PATH)
 
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,7 +28,7 @@ fi
 
 die() { echo "${RED}error:${RESET} $*" >&2; exit 2; }
 
-command -v "$C3C" >/dev/null 2>&1 || die "компилятор C3 '$C3C' не найден. Установите c3c (см. README.md) или задайте C3C=/path/to/c3c"
+command -v "$C3C" >/dev/null 2>&1 || die "C3 compiler '$C3C' not found. Install c3c (see README.md) or set C3C=/path/to/c3c"
 
 mkdir -p "$BUILD"
 touch "$PROGRESS"
@@ -107,7 +107,7 @@ check() {
     if [[ "$mode" == "test" ]]; then
         # Unit-test exercise: success == all @test functions pass.
         if ! (cd "$BUILD" && timeout "$TIMEOUT_SECS" "$C3C" compile-test "${flags[@]}" "${srcs[@]}") > "$LAST_LOG" 2>&1; then
-            LAST_REASON="тесты не прошли (или не скомпилировались)"; return 1
+            LAST_REASON="tests failed (or did not compile)"; return 1
         fi
         return 0
     fi
@@ -119,26 +119,26 @@ check() {
     for a in "${asm_srcs[@]}"; do
         local obj; obj="$BUILD/${name}__$(basename "${a%.*}").o"
         if ! ${CC:-cc} -c -g "$a" -o "$obj" >> "$LAST_LOG" 2>&1; then
-            LAST_REASON="ошибка ассемблирования $(basename "$a")"; return 1
+            LAST_REASON="assembly failed: $(basename "$a")"; return 1
         fi
         objs+=("$obj")
     done
     if ! (cd "$BUILD" && "$C3C" compile -q "${flags[@]}" -o "$out" "${srcs[@]}" "${objs[@]}") >> "$LAST_LOG" 2>&1; then
-        LAST_REASON="ошибка компиляции"; return 1
+        LAST_REASON="compilation failed"; return 1
     fi
     local stdout="$BUILD/$name.stdout" stdin="/dev/null"
     [[ -f "$ROOT/checks/$name.in" ]] && stdin="$ROOT/checks/$name.in"
     (cd "$BUILD" && timeout "$TIMEOUT_SECS" "$out" < "$stdin") > "$stdout" 2>> "$LAST_LOG"
     local code=$?
-    if [[ $code -eq 124 ]]; then LAST_REASON="превышено время ${TIMEOUT_SECS}с (бесконечный цикл?)"; return 1; fi
-    if [[ $code -ne 0 ]]; then LAST_REASON="программа завершилась с кодом $code"; cat "$stdout" >> "$LAST_LOG"; return 1; fi
+    if [[ $code -eq 124 ]]; then LAST_REASON="timed out after ${TIMEOUT_SECS}s (infinite loop?)"; return 1; fi
+    if [[ $code -ne 0 ]]; then LAST_REASON="program exited with code $code"; cat "$stdout" >> "$LAST_LOG"; return 1; fi
     if [[ -f "$ROOT/checks/$name.out" ]]; then
         if ! diff -q <(sed -e 's/[[:space:]]*$//' "$stdout") <(sed -e 's/[[:space:]]*$//' "$ROOT/checks/$name.out") > /dev/null; then
-            LAST_REASON="вывод не совпадает с ожидаемым"
+            LAST_REASON="output does not match the expected output"
             {
-                echo "---- ожидалось ----"; cat "$ROOT/checks/$name.out"
-                echo "---- получено -----"; cat "$stdout"
-                echo "---- diff (- получено / + ожидалось) ----"
+                echo "---- expected ----"; cat "$ROOT/checks/$name.out"
+                echo "---- got ---------"; cat "$stdout"
+                echo "---- diff (- got / + expected) ----"
                 diff <(sed -e 's/[[:space:]]*$//' "$stdout") <(sed -e 's/[[:space:]]*$//' "$ROOT/checks/$name.out")
             } >> "$LAST_LOG"
             return 1
@@ -156,7 +156,7 @@ show_failure() {
     echo
     sed -e 's/^/  /' "$LAST_LOG" | head -n 80
     echo
-    echo "${YELLOW}Исправьте ${BOLD}$(relpath "$e")${RESET}${YELLOW} и снова запустите ./c3lings${RESET}  Застряли? ${BOLD}./c3lings hint ${name%%_*}${RESET}"
+    echo "${YELLOW}Fix ${BOLD}$(relpath "$e")${RESET}${YELLOW} and run ./c3lings again.${RESET}  Stuck? ${BOLD}./c3lings hint ${name%%_*}${RESET}"
 }
 
 progress_bar() {
@@ -174,7 +174,7 @@ cmd_check_all() {
     for e in "${all[@]}"; do
         local name; name="$(ex_name "$e")"
         if is_cached_pass "$e"; then n=$((n + 1)); continue; fi
-        printf '%s… проверяю %s%s\r' "$DIM" "$(relpath "$e")" "$RESET"
+        printf '%s… checking %s%s\r' "$DIM" "$(relpath "$e")" "$RESET"
         if check "$e" "$name"; then
             mark_pass "$e"
             n=$((n + 1))
@@ -188,8 +188,8 @@ cmd_check_all() {
     done
     progress_bar "$n" "$total"
     echo
-    echo "${GREEN}${BOLD}Все упражнения решены. Поздравляю!${RESET}"
-    echo "Теперь пишите свой движок. См. engine/docs/99_whats_next.md"
+    echo "${GREEN}${BOLD}All exercises are solved. Congratulations!${RESET}"
+    echo "Now go build your own engine. See engine/docs/99_whats_next.md"
     return 0
 }
 
@@ -207,7 +207,7 @@ cmd_watch() {
         snap="$(sources_fingerprint)"
         clear
         cmd_check_all
-        echo; echo "${DIM}слежу за изменениями… (Ctrl+C для выхода)${RESET}"
+        echo; echo "${DIM}watching for changes… (Ctrl+C to quit)${RESET}"
         while [[ "$(sources_fingerprint)" == "$snap" ]]; do
             sleep 0.5
         done
@@ -216,12 +216,12 @@ cmd_watch() {
 }
 
 cmd_run() {
-    local e; e="$(find_exercise "$1")" || die "нет упражнения '$1'"
+    local e; e="$(find_exercise "$1")" || die "no exercise matching '$1'"
     local name; name="$(ex_name "$e")"
     if check "$e" "$name"; then
         mark_pass "$e"
         cat "$BUILD/$name.stdout" 2>/dev/null
-        echo "${GREEN}✓ $(relpath "$e") решено${RESET}"
+        echo "${GREEN}✓ $(relpath "$e") solved${RESET}"
     else
         [[ -f "$BUILD/$name.stdout" ]] && cat "$BUILD/$name.stdout"
         show_failure "$e"
@@ -230,9 +230,9 @@ cmd_run() {
 }
 
 cmd_hint() {
-    local e; e="$(find_exercise "$1")" || die "нет упражнения '$1'"
+    local e; e="$(find_exercise "$1")" || die "no exercise matching '$1'"
     local name; name="$(ex_name "$e")"
-    if [[ -f "$ROOT/hints/$name.md" ]]; then cat "$ROOT/hints/$name.md"; else echo "Для $name подсказки нет. Перечитайте комментарии в упражнении :)"; fi
+    if [[ -f "$ROOT/hints/$name.md" ]]; then cat "$ROOT/hints/$name.md"; else echo "No hint for $name. Re-read the comments in the exercise :)"; fi
 }
 
 cmd_list() {
@@ -277,11 +277,11 @@ cmd_verify() {
 case "${1:-}" in
     ""|check) cmd_check_all ;;
     watch) cmd_watch ;;
-    run) [[ $# -ge 2 ]] || die "использование: ./c3lings run <N>"; cmd_run "$2" ;;
-    hint) [[ $# -ge 2 ]] || die "использование: ./c3lings hint <N>"; cmd_hint "$2" ;;
+    run) [[ $# -ge 2 ]] || die "usage: ./c3lings run <N>"; cmd_run "$2" ;;
+    hint) [[ $# -ge 2 ]] || die "usage: ./c3lings hint <N>"; cmd_hint "$2" ;;
     list) cmd_list ;;
-    reset) : > "$PROGRESS"; echo "кэш прогресса очищен" ;;
+    reset) : > "$PROGRESS"; echo "progress cache cleared" ;;
     verify) shift; cmd_verify "$@" ;;
     -h|--help|help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' ;;
-    *) die "неизвестная команда '$1' (см. ./c3lings help)" ;;
+    *) die "unknown command '$1' (see ./c3lings help)" ;;
 esac

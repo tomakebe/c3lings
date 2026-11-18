@@ -1,268 +1,275 @@
-# Глава 10. SIMD: SSE и AVX2, векторизация циклов
+# Chapter 10. SIMD: SSE and AVX2, Loop Vectorization
 
-Скалярная инструкция складывает два числа. Векторная — 4, 8, 16 или 32
-пары за то же время. SIMD (Single Instruction, Multiple Data) — главный
-источник «бесплатной» производительности в численном коде: обработке
-изображений и звука, физике, матрицах, поиске в строках, парсинге,
-хешировании. Компиляторы умеют векторизовать простые циклы сами, но далеко
-не всегда — и чтобы понять, когда они могут, а когда нет, надо уметь
-писать SIMD руками.
+A scalar instruction adds two numbers. A vector instruction adds 4, 8, 16
+or 32 pairs in the same time. SIMD (Single Instruction, Multiple Data) is
+the main source of "free" performance in numeric code: image and audio
+processing, physics, matrices, string search, parsing, hashing. Compilers
+can vectorize simple loops on their own, but far from always — and to
+understand when they can and when they can't, you need to be able to
+write SIMD by hand.
 
-Упражнения: `a1001`–`a1006`.
+Exercises: `a1001`–`a1006`.
 
-## 1. Регистры и поколения
+## 1. Registers and generations
 
-| Расширение | Год | Регистры | Ширина | Ключевое |
+| Extension | Year | Registers | Width | Key features |
 |---|---|---|---|---|
 | SSE | 1999 | xmm0–7 | 128 | 4×float |
-| SSE2 | 2001 | xmm | 128 | double и целые (16×i8 … 2×i64); база x86-64 |
+| SSE2 | 2001 | xmm | 128 | double and integers (16×i8 … 2×i64); x86-64 baseline |
 | SSE3/SSSE3 | 2004–06 | xmm | 128 | `haddps`, `pshufb`, `pabsd` |
 | SSE4.1/4.2 | 2007–08 | xmm | 128 | `pminsd`, `blendvps`, `roundps`, `ptest`, `pcmpistri`, `crc32` |
-| AVX | 2011 | ymm0–15 | 256 | float/double, VEX: 3 операнда |
-| AVX2 | 2013 | ymm | 256 | целые в 256 бит, `vpermd`, gather, `vpbroadcast*` |
-| FMA3 | 2013 | xmm/ymm | | `vfmadd231ps` и др. |
-| AVX-512 | 2016+ | zmm0–31, k0–7 | 512 | маски, scatter (в этом курсе не используем) |
+| AVX | 2011 | ymm0–15 | 256 | float/double, VEX: 3 operands |
+| AVX2 | 2013 | ymm | 256 | 256-bit integers, `vpermd`, gather, `vpbroadcast*` |
+| FMA3 | 2013 | xmm/ymm | | `vfmadd231ps` etc. |
+| AVX-512 | 2016+ | zmm0–31, k0–7 | 512 | masks, scatter (not used in this course) |
 
-В x86-64 16 векторных регистров (`xmm0`–`xmm15`); `xmmN` — младшая
-половина `ymmN`. Уровни «x86-64-v2» (SSE4.2, POPCNT), «v3» (AVX2, FMA,
-BMI1/2), «v4» (AVX-512) — удобные ярлыки, которые понимают GCC/Clang;
-у c3c — `--x86cpu=sse4`, `avx2-v2` и т.д.
+x86-64 has 16 vector registers (`xmm0`–`xmm15`); `xmmN` is the lower half
+of `ymmN`. The levels "x86-64-v2" (SSE4.2, POPCNT), "v3" (AVX2, FMA,
+BMI1/2) and "v4" (AVX-512) are handy labels understood by GCC/Clang;
+c3c uses `--x86cpu=sse4`, `avx2-v2`, and so on.
 
-## 2. Типы данных и суффиксы
+## 2. Data types and suffixes
 
-Один и тот же регистр трактуется инструкцией по-разному:
+The same register is interpreted differently by different instructions:
 
-| Суффикс / префикс | Данные в 128 битах |
+| Suffix / prefix | Data in 128 bits |
 |---|---|
 | `ps` / `pd` | 4×float / 2×double |
-| `pb`, `pw`, `pd`, `pq` (целые: `paddb`, `paddw`, `paddd`, `paddq`) | 16×i8, 8×i16, 4×i32, 2×i64 |
-| `us`/`s` (`paddusb`, `paddsw`) | арифметика с насыщением |
+| `pb`, `pw`, `pd`, `pq` (integer: `paddb`, `paddw`, `paddd`, `paddq`) | 16×i8, 8×i16, 4×i32, 2×i64 |
+| `us`/`s` (`paddusb`, `paddsw`) | saturating arithmetic |
 
-Осторожно: `pd` у плавающих — packed double, а у целых (`paddd`) — packed
-dword. Целочисленные инструкции начинаются на `p`.
+Careful: for floating point `pd` means packed double, but for integers
+(`paddd`) it means packed dword. Integer instructions start with `p`.
 
-Битовые операции существуют в «плавающих» и «целых» вариантах (`andps`,
-`andpd`, `pand`) — результат одинаков, но на некоторых процессорах переход
-данных между «плавающим» и «целым» доменами исполнения стоит лишний такт
-(bypass delay). Используйте вариант того же типа, что и окружающий код.
+Bitwise operations come in "float" and "integer" flavors (`andps`,
+`andpd`, `pand`) — the result is the same, but on some processors moving
+data between the floating-point and integer execution domains costs an
+extra cycle (bypass delay). Use the variant matching the type of the
+surrounding code.
 
-## 3. Загрузка и сохранение
+## 3. Loads and stores
 
-| Инструкция | Что делает | Выравнивание |
+| Instruction | What it does | Alignment |
 |---|---|---|
-| `movaps`/`movapd`/`movdqa` | 16 байт | **обязательно** 16 |
-| `movups`/`movupd`/`movdqu` | 16 байт | любое |
-| `vmovaps ymm`/`vmovdqa ymm` | 32 байта | **обязательно** 32 |
-| `vmovups ymm`/`vmovdqu ymm` | 32 байта | любое |
-| `movss`/`movsd`/`movd`/`movq` | 4/8 байт в младший элемент | любое |
-| `vbroadcastss ymm, m32/xmm` | размножить float на 8 полей | любое |
-| `vpbroadcastb/w/d/q` | размножить целое | любое |
-| `movntps`/`vmovntdq` | сохранение «мимо кеша» (non-temporal) | обязательно |
+| `movaps`/`movapd`/`movdqa` | 16 bytes | 16 **required** |
+| `movups`/`movupd`/`movdqu` | 16 bytes | any |
+| `vmovaps ymm`/`vmovdqa ymm` | 32 bytes | 32 **required** |
+| `vmovups ymm`/`vmovdqu ymm` | 32 bytes | any |
+| `movss`/`movsd`/`movd`/`movq` | 4/8 bytes into the low element | any |
+| `vbroadcastss ymm, m32/xmm` | replicate a float into 8 lanes | any |
+| `vpbroadcastb/w/d/q` | replicate an integer | any |
+| `movntps`/`vmovntdq` | store "bypassing the cache" (non-temporal) | required |
 
-Правила:
+Rules:
 
-1. Невыровненная загрузка (`movups`) на современных процессорах так же
-   быстра, как выровненная, **если данные фактически выровнены**. Штраф
-   появляется, когда загрузка пересекает границу кеш-линии (64 байта),
-   и особенно — границу страницы (4 КиБ).
-2. Операнд-память у не-VEX SSE-инструкций (`addps xmm0, [rdi]`) должен
-   быть выровнен на 16. У VEX-форм (`vaddps ymm0, ymm1, [rdi]`) —
-   не должен. Это частая причина «у меня работает, а у пользователя падает».
-3. Стек в System V выровнен на 16 — для `ymm` на стеке нужно выравнивать
-   кадр вручную (`and rsp, -32`).
+1. An unaligned load (`movups`) on modern processors is as fast as an
+   aligned one **if the data actually is aligned**. The penalty appears
+   when the load crosses a cache line boundary (64 bytes), and especially
+   a page boundary (4 KiB).
+2. A memory operand of a non-VEX SSE instruction (`addps xmm0, [rdi]`)
+   must be 16-byte aligned. For VEX forms (`vaddps ymm0, ymm1, [rdi]`) it
+   need not be. This is a common cause of "works on my machine, crashes
+   for the user".
+3. The System V stack is 16-byte aligned — for `ymm` values on the stack
+   you have to align the frame manually (`and rsp, -32`).
 
-## 4. Арифметика и сравнения
+## 4. Arithmetic and comparisons
 
-| Операция | float | double | целые |
+| Operation | float | double | integer |
 |---|---|---|---|
 | + − | `addps`, `subps` | `addpd`, `subpd` | `paddb/w/d/q`, `psubb/w/d/q` |
-| × | `mulps` | `mulpd` | `pmullw`, `pmulld` (SSE4.1, медленная), `pmuludq` |
+| × | `mulps` | `mulpd` | `pmullw`, `pmulld` (SSE4.1, slow), `pmuludq` |
 | ÷, √ | `divps`, `sqrtps` | `divpd`, `sqrtpd` | — |
 | min/max | `minps`, `maxps` | `minpd`, `maxpd` | `pminsd`, `pmaxub` … |
 | FMA | `vfmadd231ps` | `vfmadd231pd` | — |
-| сравнение → маска | `cmpps xmm, xmm, pred` | `cmppd` | `pcmpeqb/w/d/q`, `pcmpgtb/w/d/q` |
-| маска → биты | `movmskps` | `movmskpd` | `pmovmskb` (по биту из каждого байта) |
-| выбор по маске | `blendvps`, или `and/andn/or` | `blendvpd` | `pblendvb` |
+| compare → mask | `cmpps xmm, xmm, pred` | `cmppd` | `pcmpeqb/w/d/q`, `pcmpgtb/w/d/q` |
+| mask → bits | `movmskps` | `movmskpd` | `pmovmskb` (one bit from each byte) |
+| select by mask | `blendvps`, or `and/andn/or` | `blendvpd` | `pblendvb` |
 
-Сравнения возвращают **маску**: каждый элемент становится «все единицы»
-или «все нули». Это основа ветвления без ветвлений в SIMD: вычисляем обе
-ветки и смешиваем.
+Comparisons return a **mask**: each element becomes "all ones" or "all
+zeros". This is the foundation of branchless branching in SIMD: compute
+both branches and blend.
 
 ```asm
-; x = max(x, 0) для 4 int без pmaxsd (SSE2):
+; x = max(x, 0) for 4 ints without pmaxsd (SSE2):
 pxor    xmm1, xmm1
 movdqa  xmm2, xmm0
-pcmpgtd xmm2, xmm1      ; маска x > 0
-pand    xmm0, xmm2      ; оставить только положительные
+pcmpgtd xmm2, xmm1      ; mask x > 0
+pand    xmm0, xmm2      ; keep only the positive ones
 ```
 
-FMA: `vfmadd231ps a, b, c` → `a = b*c + a`. Цифры — порядок операндов
-(«231»: второй × третий + первый). Есть варианты `132` и `213` — чтобы
-результат мог перезаписать любой из входов. FMA округляет **один раз**,
-поэтому `fma(a,b,c)` и `a*b+c` могут отличаться в последнем бите.
+FMA: `vfmadd231ps a, b, c` → `a = b*c + a`. The digits give the operand
+order ("231": second × third + first). There are also `132` and `213`
+variants, so that the result can overwrite any of the inputs. FMA rounds
+**once**, so `fma(a,b,c)` and `a*b+c` may differ in the last bit.
 
-## 5. Перестановки
+## 5. Shuffles
 
-| Инструкция | Что делает |
+| Instruction | What it does |
 |---|---|
-| `shufps xmm0, xmm1, imm` | поля 0–1 из xmm0, 2–3 из xmm1, по 2 бита imm на поле |
-| `pshufd xmm0, xmm1, imm` | любая перестановка 4 dword из одного источника |
-| `pshufb xmm0, xmm1` | любая перестановка 16 байт по таблице (SSSE3) |
-| `unpcklps`/`unpckhps`, `punpckl*`/`punpckh*` | чередование элементов двух регистров |
-| `movhlps`, `movlhps` | перенос половин |
-| `palignr` | «склейка» двух регистров со сдвигом на байты |
-| `vperm2f128`, `vextractf128`, `vinsertf128` | работа с 128-битными половинами ymm |
-| `vpermd`, `vpermps` | перестановка 8 dword через всю ширину ymm (AVX2) |
+| `shufps xmm0, xmm1, imm` | lanes 0–1 from xmm0, 2–3 from xmm1, 2 bits of imm per lane |
+| `pshufd xmm0, xmm1, imm` | any permutation of 4 dwords from one source |
+| `pshufb xmm0, xmm1` | any permutation of 16 bytes via a table (SSSE3) |
+| `unpcklps`/`unpckhps`, `punpckl*`/`punpckh*` | interleave elements of two registers |
+| `movhlps`, `movlhps` | move halves |
+| `palignr` | "concatenate" two registers and shift by bytes |
+| `vperm2f128`, `vextractf128`, `vinsertf128` | work with the 128-bit halves of ymm |
+| `vpermd`, `vpermps` | permute 8 dwords across the full ymm width (AVX2) |
 
-Важная особенность AVX/AVX2: большинство «внутрирегистровых» операций
-(`vshufps`, `vpshufb`, `vunpcklps`, `vhaddps`) работают **независимо в двух
-128-битных половинах (lanes)**. Перемещение данных между половинами —
-только специальными инструкциями (`vperm2f128`, `vpermd`, `vextractf128`),
-и они дороже (задержка 3 такта). Это главный источник сюрпризов при
-переходе с SSE на AVX2.
+An important property of AVX/AVX2: most "in-register" operations
+(`vshufps`, `vpshufb`, `vunpcklps`, `vhaddps`) work **independently in the
+two 128-bit halves (lanes)**. Moving data between the halves is only
+possible with special instructions (`vperm2f128`, `vpermd`,
+`vextractf128`), and they are more expensive (3-cycle latency). This is
+the main source of surprises when moving from SSE to AVX2.
 
-Кодирование `imm` для `pshufd`/`shufps`: поле результата `i` берёт элемент
-`(imm >> 2i) & 3`. Разворот (3,2,1,0) — `0b00_01_10_11 = 0x1B`;
-«размножить элемент 0» — `0`.
+Encoding `imm` for `pshufd`/`shufps`: result lane `i` takes element
+`(imm >> 2i) & 3`. Reversal (3,2,1,0) is `0b00_01_10_11 = 0x1B`;
+"broadcast element 0" is `0`.
 
-## 6. Горизонтальные операции
+## 6. Horizontal operations
 
-SIMD хорош «вертикально» (элемент i с элементом i). Сложить элементы
-одного регистра — дорого. Стандартная свёртка 8 float в ymm0:
+SIMD is good "vertically" (element i with element i). Adding up the
+elements of a single register is expensive. The standard reduction of 8
+floats in ymm0:
 
 ```asm
-vextractf128 xmm1, ymm0, 1     ; старшие 4
-vaddps       xmm0, xmm0, xmm1  ; 4 суммы
-vmovhlps     xmm1, xmm1, xmm0  ; элементы 2,3 -> 0,1
-vaddps       xmm0, xmm0, xmm1  ; 2 суммы
+vextractf128 xmm1, ymm0, 1     ; upper 4
+vaddps       xmm0, xmm0, xmm1  ; 4 sums
+vmovhlps     xmm1, xmm1, xmm0  ; elements 2,3 -> 0,1
+vaddps       xmm0, xmm0, xmm1  ; 2 sums
 vshufps      xmm1, xmm0, xmm0, 1
-vaddss       xmm0, xmm0, xmm1  ; 1 сумма
+vaddss       xmm0, xmm0, xmm1  ; 1 sum
 ```
 
-`haddps` существует, но это 3 мкоп (две перестановки и сложение) —
-обычно медленнее. Главное правило: делайте горизонтальную свёртку
-**один раз в конце цикла**, а не на каждой итерации.
+`haddps` exists, but it is 3 uops (two shuffles and an add) — usually
+slower. The main rule: do the horizontal reduction **once at the end of
+the loop**, not on every iteration.
 
-## 7. Векторизация цикла: каркас
+## 7. Vectorizing a loop: the skeleton
 
 ```
 i = 0
-// 1. основной цикл: пока осталось >= W элементов (W = 4/8/16/32)
-while (i + W <= n) { обработать a[i .. i+W-1]; i += W }
-// 2. хвост: оставшиеся n % W элементов скалярно
-while (i < n) { обработать a[i]; i++ }
+// 1. main loop: while >= W elements remain (W = 4/8/16/32)
+while (i + W <= n) { process a[i .. i+W-1]; i += W }
+// 2. tail: the remaining n % W elements, scalar
+while (i < n) { process a[i]; i++ }
 ```
 
-В ассемблере условие `i + W <= n` удобно записать как `i < n - (W-1)` и
-посчитать `n - (W-1)` один раз (`lea rcx, [rsi - 7]`); сравнение должно
-быть **знаковым** (`jl`), чтобы при `n < W` граница стала отрицательной и
-основной цикл не выполнился ни разу.
+In assembly, the condition `i + W <= n` is conveniently written as
+`i < n - (W-1)`, computing `n - (W-1)` once (`lea rcx, [rsi - 7]`); the
+comparison must be **signed** (`jl`), so that when `n < W` the bound
+becomes negative and the main loop does not run at all.
 
-Варианты обработки хвоста:
+Ways to handle the tail:
 
-* скалярный цикл (просто, медленно при малых n);
-* «перекрывающаяся» последняя итерация: обработать `a[n-W .. n-1]` ещё
-  раз — годится для идемпотентных операций (копирование, преобразование
-  «на месте» — нет, сложение в аккумулятор — нет);
-* маскированные загрузки `vmaskmovps` (AVX) или маски AVX-512;
-* выравнивание данных и «заглушки» в конце буфера (padding) — частый
-  выбор в движках: массивы компонентов заранее дополняются до кратности 8.
+* a scalar loop (simple, slow for small n);
+* an "overlapping" last iteration: process `a[n-W .. n-1]` once more —
+  fine for idempotent operations (copying yes; in-place transformation
+  no; accumulating into a sum no);
+* masked loads `vmaskmovps` (AVX) or AVX-512 masks;
+* aligning data and padding at the end of the buffer — a common choice
+  in engines: component arrays are padded to a multiple of 8 up front.
 
-### Выравнивание и пролог
+### Alignment and prologue
 
-Для потоковых сохранений или ради скорости на старых CPU иногда делают
-«пролог»: скалярно обрабатывают элементы до первого адреса, кратного 32,
-затем основной цикл с `vmovaps`, затем хвост. Это пример из главы 14.
+For streaming stores, or for speed on older CPUs, people sometimes write
+a "prologue": process elements scalarly up to the first address that is a
+multiple of 32, then the main loop with `vmovaps`, then the tail. This is
+an example from chapter 14.
 
-### Несколько аккумуляторов
+### Multiple accumulators
 
-Редукции (сумма, скалярное произведение) с одним аккумулятором упираются
-в задержку инструкции: `vaddps` — 3–4 такта, а запускать их можно 2 за
-такт. Разделив сумму на 2–4 независимых аккумулятора, получаем
-ускорение в 2–8 раз. c3c (LLVM) так и делает для целых сумм: посмотрите
-`-O3`-вывод функции `isum` ниже — четыре регистра-аккумулятора.
+Reductions (sum, dot product) with a single accumulator are bound by
+instruction latency: `vaddps` takes 3–4 cycles, yet two of them can start
+per cycle. Splitting the sum into 2–4 independent accumulators gives a
+2–8× speedup. c3c (LLVM) does exactly this for integer sums: look at the
+`-O3` output for the `isum` function below — four accumulator registers.
 
-## 8. vzeroupper и смешивание SSE/AVX
+## 8. vzeroupper and mixing SSE/AVX
 
-Если код использовал ymm-регистры, перед возвратом в «чужой» код или
-вызовом чужой функции выполняйте `vzeroupper`. Причина: старые (не-VEX)
-SSE-инструкции не знают о старших 128 битах ymm и должны их сохранять. На
-Intel Sandy Bridge — Broadwell это вызывало дорогие переходы состояния
-(~70 тактов), на Skylake — ложную зависимость каждой SSE-инструкции от
-старых данных. Компиляторы ставят `vzeroupper` автоматически перед `ret`
-и `call` в функциях, трогавших ymm. В ручном коде — ваша ответственность.
+If your code used ymm registers, execute `vzeroupper` before returning to
+"foreign" code or calling a foreign function. The reason: legacy (non-VEX)
+SSE instructions don't know about the upper 128 bits of ymm and must
+preserve them. On Intel Sandy Bridge through Broadwell this caused
+expensive state transitions (~70 cycles); on Skylake, a false dependency
+of every SSE instruction on the old data. Compilers insert `vzeroupper`
+automatically before `ret` and `call` in functions that touched ymm. In
+hand-written code it's your responsibility.
 
-## 9. Что умеет компилятор
+## 9. What the compiler can do
 
 ```c3
 fn int isum(int* a, long n) { int s; for (long i = 0; i < n; i++) s += a[i]; return s; }
 fn float fsum(float* a, long n) { float s; for (long i = 0; i < n; i++) s += a[i]; return s; }
 ```
 
-c3c `-O3` (на Zen 2):
+c3c `-O3` (on Zen 2):
 
-* `isum` — векторизован: четыре аккумулятора `vpaddd xmm`, 16 int за
-  итерацию, затем горизонтальная свёртка и скалярный хвост;
-* `fsum` — **не** векторизован: развёрнутая цепочка `vaddss` подряд. Сложение
-  float не ассоциативно, и переставлять его компилятор без fast-math не
-  имеет права. С `-O5` (fast math) векторизует.
+* `isum` is vectorized: four `vpaddd xmm` accumulators, 16 ints per
+  iteration, then a horizontal reduction and a scalar tail;
+* `fsum` is **not** vectorized: an unrolled chain of `vaddss` in a row.
+  Float addition is not associative, and without fast-math the compiler
+  has no right to reorder it. With `-O5` (fast math) it vectorizes.
 
-Интересно, что LLVM выбрал xmm, а не ymm: модель стоимости для Zen 2
-(где 256-битные операции внутри делятся на две 128-битные половины) не
-видит выгоды. На Intel будут ymm.
+Interestingly, LLVM chose xmm rather than ymm: the cost model for Zen 2
+(where 256-bit operations are internally split into two 128-bit halves)
+sees no benefit. On Intel you'd get ymm.
 
-Что ещё мешает автовекторизации: возможное перекрытие (aliasing)
-указателей (`dst` может указывать внутрь `src`), ветвления в теле цикла,
-вызовы функций, сложные зависимости между итерациями, нерегулярный доступ
-к памяти, «ранний выход» (поиск). Для поиска (как `find_byte`) компиляторы
-почти никогда не векторизуют — это работа для рук или библиотек.
+Other things that block auto-vectorization: possible pointer aliasing
+(`dst` may point into `src`), branches in the loop body, function calls,
+complex dependencies between iterations, irregular memory access, and
+"early exit" (search). Compilers almost never vectorize a search (like
+`find_byte`) — that's a job for hand-written code or libraries.
 
-В C3 есть встроенные векторные типы — `float[<8>]`, `int[<4>]` —
-с поэлементными операторами и методами `.sum()`, `.dot()`. Они
-транслируются прямо в SIMD-инструкции и избавляют от ассемблера во
-многих случаях.
+C3 has built-in vector types — `float[<8>]`, `int[<4>]` — with
+element-wise operators and methods `.sum()`, `.dot()`. They are translated
+directly into SIMD instructions and spare you from assembly in many cases.
 
-## 10. Подводные камни
+## 10. Pitfalls
 
-* `movaps`/`addps [mem]` с невыровненным адресом — segfault.
-* Перепутанные `ss`/`ps` — обработан только один элемент.
-* Чтение за конец буфера в хвосте.
-* `pmovmskb` даёт 16 бит (32 для ymm) — используйте 32-битный регистр, а
-  для ymm маска занимает все 32 бита (знак!), `tzcnt` на `eax` работает
-  корректно.
-* Перестановки AVX2 внутри 128-битных половин.
-* Забытый `vzeroupper`.
-* Вариант с одним аккумулятором — корректен, но медленный.
-* Плавающие редукции в другом порядке дают другой результат — в тестах
-  используйте точно представимые значения или допуск.
+* `movaps`/`addps [mem]` with an unaligned address — segfault.
+* Mixing up `ss`/`ps` — only one element gets processed.
+* Reading past the end of the buffer in the tail.
+* `pmovmskb` yields 16 bits (32 for ymm) — use a 32-bit register; for ymm
+  the mask occupies all 32 bits (sign!), and `tzcnt` on `eax` works
+  correctly.
+* AVX2 shuffles stay within 128-bit halves.
+* Forgotten `vzeroupper`.
+* The single-accumulator version is correct but slow.
+* Floating-point reductions in a different order give a different
+  result — in tests use exactly representable values or a tolerance.
 
-## Вопросы для самопроверки
+## Self-check questions
 
-1. Сколько элементов `short` помещается в ymm? Сколько `double`?
-2. Чем `movaps` отличается от `movups`? А `addps xmm0, [rdi]` от
+1. How many `short` elements fit in a ymm? How many `double`s?
+2. How does `movaps` differ from `movups`? And `addps xmm0, [rdi]` from
    `vaddps xmm0, xmm0, [rdi]`?
-3. Как размножить float на все 8 полей ymm? А байт на 16 полей xmm без AVX2?
-4. Что вернёт `pmovmskb` после `pcmpeqb`? Как найти по нему индекс
-   первого совпадения?
-5. Почему горизонтальную сумму нужно делать вне цикла?
-6. Почему компилятор векторизует сумму `int`, но не сумму `float`?
-7. Зачем нужен `vzeroupper`?
-8. Почему `vpshufb ymm` не может переместить байт из младшей половины
-   в старшую?
-9. Почему для редукций выгодно несколько аккумуляторов?
+3. How do you broadcast a float to all 8 lanes of a ymm? And a byte to
+   16 lanes of an xmm without AVX2?
+4. What does `pmovmskb` return after `pcmpeqb`? How do you find the index
+   of the first match from it?
+5. Why should the horizontal sum be done outside the loop?
+6. Why does the compiler vectorize a sum of `int`s but not a sum of
+   `float`s?
+7. What is `vzeroupper` for?
+8. Why can't `vpshufb ymm` move a byte from the lower half to the upper
+   half?
+9. Why are multiple accumulators beneficial for reductions?
 
-## Что почитать
+## Further reading
 
 * Intel® Intrinsics Guide — https://www.intel.com/content/www/us/en/docs/intrinsics-guide/
-  (поиск по инструкциям, с псевдокодом).
-* Agner Fog, «Optimizing subroutines in assembly language», гл. 13
-  «Vectorization»; «Instruction tables».
-* https://uops.info — задержки и порты для каждой векторной инструкции.
-* Denis Bakhvalov, «Performance Analysis and Tuning on Modern CPUs»,
-  глава про векторизацию.
-* Daniel Lemire's blog: статьи про `memchr`, base64, UTF-8 и JSON на SIMD;
-  проект simdjson (Langdale & Lemire, «Parsing Gigabytes of JSON per Second»).
-* Wojciech Muła, http://0x80.pl/articles/ — десятки SIMD-алгоритмов
-  (popcount через pshufb, поиск подстрок).
-* Peter Cordes — ответы на Stack Overflow по SSE/AVX (горизонтальные
-  суммы, vzeroupper) — лучшая неформальная документация.
+  (instruction search, with pseudocode).
+* Agner Fog, "Optimizing subroutines in assembly language", ch. 13
+  "Vectorization"; "Instruction tables".
+* https://uops.info — latencies and ports for every vector instruction.
+* Denis Bakhvalov, "Performance Analysis and Tuning on Modern CPUs",
+  the chapter on vectorization.
+* Daniel Lemire's blog: articles on `memchr`, base64, UTF-8 and JSON with
+  SIMD; the simdjson project (Langdale & Lemire, "Parsing Gigabytes of
+  JSON per Second").
+* Wojciech Muła, http://0x80.pl/articles/ — dozens of SIMD algorithms
+  (popcount via pshufb, substring search).
+* Peter Cordes — Stack Overflow answers on SSE/AVX (horizontal sums,
+  vzeroupper) — the best informal documentation.

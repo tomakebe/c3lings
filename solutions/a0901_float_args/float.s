@@ -1,39 +1,39 @@
 # =====================================================================
-#  a0901 · Плавающая точка: регистры xmm и передача аргументов
+#  a0901 · Floating point: xmm registers and argument passing
 # =====================================================================
 #
-#  Старый сопроцессор x87 (стек st0..st7) в 64-битном коде почти не
-#  используется: вся скалярная плавающая арифметика идёт через SSE —
-#  16 регистров xmm0..xmm15 по 128 бит. В скалярных инструкциях
-#  используется только младшая часть регистра:
+#  The old x87 coprocessor (the st0..st7 stack) is barely used in 64-bit
+#  code: all scalar floating-point arithmetic goes through SSE —
+#  16 registers xmm0..xmm15, 128 bits each. Scalar instructions use
+#  only the low part of the register:
 #
-#      суффикс ss — scalar single (float, 32 бита)
-#      суффикс sd — scalar double (double, 64 бита)
+#      suffix ss — scalar single (float, 32 bits)
+#      suffix sd — scalar double (double, 64 bits)
 #
-#      movss/movsd  xmm, xmm/mem     — копирование / загрузка
+#      movss/movsd  xmm, xmm/mem     — copy / load
 #      addss/addsd  xmm, xmm/mem     — dst += src
-#      subss/subsd                   — dst -= src   (ПОРЯДОК важен!)
-#      mulss/mulsd, divss/divsd      — * и /
+#      subss/subsd                   — dst -= src   (ORDER matters!)
+#      mulss/mulsd, divss/divsd      — * and /
 #
-#  Все они двухоперандные: `subsd xmm0, xmm1` значит xmm0 = xmm0 - xmm1.
-#  (В AVX есть трёхоперандные vaddsd xmm0, xmm1, xmm2 — об этом в главе 10.)
+#  They are all two-operand: `subsd xmm0, xmm1` means xmm0 = xmm0 - xmm1.
+#  (AVX has three-operand vaddsd xmm0, xmm1, xmm2 — more on that in chapter 10.)
 #
-#  System V ABI для плавающих аргументов:
-#    * float/double аргументы идут в xmm0, xmm1, ..., xmm7 — по порядку
-#      СРЕДИ ПЛАВАЮЩИХ, независимо от целых аргументов;
-#    * целые и указатели — как раньше: rdi, rsi, rdx, rcx, r8, r9;
-#    * результат float/double возвращается в xmm0;
-#    * ВСЕ регистры xmm — caller-saved (их может испортить любой вызов).
+#  System V ABI for floating-point arguments:
+#    * float/double arguments go in xmm0, xmm1, ..., xmm7 — in order
+#      AMONG THE FLOATING-POINT ONES, independently of integer arguments;
+#    * integers and pointers — as before: rdi, rsi, rdx, rcx, r8, r9;
+#    * a float/double result is returned in xmm0;
+#    * ALL xmm registers are caller-saved (any call may clobber them).
 #
-#  Например, у  double mix_args(long k, double x, long m, float y)
+#  For example, in  double mix_args(long k, double x, long m, float y)
 #  k -> rdi, x -> xmm0, m -> rsi, y -> xmm1.
 #
-#  ЗАДАЧА: исправьте функции.
+#  TASK: fix the functions.
 #      fadd3(a, b, c)        = a + b + c
 #      fsub(a, b)            = a - b
-#      lerp(a, b, t)         = a + t * (b - a)       (всё — float)
-#      mix_args(k, x, m, y)  = x + y   (y — float! его нужно превратить
-#                              в double: cvtss2sd xmm1, xmm1)
+#      lerp(a, b, t)         = a + t * (b - a)       (all float)
+#      mix_args(k, x, m, y)  = x + y   (y is a float! it must be turned
+#                              into a double: cvtss2sd xmm1, xmm1)
 #
     .intel_syntax noprefix
     .text

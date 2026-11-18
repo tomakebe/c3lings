@@ -1,4 +1,4 @@
-`delete_selection`: для каждого хендла выделения, который `w.alive(h)`, сохраните в команду хендл и
-`w.slots[h.index].data`, увеличьте `cmd.count`, поставьте слоту `state = DELETED` (gen НЕ трогать).
-`undo_delete`: очистите выделение; для каждой сохранённой записи верните слоту `state = ALIVE`
-и данные, и добавьте хендл в выделение (`sel.add(h)`).
+`delete_selection`: for each handle in the selection that is `w.alive(h)`, store the handle and
+`w.slots[h.index].data` in the command, increment `cmd.count`, set the slot's `state = DELETED` (do NOT touch gen).
+`undo_delete`: clear the selection; for each saved record restore the slot's `state = ALIVE`
+and its data, and add the handle to the selection (`sel.add(h)`).
